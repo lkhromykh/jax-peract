@@ -33,8 +33,8 @@ class Builder:
         clip = optax.clip_by_global_norm(self.cfg.max_grad_norm)
         return optax.chain(clip, optim)
 
-    def make_dataset(self):
-        return ops.get_dataset(batch_size=self.cfg.batch_size,
+    def make_dataset(self, split):
+        return ops.get_dataset(split, batch_size=self.cfg.batch_size,
                                img_size=self.cfg.img_size)
 
     def make_step_fn(self, nets: Networks):

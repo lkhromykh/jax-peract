@@ -1,5 +1,4 @@
-from typing import Any
 import collections.abc
 
 Layers = collections.abc.Sequence[int]
-Metrics = collections.abc.MutableMapping[str, Any]
+Metrics = collections.abc.MutableMapping[str, float]

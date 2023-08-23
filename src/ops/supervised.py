@@ -14,9 +14,8 @@ def supervised(cfg: Config, nets: Networks):
     def loss_fn(params, img, label):
         logits = nets.apply(params, img)
         acc = jnp.mean(logits.argmax(-1) == label)
-        conf = jax.nn.softmax(logits, -1).max(-1).mean()
         loss = optax.softmax_cross_entropy_with_integer_labels(logits, label).mean()
-        return loss, dict(accuracy=acc, loss=loss, confidence=conf)
+        return loss, dict(accuracy=acc, loss=loss)
 
     @chex.assert_max_traces(n=1)
     def step(state: TrainState, batch) -> tuple[TrainState, types.Metrics]:

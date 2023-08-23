@@ -12,8 +12,6 @@ Layers = Any
 
 
 def get_act(act: str) -> Any:
-    if callable(act):
-        return act
     if act == 'none':
         return lambda x: x
     if hasattr(jax.nn, act):
@@ -24,8 +22,6 @@ def get_act(act: str) -> Any:
 
 
 def get_norm(norm: str) -> Any:
-    if callable(norm):
-        return norm
     if norm == 'none':
         return lambda x: x
     if norm == 'layer':
@@ -140,16 +136,20 @@ class Networks(nn.Module):
             c.dim_feedforward,
             c.activation
         )
-        self.fc1 = nn.Dense(self.encoder.dmodel)
-        self.fc2 = nn.Dense(self.num_classes)
+        self.proj = nn.Dense(self.encoder.dmodel)
+        self.clsf_head = nn.Dense(self.num_classes)
 
     def __call__(self, x):
         batch, h, w, c = x.shape
-        pos_enc = positional_encoding(x, (-3, -2), 5, 32)
+        pos_enc = positional_encoding(x,
+                                      (-3, -2),
+                                      self.config.num_freqs,
+                                      self.config.nyquist_freq)
         pos_enc = jnp.repeat(pos_enc[jnp.newaxis], batch, 0)
         x = jnp.concatenate([x, pos_enc], -1)
-        x = jnp.reshape(x, (batch, h * w, -1))
-        x = self.fc1(x)
+        pos_enc_dim = 2 * (2 * self.config.num_freqs + 1)
+        x = jnp.reshape(x, (batch, h * w, c + pos_enc_dim))
+        x = self.proj(x)
         emb, _ = self.encoder(x)
         emb = jnp.reshape(emb, (batch, h * w * self.encoder.dmodel))
-        return self.fc2(emb)
+        return self.clsf_head(emb)

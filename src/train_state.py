@@ -10,6 +10,7 @@ Params = core.FrozenDict[str, Any]
 
 @jax.tree_util.register_pytree_node_class
 class TrainState(NamedTuple):
+
     rng: jax.random.PRNGKey
     params: Params
     target_params: Params
