@@ -11,7 +11,7 @@ def get_dataset(split: str,
                 batch_size: int,
                 img_size: tuple[int, int] | None = None
                 ) -> tf.data.Dataset:
-    ds, ds_info = tfds.load('cifar10', split=split,
+    ds, ds_info = tfds.load('mnist', split=split,
                             as_supervised=True, with_info=True)
 
     def normalize(image, label):

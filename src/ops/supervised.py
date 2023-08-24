@@ -4,12 +4,12 @@ import optax
 import chex
 
 from src.train_state import TrainState
-from src.networks import Networks
+from src.networks import Perceiver
 from src.config import Config
 from src import types_ as types
 
 
-def supervised(cfg: Config, nets: Networks):
+def supervised(cfg: Config, nets: Perceiver):
 
     def loss_fn(params, img, label):
         logits = nets.apply(params, img)

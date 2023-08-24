@@ -1,35 +1,28 @@
-import functools
-from typing import Callable, Any
+from typing import Any
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 import flax.linen as nn
 
+from src.config import Config
 from src.positional_encoding import positional_encoding
 
 Layers = Any
+Array = Any
+_dki = nn.initializers.lecun_normal()
 
 
-def get_act(act: str) -> Any:
-    if act == 'none':
-        return lambda x: x
-    if hasattr(jax.nn, act):
-        return getattr(jax.nn, act)
-    if hasattr(nn, act):
-        return getattr(nn, act)
-    raise NotImplementedError
+def layer_norm(x: Array) -> Array:
+    ln = nn.LayerNorm()
+    return ln(x)
 
 
-def get_norm(norm: str) -> Any:
-    if norm == 'none':
-        return lambda x: x
-    if norm == 'layer':
-        return nn.LayerNorm()
-    raise NotImplementedError
-
-
-def scaled_dot_product(query, key, value, mask=None):
+def scaled_dot_product(query: Array,
+                       key: Array,
+                       value: Array,
+                       mask: Array | None = None
+                       ) -> Array:
     # todo: time_major
     attn = jnp.einsum('...qhd,...khd->...hqk', query, key)
     attn /= np.sqrt(query.shape[-1])
@@ -40,107 +33,118 @@ def scaled_dot_product(query, key, value, mask=None):
 class MLP(nn.Module):
 
     layers: Layers
-    activation: str
-    normalization: str
-    activate_final: bool = True
+    activate_final: bool = False
 
     @nn.compact
-    def __call__(self, x):
+    def __call__(self, x: Array) -> Array:
         for i, layer in enumerate(self.layers):
-            x = nn.Dense(layer)(x)
+            x = nn.Dense(layer, kernel_init=_dki)(x)
             if i != len(self.layers) - 1 or self.activate_final:
-                x = get_norm(self.normalization)(x)
-                x = get_act(self.activation)(x)
+                x = jax.nn.gelu(x)
         return x
 
 
 class MultiHeadAttention(nn.Module):
 
     num_heads: int
-    embed_dim: int
+    qk_channels: int | None = None
+    v_channels: int | None = None
+    output_channels: int | None = None
 
     @nn.compact
-    def __call__(self, inputs_q, inputs_kv, mask=None):
-        dense = functools.partial(
-            nn.DenseGeneral,
-            features=(self.num_heads, self.embed_dim)
-        )
-        query = dense(name='query')(inputs_q)
-        key = dense(name='key')(inputs_kv)
-        value = dense(name='value')(inputs_kv)
+    def __call__(self,
+                 inputs_q: Array,
+                 inputs_kv: Array,
+                 mask: Array | None = None
+                 ) -> Array:
+        def dense(dim, name):
+            dim, res = np.divmod(dim, self.num_heads)
+            assert res == 0, f'Not divisible by the number of heads: {dim}.'
+            return nn.DenseGeneral(features=(self.num_heads, dim),
+                                   name=name,
+                                   kernel_init=_dki
+                                   )
+        qk_channels = self.qk_channels or inputs_q.shape[-1]
+        v_channels = self.v_channels or qk_channels
+        output_channels = self.output_channels or v_channels
+
+        query = dense(qk_channels, name='query')(inputs_q)
+        key = dense(qk_channels, name='key')(inputs_kv)
+        value = dense(v_channels, name='value')(inputs_kv)
         value, attn = scaled_dot_product(query, key, value, mask)
-        proj = nn.DenseGeneral(self.embed_dim, axis=(-2, -1), name='proj')
+        proj = nn.DenseGeneral(output_channels,
+                               axis=(-2, -1),
+                               kernel_init=_dki,
+                               name='proj')
         return proj(value), attn
 
 
 class CrossAttention(nn.Module):
-    ...
 
-
-class TransformerBlock(nn.Module):
-
-    dmodel: int
     num_heads: int
-    dim_feedforward: int
-    activation: str
+    feedforward_dim: int
 
     @nn.compact
-    def __call__(self, x, mask=None):
-        xln = nn.LayerNorm()(x)
-        mha = MultiHeadAttention(self.num_heads, self.dmodel)
-        val, attn = mha(xln, xln, mask)
-        x = x + val
-        xln = nn.LayerNorm()(x)
-        mlp = MLP(layers=(self.dim_feedforward, self.dmodel),
-                  activation=self.activation,
-                  normalization='none',
-                  activate_final=False)
-        val = mlp(xln)
-        return x + val, attn
+    def __call__(self, inputs_q, inputs_kv, mask=None):
+        # TODO: properly restore input/output shapes as in the paper.
+        output_channels = inputs_q.shape[-1]
+        mha = MultiHeadAttention(self.num_heads,
+                                 output_channels=output_channels)
+        val, attn = mha(layer_norm(inputs_q), layer_norm(inputs_kv), mask)
+        x = inputs_q + val
+        mlp = MLP((self.feedforward_dim, output_channels))
+        return x + mlp(layer_norm(x)), attn
 
 
-class TransformerEncoder(nn.Module):
+class SelfAttention(nn.Module):
 
-    dmodel: int
-    num_layers: int
     num_heads: int
-    dim_feedforward: int
-    activation: str
+    feedforward_dim: int
 
     @nn.compact
-    def __call__(self, x, mask=None):
-        attns = []
-        for _ in range(self.num_layers):
-            layer = TransformerBlock(
-                self.dmodel,
-                self.num_heads,
-                self.dim_feedforward,
-                self.activation
-            )
-            x, attn = layer(x)
-            attns.append(attn)
-        return x, jnp.stack(attns)
+    def __call__(self, x: Array) -> Array:
+        xln = layer_norm(x)
+        mha = MultiHeadAttention(self.num_heads)
+        val, _ = mha(xln, xln)
+        x += val
+        mlp = MLP((self.feedforward_dim, x.shape[-1]))
+        return x + mlp(layer_norm(x))
 
 
-class Networks(nn.Module):
+class Perceiver(nn.Module):
 
-    config: Any
-    num_classes: int = 10
+    config: Config
 
-    def setup(self):
+    @nn.compact
+    def __call__(self, x) -> None:
         c = self.config
-        self.encoder = TransformerEncoder(
-            c.latent_dim,
-            c.num_layers,
-            c.num_heads,
-            c.dim_feedforward,
-            c.activation
-        )
-        self.proj = nn.Dense(self.encoder.dmodel)
-        self.clsf_head = nn.Dense(self.num_classes)
 
-    def __call__(self, x):
-        batch, h, w, c = x.shape
+        def ca_factory():
+            return CrossAttention(c.num_heads,
+                                  c.feedforward_dim)
+
+        def sa_factory():
+            return SelfAttention(c.lt_num_heads,
+                                 c.lt_feedforward_dim)
+
+        x = self._positional_encoding(x)
+        latent = self.initial_latent(x.shape[0])
+        attns = []
+        latent, attn = ca_factory()(latent, x)
+        cross_attention = ca_factory()
+        latent_transformer = nn.Sequential(
+            [sa_factory() for _ in range(c.lt_num_blocks)])
+        for i in range(c.num_blocks):
+            if i:
+                latent, attn = cross_attention(latent, x)
+            attns.append(attn)
+            latent = latent_transformer(latent)
+        attns = jnp.stack(attns)
+        latent = jnp.mean(latent, axis=-2)
+        return nn.Dense(c.num_classes)(latent)
+
+    def _positional_encoding(self, x):
+        batch, h, w, d = x.shape
         pos_enc = positional_encoding(x,
                                       (-3, -2),
                                       self.config.num_freqs,
@@ -148,8 +152,13 @@ class Networks(nn.Module):
         pos_enc = jnp.repeat(pos_enc[jnp.newaxis], batch, 0)
         x = jnp.concatenate([x, pos_enc], -1)
         pos_enc_dim = 2 * (2 * self.config.num_freqs + 1)
-        x = jnp.reshape(x, (batch, h * w, c + pos_enc_dim))
-        x = self.proj(x)
-        emb, _ = self.encoder(x)
-        emb = jnp.reshape(emb, (batch, h * w * self.encoder.dmodel))
-        return self.clsf_head(emb)
+        x = jnp.reshape(x, (batch, h * w, d + pos_enc_dim))
+        return x
+
+    def initial_latent(self, batch_size: int | None = None) -> Array:
+        shape = (self.config.latent_channels, self.config.latent_dim)
+        # TODO: replace initializer
+        prior = self.param('prior', nn.initializers.lecun_normal(), shape)
+        if batch_size is not None:
+            prior = jnp.repeat(prior[jnp.newaxis], batch_size, 0)
+        return prior
