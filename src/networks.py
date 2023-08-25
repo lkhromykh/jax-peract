@@ -117,6 +117,7 @@ class SelfAttention(nn.Module):
         return x + mlp(layer_norm(x))
 
 
+# move it to perceiver encoder
 class Perceiver(nn.Module):
 
     config: Config
@@ -166,3 +167,12 @@ class Perceiver(nn.Module):
         if batch_size is not None:
             prior = jnp.repeat(prior[jnp.newaxis], batch_size, 0)
         return prior
+
+
+class Networks(nn.Module):
+    config: Config
+
+    def setup(self) -> None:
+        self.encoder = None
+        self.clsf_head = None
+        self.actor = None

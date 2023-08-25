@@ -3,3 +3,4 @@ jax
 numpy
 chex
 optax
+tensorflow_datasets

@@ -35,8 +35,11 @@ class Builder:
         return optax.chain(clip, optim)
 
     def make_dataset(self, split):
-        return ops.get_dataset(split, batch_size=self.cfg.batch_size,
-                               img_size=self.cfg.img_size)
+        c = self.cfg
+        return ops.get_dataset(split,
+                               batch_size=c.batch_size,
+                               img_size=c.img_size,
+                               mixup_lambda=c.mixup_lambda)
 
     def make_step_fn(self, nets: Perceiver):
         step = ops.supervised(self.cfg, nets)

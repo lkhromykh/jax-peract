@@ -27,7 +27,7 @@ def main():
             img = jax.device_put(img)
             logits = jax.jit(nets.apply)(state.params, img)
             predicts.append(logits.argmax(-1))
-            labels.append(label)
+            labels.append(label.argmax(-1))
         predicts = jnp.concatenate(predicts)
         labels = jnp.concatenate(labels)
         return jnp.mean(predicts == labels)
