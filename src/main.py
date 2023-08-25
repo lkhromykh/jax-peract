@@ -35,8 +35,8 @@ def main():
     for t in range(cfg.training_steps):
         batch = jax.device_put(next(train_ds))
         state, metrics = step(state, batch)
-        if t % 100 == 0:
-            metrics.update(eval_accuracy=evaluate())
+        if t % cfg.eval_every == 0:
+            metrics.update(step=t, eval_accuracy=evaluate())
             print(metrics)
 
 

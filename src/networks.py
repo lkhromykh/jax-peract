@@ -22,7 +22,7 @@ def scaled_dot_product(query: Array,
                        key: Array,
                        value: Array,
                        mask: Array | None = None
-                       ) -> Array:
+                       ) -> tuple[Array, Array]:
     # todo: time_major
     attn = jnp.einsum('...qhd,...khd->...hqk', query, key)
     attn /= np.sqrt(query.shape[-1])
@@ -56,7 +56,7 @@ class MultiHeadAttention(nn.Module):
                  inputs_q: Array,
                  inputs_kv: Array,
                  mask: Array | None = None
-                 ) -> Array:
+                 ) -> tuple[Array, Array]:
         def dense(dim, name):
             dim, res = np.divmod(dim, self.num_heads)
             assert res == 0, f'Not divisible by the number of heads: {dim}.'
@@ -85,10 +85,16 @@ class CrossAttention(nn.Module):
     feedforward_dim: int
 
     @nn.compact
-    def __call__(self, inputs_q, inputs_kv, mask=None):
+    def __call__(self,
+                 inputs_q: Array,
+                 inputs_kv: Array,
+                 mask: Array = None
+                 ) -> tuple[Array, Array]:
         # TODO: properly restore input/output shapes as in the paper.
         output_channels = inputs_q.shape[-1]
+        input_channels = min(output_channels, inputs_kv.shape[-1])
         mha = MultiHeadAttention(self.num_heads,
+                                 qk_channels=input_channels,
                                  output_channels=output_channels)
         val, attn = mha(layer_norm(inputs_q), layer_norm(inputs_kv), mask)
         x = inputs_q + val
@@ -116,16 +122,14 @@ class Perceiver(nn.Module):
     config: Config
 
     @nn.compact
-    def __call__(self, x) -> None:
+    def __call__(self, x: Array) -> Array:
         c = self.config
 
         def ca_factory():
-            return CrossAttention(c.num_heads,
-                                  c.feedforward_dim)
+            return CrossAttention(c.num_heads, c.feedforward_dim)
 
         def sa_factory():
-            return SelfAttention(c.lt_num_heads,
-                                 c.lt_feedforward_dim)
+            return SelfAttention(c.lt_num_heads, c.lt_feedforward_dim)
 
         x = self._positional_encoding(x)
         latent = self.initial_latent(x.shape[0])
@@ -133,22 +137,23 @@ class Perceiver(nn.Module):
         latent, attn = ca_factory()(latent, x)
         cross_attention = ca_factory()
         latent_transformer = nn.Sequential(
-            [sa_factory() for _ in range(c.lt_num_blocks)])
+            [sa_factory() for _ in range(c.lt_num_blocks)]
+        )
         for i in range(c.num_blocks):
             if i:
                 latent, attn = cross_attention(latent, x)
             attns.append(attn)
             latent = latent_transformer(latent)
-        attns = jnp.stack(attns)
+        attns = jnp.stack(attns, 1)
         latent = jnp.mean(latent, axis=-2)
         return nn.Dense(c.num_classes)(latent)
 
-    def _positional_encoding(self, x):
+    def _positional_encoding(self, x: Array) -> Array:
         batch, h, w, d = x.shape
         pos_enc = positional_encoding(x,
                                       (-3, -2),
                                       self.config.num_freqs,
-                                      self.config.nyquist_freq)
+                                      (h, w))
         pos_enc = jnp.repeat(pos_enc[jnp.newaxis], batch, 0)
         x = jnp.concatenate([x, pos_enc], -1)
         pos_enc_dim = 2 * (2 * self.config.num_freqs + 1)
@@ -157,7 +162,6 @@ class Perceiver(nn.Module):
 
     def initial_latent(self, batch_size: int | None = None) -> Array:
         shape = (self.config.latent_channels, self.config.latent_dim)
-        # TODO: replace initializer
         prior = self.param('prior', nn.initializers.lecun_normal(), shape)
         if batch_size is not None:
             prior = jnp.repeat(prior[jnp.newaxis], batch_size, 0)

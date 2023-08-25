@@ -11,7 +11,7 @@ def get_dataset(split: str,
                 batch_size: int,
                 img_size: tuple[int, int] | None = None
                 ) -> tf.data.Dataset:
-    ds, ds_info = tfds.load('mnist', split=split,
+    ds, ds_info = tfds.load('cifar10', split=split,
                             as_supervised=True, with_info=True)
 
     def normalize(image, label):
@@ -25,6 +25,7 @@ def get_dataset(split: str,
         ds = ds.repeat()
         drop_remainder = True
     else:
+        batch_size *= 4
         drop_remainder = False
     ds = ds.shuffle(ds_info.splits[split].num_examples)
     ds = ds.batch(batch_size, drop_remainder=drop_remainder)
