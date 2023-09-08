@@ -1,13 +1,12 @@
 from typing import Any
 
 import jax
-import jax.numpy as jnp
 import optax
 from flax import core
 
 from src.config import Config
 from src.train_state import TrainState
-from src.networks import Perceiver
+from src.networks import Networks
 from src import ops
 
 
@@ -16,8 +15,11 @@ class Builder:
     def __init__(self, cfg: Config):
         self.cfg = cfg
 
-    def make_networks(self) -> Perceiver:
-        return Perceiver(self.cfg)
+    def make_networks(self) -> Networks:
+        return Networks(self.cfg)
+
+    def make_env(self) -> 'dm_env.Environment':
+        """training env ctor."""
 
     def make_state(self, rng: jax.random.PRNGKey,
                    params: core.FrozenDict[str, Any],
@@ -41,7 +43,7 @@ class Builder:
                                img_size=c.img_size,
                                mixup_lambda=c.mixup_lambda)
 
-    def make_step_fn(self, nets: Perceiver):
+    def make_step_fn(self, nets: Networks):
         step = ops.supervised(self.cfg, nets)
         if self.cfg.jit:
             step = jax.jit(step)

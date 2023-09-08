@@ -6,7 +6,7 @@ import numpy as np
 import flax.linen as nn
 
 from src.config import Config
-from src.positional_encoding import positional_encoding
+from src.encode import positional_encoding
 
 Layers = Any
 Array = Any
@@ -40,7 +40,7 @@ class MLP(nn.Module):
         for i, layer in enumerate(self.layers):
             x = nn.Dense(layer, kernel_init=_dki)(x)
             if i != len(self.layers) - 1 or self.activate_final:
-                x = jax.nn.gelu(x)
+                x = nn.gelu(x)
         return x
 
 
@@ -120,17 +120,26 @@ class SelfAttention(nn.Module):
 # move it to perceiver encoder
 class Perceiver(nn.Module):
 
-    config: Config
+    num_heads: int
+    num_blocks: int
+    feedforward_dim: int
+    latent_dim: int
+    latent_channels: int
+    lt_num_heads: int
+    lt_feedforward_dim: int
+    lt_num_blocks: int
+
+    num_freqs: int
+    nyquist_freqs: tuple[float, ...]
 
     @nn.compact
     def __call__(self, x: Array) -> Array:
-        c = self.config
 
         def ca_factory():
-            return CrossAttention(c.num_heads, c.feedforward_dim)
+            return CrossAttention(self.num_heads, self.feedforward_dim)
 
         def sa_factory():
-            return SelfAttention(c.lt_num_heads, c.lt_feedforward_dim)
+            return SelfAttention(self.lt_num_heads, self.lt_feedforward_dim)
 
         x = self._positional_encoding(x)
         latent = self.initial_latent(x.shape[0])
@@ -138,41 +147,70 @@ class Perceiver(nn.Module):
         latent, attn = ca_factory()(latent, x)
         cross_attention = ca_factory()
         latent_transformer = nn.Sequential(
-            [sa_factory() for _ in range(c.lt_num_blocks)]
+            [sa_factory() for _ in range(self.lt_num_blocks)]
         )
-        for i in range(c.num_blocks):
+        for i in range(self.num_blocks):
             if i:
                 latent, attn = cross_attention(latent, x)
             attns.append(attn)
             latent = latent_transformer(latent)
-        attns = jnp.stack(attns, 1)
-        latent = jnp.mean(latent, axis=-2)
-        return nn.Dense(c.num_classes)(latent)
+        # attns = jnp.stack(attns, 1)
+        del attns
+        return jnp.mean(latent, axis=-2)
 
     def _positional_encoding(self, x: Array) -> Array:
         batch, h, w, d = x.shape
         pos_enc = positional_encoding(x,
                                       (-3, -2),
-                                      self.config.num_freqs,
-                                      (h, w))
+                                      self.num_freqs,
+                                      self.nyquist_freqs)
         pos_enc = jnp.repeat(pos_enc[jnp.newaxis], batch, 0)
         x = jnp.concatenate([x, pos_enc], -1)
-        pos_enc_dim = 2 * (2 * self.config.num_freqs + 1)
+        pos_enc_dim = 2 * (2 * self.num_freqs + 1)
         x = jnp.reshape(x, (batch, h * w, d + pos_enc_dim))
         return x
 
     def initial_latent(self, batch_size: int | None = None) -> Array:
-        shape = (self.config.latent_channels, self.config.latent_dim)
+        shape = (self.latent_channels, self.latent_dim)
         prior = self.param('prior', nn.initializers.lecun_normal(), shape)
         if batch_size is not None:
             prior = jnp.repeat(prior[jnp.newaxis], batch_size, 0)
         return prior
 
 
+class CNN(nn.Module):
+
+    @nn.compact
+    def __call__(self, x):
+        def conv(img):
+            return nn.Conv(32, (3, 3), strides=(2, 2), padding='VALID')(img)
+        for _ in range(3):
+            x = conv(x)
+            x = layer_norm(x)
+            x = nn.relu(x)
+        return jnp.mean(x, axis=(-3, -2))
+
+
 class Networks(nn.Module):
     config: Config
 
     def setup(self) -> None:
-        self.encoder = None
-        self.clsf_head = None
-        self.actor = None
+        c = self.config
+        self.encoder = Perceiver(
+            c.num_heads,
+            c.num_blocks,
+            c.feedforward_dim,
+            c.latent_dim,
+            c.latent_channels,
+            c.lt_num_heads,
+            c.lt_feedforward_dim,
+            c.lt_num_blocks,
+            c.num_freqs,
+            c.nyquist_freq,
+        )
+        self.clsf_head = nn.Dense(10)
+
+    def __call__(self, observation):
+        state = self.encoder(observation)
+        cls = self.clsf_head(state)
+        return cls

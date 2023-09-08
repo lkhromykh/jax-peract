@@ -22,3 +22,17 @@ def positional_encoding(x: Array,
     enc = np.pi * np.einsum('...d,Kd->...dK', pos, freqs)
     enc = enc.reshape(shape + (len(axes) * num_freqs,))
     return np.concatenate([pos, np.cos(enc), np.sin(enc)], -1)
+
+
+def multimodal_encoding(obs: dict[str, Array]) -> dict[str, Array]:
+    num_classes = len(obs)
+    enc = dict()
+    for i, key in enumerate(sorted(obs)):
+        val = np.ones(num_classes)
+        val[i] = 1
+        enc[key] = val
+    return enc
+
+
+def concatenate_encodings(obs) -> 'obs':
+    ...

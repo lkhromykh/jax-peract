@@ -1,6 +1,14 @@
+dm-env
 flax
 jax
 numpy
 chex
 optax
+-f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+jax[cuda11_local]
+tensorflow==2.13.*
+tensorflow_probability[jax]
 tensorflow_datasets
+git+https://github.com/stepjam/RLBench.git
+git+https://github.com/stepjam/PyRep.git
+open3d-cpu
