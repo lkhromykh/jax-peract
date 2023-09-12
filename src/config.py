@@ -7,7 +7,7 @@ class Config:
     img_size: tuple[int, int] | None = None
     num_freqs: int = 64
     nyquist_freq: float = 32
-    mixup_lambda: float | None = .2
+    mixup_lambda: float = 0.
 
     # Perceiver
     latent_dim: int = 32

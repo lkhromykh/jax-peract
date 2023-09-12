@@ -191,23 +191,80 @@ class CNN(nn.Module):
         return jnp.mean(x, axis=(-3, -2))
 
 
+class ResNetBlock(nn.Module):
+    
+    filters: int | None = None
+
+    @nn.compact
+    def __call__(self, x: Array) -> Array:
+        residual = x
+        filters = self.filters or x.shape[-1]
+        x = layer_norm(x)
+        x = nn.relu(x)
+        x = nn.Conv(filters, (1, 1))(x)
+        x = layer_norm(x)
+        x = nn.relu(x)
+        x = nn.Conv(filters, (3, 3))(x)
+        x = layer_norm(x)
+        x = nn.relu(x)
+        x = nn.Conv(filters, (1, 1))(x)
+        return residual + x
+
+
+class BottleneckResNetBlock(nn.Module):
+
+    filters: int
+
+    @nn.compact
+    def __call__(self, x):
+        residual = x
+        x = layer_norm(x)
+        x = nn.relu(x)
+        x = nn.Conv(self.filters, (1, 1))(x)
+        x = layer_norm(x)
+        x = nn.relu(x)
+        x = nn.Conv(self.filters, (3, 3), (2, 2))(x)
+        x = layer_norm(x)
+        x = nn.relu(x)
+        x = nn.Conv(4 * self.filters, (1, 1))(x)
+
+        residual = nn.Conv(4 * self.filters, (1, 1), (2, 2))(residual)
+        return residual + x
+
+
+class ResNet(nn.Module):
+
+    filters: Layers = (16, 64, 256)
+    stacks: int = 0
+
+    @nn.compact
+    def __call__(self, x):
+        x = nn.Conv(self.filters[0], (3, 3))(x)
+        for depth in self.filters:
+            x = BottleneckResNetBlock(depth)(x)
+            for _ in range(self.stacks):
+                x = ResNetBlock()(x)
+        return jnp.mean(x, axis=(-3, -2))
+
+
 class Networks(nn.Module):
     config: Config
 
     def setup(self) -> None:
         c = self.config
-        self.encoder = Perceiver(
-            c.num_heads,
-            c.num_blocks,
-            c.feedforward_dim,
-            c.latent_dim,
-            c.latent_channels,
-            c.lt_num_heads,
-            c.lt_feedforward_dim,
-            c.lt_num_blocks,
-            c.num_freqs,
-            c.nyquist_freq,
-        )
+        self.encoder = ResNet(stacks=1)
+        # self.encoder = Perceiver(
+        #     c.num_heads,
+        #     c.num_blocks,
+        #     c.feedforward_dim,
+        #     c.latent_dim,
+        #     c.latent_channels,
+        #     c.lt_num_heads,
+        #     c.lt_feedforward_dim,
+        #     c.lt_num_blocks,
+        #     c.num_freqs,
+        #     c.nyquist_freq,
+        # )
         self.clsf_head = nn.Dense(10)
 
     def __call__(self, observation):

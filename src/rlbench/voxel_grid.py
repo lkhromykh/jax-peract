@@ -23,13 +23,12 @@ class VoxelGrid:
         self.nbins = nbins
         shape = lb.size * (nbins,) + (4,)
         self._scene = np.zeros(shape, dtype=np.uint8)
-        self._voxel_size = 1. / nbins
+        self._voxel_size = 1. / (nbins - 1)
+        self._bbox = o3d.geometry.AxisAlignedBoundingBox(
+            np.zeros_like(lb), np.ones_like(ub))
 
     def __call__(self, obs: Observation) -> Array:
         self._scene.fill(0)
-        lb, ub = self.scene_bounds
-        lb = np.zeros_like(lb)
-        ub = np.ones_like(ub)
 
         def get_view(cam):
             return map(lambda s: getattr(obs, '_'.join([cam, s])),
@@ -54,17 +53,16 @@ class VoxelGrid:
         pcd = o3d.geometry.PointCloud()
         pcd.points = points
         pcd.colors = colors
-        bbox = o3d.geometry.AxisAlignedBoundingBox(lb, ub)
-        pcd = pcd.crop(bbox)
+        pcd = pcd.crop(self._bbox)
         grid = o3d.geometry.VoxelGrid.create_from_point_cloud_within_bounds(
             pcd,
             self._voxel_size,
-            lb, ub
+            self._bbox.min_bound, self._bbox.max_bound
         )
         # check once more if there is a suitable o3d method
         for voxel in grid.get_voxels():
             idx = voxel.grid_index
-            rgb = voxel.color
+            rgb = voxel.color  # floating precision is lost.
             self._scene[tuple(idx)] = np.concatenate([[255], rgb], -1)
         return self._scene
 
