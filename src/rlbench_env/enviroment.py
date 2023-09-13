@@ -9,9 +9,9 @@ from rlbench.observation_config import ObservationConfig
 from rlbench.backend.exceptions import InvalidActionError
 from pyrep.errors import IKError
 
-from src.rlbench.action_mode import ActionMode
-from src.rlbench.voxel_grid import VoxelGrid
-import src.rlbench.dataset as rlds
+from src.rlbench_env.action_mode import ActionMode
+from src.rlbench_env.voxel_grid import VoxelGrid
+from src.rlbench_env.dataset import extract_trajectory
 from src import types_ as types
 
 Array = types.Array
@@ -35,6 +35,7 @@ class RLBenchEnv(dm_env.Environment):
                                obs_config=obs_config)
         self.task = self.env.get_task(getattr(tasks, task))
         self.vgrid = VoxelGrid(scene_bounds, nbins)
+        self._prev_obs = None
 
     def reset(self) -> dm_env.TimeStep:
         description, obs = self.task.reset()
@@ -71,7 +72,7 @@ class RLBenchEnv(dm_env.Environment):
         trajs = []
         raw_demos = self.task.get_demos(amount=amount, live_demos=True)
         for demo in raw_demos:
-            traj = rlds.extract_trajectory(
+            traj = extract_trajectory(
                 demo=demo,
                 observation_transform=self._transform_observation,
                 action_transform=self.action_mode.from_observation

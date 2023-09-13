@@ -1,5 +1,3 @@
-from typing import Any
-
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -7,12 +5,11 @@ import flax.linen as nn
 import tensorflow_probability.substrates.jax as tfp
 tfd = tfp.distributions
 
-from src.config import Config
-from src.encodings import positional_encoding
 import src.types_ as types
+import src.encodings as enc
+from src.config import Config
 
-Layers = Any
-Array = Any
+Array = types.Array
 _dki = nn.initializers.lecun_normal()
 act = nn.gelu
 
@@ -26,7 +23,6 @@ def scaled_dot_product(query: Array,
                        key: Array,
                        value: Array,
                        ) -> Array:
-    # todo: time_major
     attn = jnp.einsum('...qhd,...khd->...hqk', query, key)
     attn /= np.sqrt(query.shape[-1])
     attn = jax.nn.softmax(attn)
@@ -35,7 +31,7 @@ def scaled_dot_product(query: Array,
 
 class MLP(nn.Module):
 
-    layers: Layers
+    layers: types.Layers
     activate_final: bool = False
 
     @nn.compact
@@ -118,7 +114,6 @@ class SelfAttention(nn.Module):
         return x + mlp(layer_norm(x))
 
 
-# move it to perceiver encoder
 class Perceiver(nn.Module):
 
     num_heads: int
@@ -130,42 +125,26 @@ class Perceiver(nn.Module):
     lt_feedforward_dim: int
     lt_num_blocks: int
 
-    num_freqs: int
-    nyquist_freqs: tuple[float, ...]
-
     @nn.compact
     def __call__(self, x: Array) -> Array:
-
         def ca_factory():
             return CrossAttention(self.num_heads, self.feedforward_dim)
 
         def sa_factory():
             return SelfAttention(self.lt_num_heads, self.lt_feedforward_dim)
 
-        x = self._positional_encoding(x)
         latent = self.initial_latent(x.shape[0])
-        latent, attn = ca_factory()(latent, x)
+        latent = ca_factory()(latent, x)
         cross_attention = ca_factory()
         latent_transformer = nn.Sequential(
             [sa_factory() for _ in range(self.lt_num_blocks)]
         )
+        latent = act(latent)
         for i in range(self.num_blocks):
-            if i:
-                latent, attn = cross_attention(latent, x)
+            if i: latent = cross_attention(latent, x)
             latent = latent_transformer(latent)
+        latent = act(latent)
         return jnp.mean(latent, axis=-2)
-
-    def _positional_encoding(self, x: Array) -> Array:
-        batch, h, w, d = x.shape
-        pos_enc = positional_encoding(x,
-                                      (-3, -2),
-                                      self.num_freqs,
-                                      self.nyquist_freqs)
-        pos_enc = jnp.repeat(pos_enc[jnp.newaxis], batch, 0)
-        x = jnp.concatenate([x, pos_enc], -1)
-        pos_enc_dim = 2 * (2 * self.num_freqs + 1)
-        x = jnp.reshape(x, (batch, h * w, d + pos_enc_dim))
-        return x
 
     def initial_latent(self, batch_size: int | None = None) -> Array:
         shape = (self.latent_channels, self.latent_dim)
@@ -177,45 +156,81 @@ class Perceiver(nn.Module):
 
 class ObsPreprocessor(nn.Module):
 
+    dim: int
+    num_freq_bands: int
+    conv_filters: types.Layers
+
     @nn.compact
     def __call__(self, obs: types.Observation) -> Array:
         # 1. Preprocess inputs
         # 2. Add positional encodings
         # 3. Add modality encoding
         # 4. concatenate in a single array
-        ...
+        known_modalities = {
+            'voxels': self._convs,
+            'low_dim': self._mlp
+        }
+        fused = []
+        obs = self._maybe_batch(obs)
+        for key, val in obs.items():
+            obs[key] = known_modalities[key](val)
+        for key, val in enc.multimodal_encoding(obs).items():
+            val = jnp.concatenate([obs[key], val], -1)
+            fused.append(val)
+        return jnp.concatenate(fused, 1)
 
-    def _convs(self, voxel_grid):
-        x = voxel_grid
-        for _ in range(3):
-            nn.Conv()
+    def _convs(self, voxel_grid: Array) -> Array:
+        x = voxel_grid / 255.
+        for dim in self.conv_filters:
+            x = nn.Conv(dim, (3, 3, 3), 2, padding='VALID')(x)
+            x = act(x)
+        x = self._positional_encoding(x)
+        x = nn.Conv(self.dim, (1, 1, 1))(x)
+        return jnp.reshape(x, (x.shape[0], -1, self.dim))
+
+    def _mlp(self, x: Array) -> Array:
+        x = jnp.expand_dims(x, -1)
+        x = self._positional_encoding(x)
+        return nn.Dense(self.dim)(x)
+
+    def _positional_encoding(self, x: Array) -> Array:
+        # lower batched input assumption
+        batch, *nyquist_freqs = x.shape[:-1]
+        axis = range(1, 1 + len(nyquist_freqs))
+        pos_enc = enc.positional_encoding(
+            x, axis, self.num_freq_bands, nyquist_freqs)
+        pos_enc = jnp.repeat(pos_enc[jnp.newaxis], batch, 0)
+        return jnp.concatenate([x, pos_enc], -1)
+
+    def _maybe_batch(self, obs: types.Observation) -> types.Observation:
+        if obs['low_dim'].ndim == 1:
+            return jax.tree_util.tree_map(lambda x: x[jnp.newaxis], obs)
+        return obs
 
 
 class Networks(nn.Module):
+
     config: Config
 
     def setup(self) -> None:
         c = self.config
-        # self.encoder = Perceiver(
-        #     c.num_heads,
-        #     c.num_blocks,
-        #     c.feedforward_dim,
-        #     c.latent_dim,
-        #     c.latent_channels,
-        #     c.lt_num_heads,
-        #     c.lt_feedforward_dim,
-        #     c.lt_num_blocks,
-        #     c.num_freqs,
-        #     c.nyquist_freq,
-        # )
-        self._preprocessor = None
-        self._encoder = None
+        self.preprocessor = ObsPreprocessor(31, 5, (33,))
+        self.encoder = Perceiver(
+            c.num_heads,
+            c.num_blocks,
+            c.feedforward_dim,
+            c.latent_dim,
+            c.latent_channels,
+            c.lt_num_heads,
+            c.lt_feedforward_dim,
+            c.lt_num_blocks,
+        )
 
     @nn.compact
     def __call__(self, obs: types.Observation) -> tfd.Distribution:
-        x = self._preprocessor(obs)
-        x = self._encoder(x)
+        x = self.preprocessor(obs)
+        x = self.encoder(x)
         logits = nn.Dense(8 * self.config.nbins)(x)
-        logits = logits.reshape((8, self.config.nbins))
+        logits = logits.reshape(logits.shape[:-1] + (8, self.config.nbins))
         dist = tfd.Categorical(logits)
         return tfd.Independent(dist, 1)

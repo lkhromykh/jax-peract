@@ -22,6 +22,7 @@ def bc(cfg: Config, nets: Networks) -> StepFn:
                 obs_t: types.Observation,
                 act_t: types.Action
                 ) -> tuple[float | jnp.ndarray, types.Metrics]:
+        import pdb; pdb.set_trace()
         policy_t = nets.apply(params, obs_t)
         log_prob_t = policy_t.log_prob(act_t)
         loss = -log_prob_t.mean()
@@ -31,7 +32,7 @@ def bc(cfg: Config, nets: Networks) -> StepFn:
              ) -> tuple[TrainState, types.Metrics]:
         params = state.params
         grad_fn = jax.grad(loss_fn, has_aux=True)
-        grad, metrics = grad_fn(params, batch)
+        grad, metrics = grad_fn(params, batch['observations'], batch['actions'])
         state = state.update(grad=grad)
         metrics.update(grad_norm=optax.global_norm(grad))
         return state, metrics

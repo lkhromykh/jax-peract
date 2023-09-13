@@ -11,7 +11,6 @@ from src import types_ as types
 Array = types.Array
 
 
-# TODO: robot should be sent voxels center
 class ActionMode(_ActionMode):
 
     def __init__(self,
@@ -21,7 +20,7 @@ class ActionMode(_ActionMode):
         """Axis share number of bins just to simplify policy distribution.
 
         Action is described as [x, y, z, qw, qi, qj, qk, gripper_pos].
-        Each action value lie in 0:(nbins-1) range.
+        Each action value lies in range(nbins).
         """
         super().__init__(EndEffectorPoseViaPlanning(), Discrete())
         lb = np.concatenate([scene_bounds[0], [-1, -1, -1, -1, 0]])

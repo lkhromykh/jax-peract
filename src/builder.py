@@ -1,6 +1,5 @@
 from typing import Any
 
-import dm_env
 import jax
 import optax
 from flax import core
@@ -8,9 +7,8 @@ from flax import core
 from src.config import Config
 from src.train_state import TrainState
 from src.networks import Networks
-from src.rlbench.enviroment import RLBenchEnv
+from src.rlbench_env.enviroment import RLBenchEnv
 from src.behavior_cloning import bc, StepFn
-import src.types_ as types
 
 
 class Builder:
@@ -21,9 +19,14 @@ class Builder:
     def make_networks(self) -> Networks:
         return Networks(self.cfg)
 
-    def make_env(self) -> RLBenchEnv:
+    def make_env(self, task: str) -> RLBenchEnv:
         """training env ctor."""
-        ...
+        c = self.cfg
+        scene_bounds = c.scene_lower_bound, c.scene_upper_bound
+        return RLBenchEnv(task=task,
+                          scene_bounds=scene_bounds,
+                          nbins=c.nbins,
+                          )
 
     def make_state(self,
                    rng: jax.random.PRNGKey,

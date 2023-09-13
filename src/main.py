@@ -1,43 +1,31 @@
 import jax
-import jax.numpy as jnp
-# jax.config.update('jax_platform_name', 'cpu')
+jax.config.update('jax_platform_name', 'cpu')
 
 from src.config import Config
 from src.builder import Builder
-from src import ops
+from src.rlbench_env.dataset import as_tfdataset
 
 
 def main():
     cfg = Config()
     builder = Builder(cfg)
-    nets = builder.make_networks()
-    train_ds = builder.make_dataset(split='train')
-    step = builder.make_step_fn(nets)
-    img, _ = next(train_ds)
-    rng = jax.random.PRNGKey(cfg.seed)
-    params = nets.init(rng, img)
-    print('Number of params: ', ops.tree_size(params))
+    env = builder.make_env('ReachTarget')
     optim = builder.make_optim()
+    nets = builder.make_networks()
+    step = builder.make_step_fn(nets)
+    rng = jax.random.PRNGKey(cfg.seed)
+    rng, subkey = jax.random.split(rng, 2)
+    params = nets.init(subkey, env.reset().observation)
     state = builder.make_state(rng, params, optim)
 
-    def evaluate():
-        predicts = []
-        labels = []
-        for img, label in builder.make_dataset(split='test[:10%]'):
-            img = jax.device_put(img)
-            logits = jax.jit(nets.apply)(state.params, img)
-            predicts.append(logits.argmax(-1))
-            labels.append(label.argmax(-1))
-        predicts = jnp.concatenate(predicts)
-        labels = jnp.concatenate(labels)
-        return jnp.mean(predicts == labels)
+    ds = as_tfdataset(env.get_demos(2)).repeat()
+    ds = ds.batch(3, drop_remainder=True).as_numpy_iterator()
 
-    for t in range(cfg.training_steps):
-        batch = jax.device_put(next(train_ds))
+    for t, batch in enumerate(ds):
+        batch = jax.device_put(batch)
         state, metrics = step(state, batch)
-        if t % cfg.eval_every == 0:
-            metrics.update(step=t, eval_accuracy=evaluate())
-            print(metrics)
+        metrics.update(step=t)
+        print(metrics)
 
 
 if __name__ == '__main__':

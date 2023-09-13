@@ -25,15 +25,15 @@ def positional_encoding(x: Array,
 
 
 def multimodal_encoding(obs: dict[str, Array]) -> dict[str, Array]:
-    """They should have equal dimensions on output right before cross_attention"""
-    num_classes = len(obs)
-    enc = dict()
-    for i, key in enumerate(sorted(obs)):
-        val = np.ones(num_classes)
-        val[i] = 1
-        enc[key] = val
+    n_modalities = len(obs)
+
+    def one_hot(idx):
+        x = np.zeros(n_modalities, np.int32)
+        x[idx] = 1
+        return x
+    enc = {}
+    for i, (key, value) in enumerate(sorted(obs.items())):
+        shape = value.shape[:-1] + (1,)
+        modality = np.tile(one_hot(i), shape)
+        enc[key] = modality
     return enc
-
-
-def concatenate_encodings(obs) -> 'obs':
-    ...
