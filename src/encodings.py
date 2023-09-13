@@ -25,6 +25,7 @@ def positional_encoding(x: Array,
 
 
 def multimodal_encoding(obs: dict[str, Array]) -> dict[str, Array]:
+    """They should have equal dimensions on output right before cross_attention"""
     num_classes = len(obs)
     enc = dict()
     for i, key in enumerate(sorted(obs)):

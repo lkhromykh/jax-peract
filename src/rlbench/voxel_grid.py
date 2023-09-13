@@ -11,7 +11,7 @@ Array = types.Array
 
 class VoxelGrid:
 
-    CAMERAS = ('front', 'left_shoulder', 'right_shoulder', 'overhead')
+    CAMERAS = ('front', 'left_shoulder', 'right_shoulder', 'overhead', 'wrist')
 
     def __init__(self,
                  scene_bounds: tuple[Array, Array],

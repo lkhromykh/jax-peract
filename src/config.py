@@ -4,7 +4,6 @@ import dataclasses
 @dataclasses.dataclass
 class Config:
 
-    img_size: tuple[int, int] | None = None
     num_freqs: int = 64
     nyquist_freq: float = 32
     mixup_lambda: float = 0.
@@ -23,13 +22,12 @@ class Config:
 
     # Training
     batch_size: int = 64
-    learning_rate: float = 1e-3
+    learning_rate: float = 1e-2
     max_grad_norm: float = 10.
     weight_decay: float = 1e-5
     training_steps: int = 10 ** 5
     eval_every: int = 1000
     jit: bool = True
 
-    logdir: str = 'logdir'
     seed: int = 0
-    num_classes: int = 10
+    logdir: str = 'logdir'

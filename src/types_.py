@@ -1,5 +1,5 @@
 import collections.abc
-from typing import TypedDict
+from typing import Any, TypedDict
 
 import numpy as np
 import dm_env.specs
@@ -10,12 +10,18 @@ RNG = np.random.RandomState
 Layers = collections.abc.Sequence[int]
 Metrics = collections.abc.MutableMapping[str, float]
 
-Observation = collections.abc.Mapping[str, Array]
-ObservationSpec = collections.abc.Mapping[str, dm_env.specs.Array]
 Action = Array
 ActionSpec = dm_env.specs.DiscreteArray
+ObservationSpec = collections.abc.Mapping[str, dm_env.specs.Array]
+
+
+# Latter classes are not used directly since they are not jax.PyTree's.
+class Observation(TypedDict, total=False):
+    voxels: Array
+    low_dim: Array
+    task: Array
 
 
 class Trajectory(TypedDict):
-    observations: list[Observation]
-    actions: list[Action]
+    observations: Any
+    actions: Any

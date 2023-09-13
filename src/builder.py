@@ -1,5 +1,6 @@
 from typing import Any
 
+import dm_env
 import jax
 import optax
 from flax import core
@@ -7,44 +8,40 @@ from flax import core
 from src.config import Config
 from src.train_state import TrainState
 from src.networks import Networks
-from src import ops
+from src.rlbench.enviroment import RLBenchEnv
+from src.behavior_cloning import bc, StepFn
+import src.types_ as types
 
 
 class Builder:
 
-    def __init__(self, cfg: Config):
+    def __init__(self, cfg: Config) -> None:
         self.cfg = cfg
 
     def make_networks(self) -> Networks:
         return Networks(self.cfg)
 
-    def make_env(self) -> 'dm_env.Environment':
+    def make_env(self) -> RLBenchEnv:
         """training env ctor."""
+        ...
 
-    def make_state(self, rng: jax.random.PRNGKey,
+    def make_state(self,
+                   rng: jax.random.PRNGKey,
                    params: core.FrozenDict[str, Any],
-                   optim: optax.TransformUpdateFn
+                   optim: optax.GradientTransformation
                    ) -> TrainState:
         return TrainState.init(rng=rng,
                                params=params,
-                               optim=optim,
-                               target_update_var=0)
+                               optim=optim)
 
-    def make_optim(self) -> optax.TransformUpdateFn:
+    def make_optim(self) -> optax.GradientTransformation:
         c = self.cfg
         optim = optax.lamb(c.learning_rate, weight_decay=c.weight_decay)
         clip = optax.clip_by_global_norm(c.max_grad_norm)
         return optax.chain(clip, optim)
 
-    def make_dataset(self, split):
-        c = self.cfg
-        return ops.get_dataset(split,
-                               batch_size=c.batch_size,
-                               img_size=c.img_size,
-                               mixup_lambda=c.mixup_lambda)
-
-    def make_step_fn(self, nets: Networks):
-        step = ops.supervised(self.cfg, nets)
+    def make_step_fn(self, nets: Networks) -> StepFn:
+        fn = bc(self.cfg, nets)
         if self.cfg.jit:
-            step = jax.jit(step)
-        return step
+            fn = jax.jit(fn)
+        return fn

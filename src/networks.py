@@ -4,13 +4,17 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import flax.linen as nn
+import tensorflow_probability.substrates.jax as tfp
+tfd = tfp.distributions
 
 from src.config import Config
-from src.encode import positional_encoding
+from src.encodings import positional_encoding
+import src.types_ as types
 
 Layers = Any
 Array = Any
 _dki = nn.initializers.lecun_normal()
+act = nn.gelu
 
 
 def layer_norm(x: Array) -> Array:
@@ -21,13 +25,12 @@ def layer_norm(x: Array) -> Array:
 def scaled_dot_product(query: Array,
                        key: Array,
                        value: Array,
-                       mask: Array | None = None
-                       ) -> tuple[Array, Array]:
+                       ) -> Array:
     # todo: time_major
     attn = jnp.einsum('...qhd,...khd->...hqk', query, key)
     attn /= np.sqrt(query.shape[-1])
     attn = jax.nn.softmax(attn)
-    return jnp.einsum('...hqk,...khd->...qhd', attn, value), attn
+    return jnp.einsum('...hqk,...khd->...qhd', attn, value)
 
 
 class MLP(nn.Module):
@@ -40,7 +43,7 @@ class MLP(nn.Module):
         for i, layer in enumerate(self.layers):
             x = nn.Dense(layer, kernel_init=_dki)(x)
             if i != len(self.layers) - 1 or self.activate_final:
-                x = nn.gelu(x)
+                x = act(x)
         return x
 
 
@@ -55,8 +58,7 @@ class MultiHeadAttention(nn.Module):
     def __call__(self,
                  inputs_q: Array,
                  inputs_kv: Array,
-                 mask: Array | None = None
-                 ) -> tuple[Array, Array]:
+                 ) -> Array:
         def dense(dim, name):
             dim, res = np.divmod(dim, self.num_heads)
             assert res == 0, f'Not divisible by the number of heads: {dim}.'
@@ -71,12 +73,12 @@ class MultiHeadAttention(nn.Module):
         query = dense(qk_channels, name='query')(inputs_q)
         key = dense(qk_channels, name='key')(inputs_kv)
         value = dense(v_channels, name='value')(inputs_kv)
-        value, attn = scaled_dot_product(query, key, value, mask)
+        value = scaled_dot_product(query, key, value)
         proj = nn.DenseGeneral(output_channels,
                                axis=(-2, -1),
                                kernel_init=_dki,
                                name='proj')
-        return proj(value), attn
+        return proj(value)
 
 
 class CrossAttention(nn.Module):
@@ -88,18 +90,17 @@ class CrossAttention(nn.Module):
     def __call__(self,
                  inputs_q: Array,
                  inputs_kv: Array,
-                 mask: Array = None
-                 ) -> tuple[Array, Array]:
+                 ) -> Array:
         # TODO: properly restore input/output shapes as in the paper.
         output_channels = inputs_q.shape[-1]
         input_channels = min(output_channels, inputs_kv.shape[-1])
         mha = MultiHeadAttention(self.num_heads,
                                  qk_channels=input_channels,
                                  output_channels=output_channels)
-        val, attn = mha(layer_norm(inputs_q), layer_norm(inputs_kv), mask)
+        val = mha(layer_norm(inputs_q), layer_norm(inputs_kv))
         x = inputs_q + val
         mlp = MLP((self.feedforward_dim, output_channels))
-        return x + mlp(layer_norm(x)), attn
+        return x + mlp(layer_norm(x))
 
 
 class SelfAttention(nn.Module):
@@ -111,7 +112,7 @@ class SelfAttention(nn.Module):
     def __call__(self, x: Array) -> Array:
         xln = layer_norm(x)
         mha = MultiHeadAttention(self.num_heads)
-        val, _ = mha(xln, xln)
+        val = mha(xln, xln)
         x += val
         mlp = MLP((self.feedforward_dim, x.shape[-1]))
         return x + mlp(layer_norm(x))
@@ -143,7 +144,6 @@ class Perceiver(nn.Module):
 
         x = self._positional_encoding(x)
         latent = self.initial_latent(x.shape[0])
-        attns = []
         latent, attn = ca_factory()(latent, x)
         cross_attention = ca_factory()
         latent_transformer = nn.Sequential(
@@ -152,10 +152,7 @@ class Perceiver(nn.Module):
         for i in range(self.num_blocks):
             if i:
                 latent, attn = cross_attention(latent, x)
-            attns.append(attn)
             latent = latent_transformer(latent)
-        # attns = jnp.stack(attns, 1)
-        del attns
         return jnp.mean(latent, axis=-2)
 
     def _positional_encoding(self, x: Array) -> Array:
@@ -178,73 +175,20 @@ class Perceiver(nn.Module):
         return prior
 
 
-class CNN(nn.Module):
+class ObsPreprocessor(nn.Module):
 
     @nn.compact
-    def __call__(self, x):
-        def conv(img):
-            return nn.Conv(32, (3, 3), strides=(2, 2), padding='VALID')(img)
+    def __call__(self, obs: types.Observation) -> Array:
+        # 1. Preprocess inputs
+        # 2. Add positional encodings
+        # 3. Add modality encoding
+        # 4. concatenate in a single array
+        ...
+
+    def _convs(self, voxel_grid):
+        x = voxel_grid
         for _ in range(3):
-            x = conv(x)
-            x = layer_norm(x)
-            x = nn.relu(x)
-        return jnp.mean(x, axis=(-3, -2))
-
-
-class ResNetBlock(nn.Module):
-    
-    filters: int | None = None
-
-    @nn.compact
-    def __call__(self, x: Array) -> Array:
-        residual = x
-        filters = self.filters or x.shape[-1]
-        x = layer_norm(x)
-        x = nn.relu(x)
-        x = nn.Conv(filters, (1, 1))(x)
-        x = layer_norm(x)
-        x = nn.relu(x)
-        x = nn.Conv(filters, (3, 3))(x)
-        x = layer_norm(x)
-        x = nn.relu(x)
-        x = nn.Conv(filters, (1, 1))(x)
-        return residual + x
-
-
-class BottleneckResNetBlock(nn.Module):
-
-    filters: int
-
-    @nn.compact
-    def __call__(self, x):
-        residual = x
-        x = layer_norm(x)
-        x = nn.relu(x)
-        x = nn.Conv(self.filters, (1, 1))(x)
-        x = layer_norm(x)
-        x = nn.relu(x)
-        x = nn.Conv(self.filters, (3, 3), (2, 2))(x)
-        x = layer_norm(x)
-        x = nn.relu(x)
-        x = nn.Conv(4 * self.filters, (1, 1))(x)
-
-        residual = nn.Conv(4 * self.filters, (1, 1), (2, 2))(residual)
-        return residual + x
-
-
-class ResNet(nn.Module):
-
-    filters: Layers = (16, 64, 256)
-    stacks: int = 0
-
-    @nn.compact
-    def __call__(self, x):
-        x = nn.Conv(self.filters[0], (3, 3))(x)
-        for depth in self.filters:
-            x = BottleneckResNetBlock(depth)(x)
-            for _ in range(self.stacks):
-                x = ResNetBlock()(x)
-        return jnp.mean(x, axis=(-3, -2))
+            nn.Conv()
 
 
 class Networks(nn.Module):
@@ -252,7 +196,6 @@ class Networks(nn.Module):
 
     def setup(self) -> None:
         c = self.config
-        self.encoder = ResNet(stacks=1)
         # self.encoder = Perceiver(
         #     c.num_heads,
         #     c.num_blocks,
@@ -265,9 +208,14 @@ class Networks(nn.Module):
         #     c.num_freqs,
         #     c.nyquist_freq,
         # )
-        self.clsf_head = nn.Dense(10)
+        self._preprocessor = None
+        self._encoder = None
 
-    def __call__(self, observation):
-        state = self.encoder(observation)
-        cls = self.clsf_head(state)
-        return cls
+    @nn.compact
+    def __call__(self, obs: types.Observation) -> tfd.Distribution:
+        x = self._preprocessor(obs)
+        x = self._encoder(x)
+        logits = nn.Dense(8 * self.config.nbins)(x)
+        logits = logits.reshape((8, self.config.nbins))
+        dist = tfd.Categorical(logits)
+        return tfd.Independent(dist, 1)

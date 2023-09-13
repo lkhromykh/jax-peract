@@ -11,27 +11,30 @@ from pyrep.errors import IKError
 
 from src.rlbench.action_mode import ActionMode
 from src.rlbench.voxel_grid import VoxelGrid
+import src.rlbench.dataset as rlds
 from src import types_ as types
 
 Array = types.Array
+
+_OBS_CONFIG = ObservationConfig()
+_OBS_CONFIG.gripper_touch_forces = True
 
 
 class RLBenchEnv(dm_env.Environment):
 
     def __init__(self,
                  task: str,
-                 action_bounds: tuple[Array, Array],
+                 scene_bounds: tuple[Array, Array],
                  nbins: int,
-                 obs_config: ObservationConfig = ObservationConfig()
+                 obs_config: ObservationConfig = _OBS_CONFIG
                  ) -> None:
-        action_bounds = tuple(map(np.asanyarray, action_bounds))
-        self.action_mode = ActionMode(action_bounds, nbins)
+        scene_bounds = tuple(map(np.asanyarray, scene_bounds))
+        self.action_mode = ActionMode(scene_bounds, nbins)
         self.env = Environment(self.action_mode,
-                               headless=False,
+                               headless=True,
                                obs_config=obs_config)
         self.task = self.env.get_task(getattr(tasks, task))
-        scene_bounds = tuple(map(lambda x: x[:3], action_bounds))
-        self._vgrid = VoxelGrid(scene_bounds, nbins)
+        self.vgrid = VoxelGrid(scene_bounds, nbins)
 
     def reset(self) -> dm_env.TimeStep:
         description, obs = self.task.reset()
@@ -50,7 +53,7 @@ class RLBenchEnv(dm_env.Environment):
         except (IKError, InvalidActionError):
             return dm_env.termination(0., self._prev_obs)
 
-    def action_spec(self):
+    def action_spec(self) -> types.ActionSpec:
         return self.action_mode.action_spec()
 
     def observation_spec(self) -> types.ObservationSpec:
@@ -60,18 +63,21 @@ class RLBenchEnv(dm_env.Environment):
         return tree.map_structure(convert, obs)
 
     def _transform_observation(self, obs: Observation) -> types.Observation:
-        lowdim = obs.get_low_dim_data()
-        voxels = self._vgrid(obs)
-        return dict(lowdim=lowdim, voxels=voxels)
+        voxels = self.vgrid(obs)
+        low_dim = obs.get_low_dim_data()
+        return types.Observation(voxels=voxels, low_dim=low_dim)
 
-    def get_demos(self, amount: int) -> list['Trajectory']:
-        demos = []
+    def get_demos(self, amount: int) -> list[types.Trajectory]:
+        trajs = []
         raw_demos = self.task.get_demos(amount=amount, live_demos=True)
         for demo in raw_demos:
-            demo = map(self._transform_observation, demo)
-            demo = tree.map_structure(lambda *t: np.stack(t), *demo)
-            demos.append(demo)
-        return demos
+            traj = rlds.extract_trajectory(
+                demo=demo,
+                observation_transform=self._transform_observation,
+                action_transform=self.action_mode.from_observation
+            )
+            trajs.append(traj)
+        return trajs
 
     def close(self) -> None:
-        self.env.shutdown()
+        return self.env.shutdown()

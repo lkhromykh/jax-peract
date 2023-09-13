@@ -21,16 +21,17 @@ class ActionMode(_ActionMode):
         """Axis share number of bins just to simplify policy distribution.
 
         Action is described as [x, y, z, qw, qi, qj, qk, gripper_pos].
+        Each action value lie in 0:(nbins-1) range.
         """
         super().__init__(EndEffectorPoseViaPlanning(), Discrete())
-        lb = np.concatenate([scene_bounds[0], -1, -1, -1, -1, 0])
-        ub = np.concatenate([scene_bounds[1], 1, 1, 1, 1, 1])
+        lb = np.concatenate([scene_bounds[0], [-1, -1, -1, -1, 0]])
+        ub = np.concatenate([scene_bounds[1], [1, 1, 1, 1, 1]])
         self._action_bounds = lb, ub
         self.nbins = nbins
-        self._actgrid = np.linspace(lb, ub, nbins)
+        self._actgrid = np.linspace(lb, ub, nbins).T
 
     def action(self, scene: Scene, action: types.Action) -> None:
-        action = np.take_along_axis(self._actgrid, action[np.newaxis], 0)
+        action = np.take_along_axis(self._actgrid, np.expand_dims(action, 1), 1)
         pos, quat, grip = np.split(action.squeeze(0), [3, 7])
         quat /= np.linalg.norm(quat)
         arm = np.concatenate([pos, quat], -1)
@@ -45,17 +46,25 @@ class ActionMode(_ActionMode):
         return self._action_bounds
 
     def action_spec(self) -> types.ActionSpec:
-        lb, ub = self._action_bounds
-        return dm_env.specs.BoundedArray(lb.shape, np.int32, 0, self.nbins,
-                                         name='discrete multicategorical')
+        lb, _ = self._action_bounds
+        return dm_env.specs.BoundedArray(shape=lb.shape, dtype=np.int32,
+                                         minimum=0, maximum=self.nbins,
+                                         name='multicategorical')
 
     def from_observation(self, obs: Observation) -> types.Action:
-        scene_bounds, (qlb, qub), (glb, gub) = map(
+        (plb, qlb, glb), (pub, qub, gub) = map(
             lambda x: np.split(x, [3, 7]),
             self._action_bounds
         )
-        pos = np.argmax(obs.gripper_pose > scene_bounds, 0)
-        quat = mat_to_quat(obs.gripper_matrix)
-        quat = np.floor_divide(quat - qlb, qub - qlb)
-        grip = np.floor_divide(obs.gripper_pose - glb, gub - glb)
-        return np.concatenate([pos, quat, grip], -1)
+        pos, quat = np.split(obs.gripper_pose, [3])
+
+        def discretize(x, a_min, a_max):
+            x = np.clip(x, a_min, a_max - 1e-7)
+            return np.floor_divide((x - a_min) * self.nbins,
+                                   (a_max - a_min))
+        pos = discretize(pos, plb, pub)
+        quat = discretize(quat, qlb, qub)
+        grip = discretize(obs.gripper_open, glb, gub)
+        action = np.concatenate([pos, quat, grip], -1).astype(np.int32)
+        assert np.all(action >= 0) and np.all(action < self.nbins), action
+        return action
