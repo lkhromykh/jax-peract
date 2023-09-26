@@ -11,4 +11,5 @@ tensorflow_probability[jax]
 tensorflow_datasets
 git+https://github.com/stepjam/RLBench.git
 git+https://github.com/stepjam/PyRep.git
+git+https://github.com/deepmind/jmp
 open3d-cpu

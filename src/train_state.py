@@ -2,6 +2,7 @@ from typing import NamedTuple
 
 import jax
 import jax.numpy as jnp
+import jmp
 import optax
 from flax import core
 
@@ -16,12 +17,15 @@ class TrainState(NamedTuple):
     params: Params
     opt_state: optax.OptState
     step: Array
+    loss_scale: jmp.LossScale
+
     tx: optax.TransformUpdateFn
 
     def update(self, *, grad: Params) -> 'TrainState':
         params = self.params
         opt_state = self.opt_state
         step = self.step
+        grad = self.loss_scale.unscale(grad)
         updates, opt_state = self.tx(grad, opt_state, params)
         params = optax.apply_updates(params, updates)
         return self._replace(
@@ -36,6 +40,7 @@ class TrainState(NamedTuple):
              rng: jax.random.PRNGKey,
              params: Params,
              optim: optax.GradientTransformation,
+             loss_scale: jmp.LossScale
              ) -> 'TrainState':
         return cls(
             rng=rng,
@@ -43,6 +48,7 @@ class TrainState(NamedTuple):
             opt_state=optim.init(params),
             step=jnp.int32(0),
             tx=optim.update,
+            loss_scale=loss_scale
         )
 
     def replace(self, **kwargs):
@@ -52,7 +58,8 @@ class TrainState(NamedTuple):
         children = (self.rng,
                     self.params,
                     self.opt_state,
-                    self.step
+                    self.step,
+                    self.loss_scale
                     )
         aux = self.tx,
         return children, aux

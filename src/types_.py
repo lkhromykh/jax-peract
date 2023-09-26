@@ -11,17 +11,17 @@ Layers = collections.abc.Sequence[int]
 Metrics = collections.abc.MutableMapping[str, float]
 
 Action = Array
-ActionSpec = dm_env.specs.DiscreteArray
+ActionSpec = list[dm_env.specs.DiscreteArray]
 ObservationSpec = collections.abc.Mapping[str, dm_env.specs.Array]
 
 
 # Latter classes are not used directly since they are not jax.PyTree's.
-class Observation(TypedDict, total=False):
+class Observation(TypedDict):
     voxels: Array
     low_dim: Array
     task: Array
 
 
-class Trajectory(TypedDict):
+class Trajectory(TypedDict, total=False):
     observations: Any
     actions: Any

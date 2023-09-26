@@ -1,3 +1,5 @@
+from enum import IntEnum
+
 import tree
 import numpy as np
 import dm_env.specs
@@ -20,36 +22,62 @@ _OBS_CONFIG = ObservationConfig()
 _OBS_CONFIG.gripper_touch_forces = True
 
 
+class Tasks(IntEnum):
+
+    ReachTarget = 0
+
+    def as_one_hot(self):
+        task = np.zeros(len(Tasks), dtype=np.uint8)
+        task[self] = 1
+        return task
+
+    def as_rlbench_task(self):
+        return getattr(tasks, self.name)
+
+
 class RLBenchEnv(dm_env.Environment):
 
     def __init__(self,
-                 task: str,
+                 rng: np.random.RandomState,
                  scene_bounds: tuple[Array, Array],
-                 nbins: int,
+                 nbins: ActionMode.Discretization,
+                 time_limit: int = float('inf'),
                  obs_config: ObservationConfig = _OBS_CONFIG
                  ) -> None:
+        self.rng = np.random.default_rng(rng)
         scene_bounds = tuple(map(np.asanyarray, scene_bounds))
         self.action_mode = ActionMode(scene_bounds, nbins)
         self.env = Environment(self.action_mode,
                                headless=True,
                                obs_config=obs_config)
-        self.task = self.env.get_task(getattr(tasks, task))
-        self.vgrid = VoxelGrid(scene_bounds, nbins)
+        self.vgrid = VoxelGrid(scene_bounds, nbins.pos)
+        self.task = None
+        self.description = None
+        self.time_limit = time_limit
+        self._time_steps = 0
         self._prev_obs = None
 
     def reset(self) -> dm_env.TimeStep:
-        description, obs = self.task.reset()
+        self._time_steps = 0
+        task = Tasks(self.rng.choice(Tasks))
+        self.task = self.env.get_task(task.as_rlbench_task())
+        self.description, obs = self.task.reset()
+        self.description = task.as_one_hot()
         obs = self._transform_observation(obs)
         self._prev_obs = obs
         return dm_env.restart(obs)
 
     def step(self, action: Array) -> dm_env.TimeStep:
+        assert self.task is not None, 'Reset first.'
         try:
             obs, reward, terminate = self.task.step(action)
             obs = self._transform_observation(obs)
             self._prev_obs = obs
+            self._time_steps += 1
             if terminate:
                 return dm_env.termination(reward, obs)
+            if self._time_steps >= self.time_limit:
+                return dm_env.truncation(reward, obs)
             return dm_env.transition(reward, obs)
         except (IKError, InvalidActionError):
             return dm_env.termination(0., self._prev_obs)
@@ -58,6 +86,7 @@ class RLBenchEnv(dm_env.Environment):
         return self.action_mode.action_spec()
 
     def observation_spec(self) -> types.ObservationSpec:
+        assert self.task is not None, 'Reset first.'
         _, obs = self.task.reset()
         obs = self._transform_observation(obs)
         def convert(x): return dm_env.specs.Array(x.shape, x.dtype)
@@ -66,7 +95,10 @@ class RLBenchEnv(dm_env.Environment):
     def _transform_observation(self, obs: Observation) -> types.Observation:
         voxels = self.vgrid(obs)
         low_dim = obs.get_low_dim_data()
-        return types.Observation(voxels=voxels, low_dim=low_dim)
+        return types.Observation(voxels=voxels,
+                                 low_dim=low_dim,
+                                 task=self.description
+                                 )
 
     def get_demos(self, amount: int) -> list[types.Trajectory]:
         trajs = []
@@ -82,3 +114,13 @@ class RLBenchEnv(dm_env.Environment):
 
     def close(self) -> None:
         return self.env.shutdown()
+
+
+def environment_loop(policy, env):
+    ts = env.reset()
+    reward = 0
+    while not ts.last():
+        action = policy(ts.observation)
+        ts = env.step(action)
+        reward += ts.reward
+    return reward
