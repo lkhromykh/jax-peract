@@ -1,3 +1,4 @@
+import os
 from typing import Any
 
 import jax
@@ -9,36 +10,50 @@ from src.config import Config
 from src.train_state import TrainState
 from src.networks import Networks
 from src.rlbench_env.enviroment import RLBenchEnv
-from src.rlbench_env.action_mode import ActionMode
 from src.behavior_cloning import bc, StepFn
+import src.types_ as types
 
 
 class Builder:
 
+    CONFIG = 'config.yaml'
+    STATE = 'state.cpkl'
+    DEMOS = 'replay/'
+
     def __init__(self, cfg: Config) -> None:
         self.cfg = cfg
 
-    def make_networks(self, env: RLBenchEnv) -> Networks:
-        return Networks(self.cfg,
+    def make_env(self, rng: types.RNG) -> RLBenchEnv:
+        """training env ctor."""
+        c = self.cfg
+        rng = rng[0].item()
+        scene_bounds = c.scene_lower_bound, c.scene_upper_bound
+        return RLBenchEnv(rng=rng,
+                          scene_bounds=scene_bounds,
+                          time_limit=c.time_limit)
+
+    def make_networks_and_params(
+            self,
+            seed: types.RNG,
+            env: RLBenchEnv
+    ) -> tuple[Networks, core.FrozenDict[str, types.Array]]:
+        nets = Networks(self.cfg,
                         env.observation_spec(),
                         env.action_spec()
                         )
+        obs = jax.tree_util.tree_map(lambda x: x.generate_value(),
+                                     env.observation_spec())
+        params = nets.init(seed, obs)
+        return nets, params
 
-    def make_env(self, rng: int) -> RLBenchEnv:
-        """training env ctor."""
+    def make_optim(self) -> optax.GradientTransformation:
         c = self.cfg
-        scene_bounds = c.scene_lower_bound, c.scene_upper_bound
-        nbins = ActionMode.Discretization(c.scene_nbins,
-                                          c.rot_nbins,
-                                          c.grip_nbins)
-        return RLBenchEnv(rng=rng,
-                          scene_bounds=scene_bounds,
-                          nbins=nbins,
-                          time_limit=c.time_limit
-                          )
+        optim = optax.lamb(c.learning_rate, weight_decay=c.weight_decay)
+        clip = optax.clip_by_global_norm(c.max_grad_norm)
+        return optax.chain(clip, optim)
 
     def make_state(self,
-                   rng: jax.random.PRNGKey,
+                   rng: types.RNG,
                    params: core.FrozenDict[str, Any],
                    ) -> TrainState:
         optim = self.make_optim()
@@ -48,14 +63,13 @@ class Builder:
                                loss_scale=jmp.NoOpLossScale()
                                )
 
-    def make_optim(self) -> optax.GradientTransformation:
-        c = self.cfg
-        optim = optax.lamb(c.learning_rate, weight_decay=c.weight_decay)
-        clip = optax.clip_by_global_norm(c.max_grad_norm)
-        return optax.chain(clip, optim)
-
     def make_step_fn(self, nets: Networks) -> StepFn:
         fn = bc(self.cfg, nets)
         if self.cfg.jit:
             fn = jax.jit(fn)
         return fn
+
+    def exp_path(self, path: str = os.path.curdir) -> str:
+        logdir = os.path.abspath(self.cfg.logdir)
+        path = os.path.join(logdir, path)
+        return os.path.abspath(path)

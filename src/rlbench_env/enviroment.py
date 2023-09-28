@@ -1,4 +1,7 @@
 from enum import IntEnum
+import logging
+
+_log = logging.getLogger(__name__)
 
 import tree
 import numpy as np
@@ -9,7 +12,7 @@ from rlbench.environment import Environment
 from rlbench.backend.observation import Observation
 from rlbench.observation_config import ObservationConfig
 from rlbench.backend.exceptions import InvalidActionError
-from pyrep.errors import IKError
+from pyrep.errors import IKError, ConfigurationPathError
 
 from src.rlbench_env.action_mode import ActionMode
 from src.rlbench_env.voxel_grid import VoxelGrid
@@ -40,57 +43,53 @@ class RLBenchEnv(dm_env.Environment):
     def __init__(self,
                  rng: np.random.RandomState,
                  scene_bounds: tuple[Array, Array],
-                 nbins: ActionMode.Discretization,
                  time_limit: int = float('inf'),
                  obs_config: ObservationConfig = _OBS_CONFIG
                  ) -> None:
         self.rng = np.random.default_rng(rng)
-        scene_bounds = tuple(map(np.asanyarray, scene_bounds))
-        self.action_mode = ActionMode(scene_bounds, nbins)
-        self.env = Environment(self.action_mode,
-                               headless=True,
-                               obs_config=obs_config)
-        self.vgrid = VoxelGrid(scene_bounds, nbins.pos)
-        self.task = None
-        self.description = None
         self.time_limit = time_limit
-        self._time_steps = 0
-        self._prev_obs = None
+        scene_bounds = tuple(map(np.asanyarray, scene_bounds))
+        self.action_mode = ActionMode(scene_bounds)
+        self.env = Environment(self.action_mode,
+                               headless=False,
+                               shaped_rewards=True,
+                               obs_config=obs_config)
+        # Action centric => vgrid nbins must be equal to the action mode nbins.
+        self.vgrid = VoxelGrid(scene_bounds, self.action_mode.SCENE_BINS)
+        self.reset()  # init_all attributes.
 
     def reset(self) -> dm_env.TimeStep:
-        self._time_steps = 0
         task = Tasks(self.rng.choice(Tasks))
         self.task = self.env.get_task(task.as_rlbench_task())
         self.description, obs = self.task.reset()
         self.description = task.as_one_hot()
         obs = self._transform_observation(obs)
         self._prev_obs = obs
+        self._steps = 0
         return dm_env.restart(obs)
 
     def step(self, action: Array) -> dm_env.TimeStep:
-        assert self.task is not None, 'Reset first.'
         try:
             obs, reward, terminate = self.task.step(action)
             obs = self._transform_observation(obs)
             self._prev_obs = obs
-            self._time_steps += 1
+            self._steps += 1
             if terminate:
                 return dm_env.termination(reward, obs)
-            if self._time_steps >= self.time_limit:
+            if self._steps >= self.time_limit:
                 return dm_env.truncation(reward, obs)
             return dm_env.transition(reward, obs)
-        except (IKError, InvalidActionError):
+        except (IKError, InvalidActionError, ConfigurationPathError) as exc:
+            _log.info(exc)
+            print(exc)
             return dm_env.termination(0., self._prev_obs)
 
     def action_spec(self) -> types.ActionSpec:
         return self.action_mode.action_spec()
 
     def observation_spec(self) -> types.ObservationSpec:
-        assert self.task is not None, 'Reset first.'
-        _, obs = self.task.reset()
-        obs = self._transform_observation(obs)
         def convert(x): return dm_env.specs.Array(x.shape, x.dtype)
-        return tree.map_structure(convert, obs)
+        return tree.map_structure(convert, self._prev_obs)
 
     def _transform_observation(self, obs: Observation) -> types.Observation:
         voxels = self.vgrid(obs)
@@ -118,9 +117,9 @@ class RLBenchEnv(dm_env.Environment):
 
 def environment_loop(policy, env):
     ts = env.reset()
-    reward = 0
+    cumsum = 0
     while not ts.last():
         action = policy(ts.observation)
         ts = env.step(action)
-        reward += ts.reward
-    return reward
+        cumsum += ts.reward
+    return cumsum

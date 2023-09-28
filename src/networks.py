@@ -1,4 +1,3 @@
-from dm_env import specs
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -10,7 +9,7 @@ import src.types_ as types
 import src.encodings as enc
 from src.config import Config
 
-Array = types.Array
+Array = jnp.ndarray
 _dki = nn.initializers.variance_scaling(
     scale=.4,
     mode='fan_in',
@@ -191,11 +190,11 @@ class ObsPreprocessor(nn.Module):
 
     def _convs(self, voxel_grid: Array) -> Array:
         x = voxel_grid / 255.
-        # for _ in range(3):
-            # x = nn.Conv(self.dim, (3, 3, 3), 2,
-            #             use_bias=False, padding='VALID')(x)
-            # x = layer_norm(x)
-            # x = act(x)
+        for _ in range(1):
+            x = nn.Conv(self.dim, (3, 3, 3), 2,
+                        use_bias=False, padding='VALID')(x)
+            x = layer_norm(x)
+            x = act(x)
         x = self._positional_encoding(x)
         x = nn.Conv(self.dim, (1, 1, 1))(x)
         return jnp.reshape(x, (x.shape[0], -1, self.dim))
@@ -215,21 +214,30 @@ class ObsPreprocessor(nn.Module):
         return jnp.concatenate([x, pos_enc], -1)
 
     def _maybe_batch(self, obs: types.Observation) -> types.Observation:
-        if obs['low_dim'].ndim == 1:
-            return jax.tree_util.tree_map(lambda x: x[jnp.newaxis], obs)
-        return obs
+        match obs['low_dim'].ndim:
+            case 1:
+                return jax.tree_util.tree_map(lambda x: x[jnp.newaxis], obs)
+            case 2:
+                return obs
+            case _:
+                raise NotImplemented('Convs require manual reshape.')
 
 
 class ActPreprocess(nn.Module):
 
     act_spec: types.ActionSpec
 
+    class Blockwise(tfd.Blockwise):
+        def mode(self, *args, **kwargs):
+            mode = map(lambda x: x.mode(*args, **kwargs), self.distributions)
+            return jnp.stack(list(mode), -1)
+
     @nn.compact
     def __call__(self, state: Array) -> tfd.Distribution:
         nbins = list(map(lambda sp: sp.num_values, self.act_spec))
         logits = nn.Dense(sum(nbins))(state)
         *logits, _ = jnp.split(logits, np.cumsum(nbins), -1)
-        return tfd.Blockwise([tfd.Categorical(log) for log in logits])
+        return ActPreprocess.Blockwise([tfd.Categorical(log) for log in logits])
 
 
 class Networks(nn.Module):

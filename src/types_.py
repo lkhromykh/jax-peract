@@ -1,11 +1,12 @@
 import collections.abc
 from typing import Any, TypedDict
 
+import jax
 import numpy as np
 import dm_env.specs
 
 Array = np.ndarray
-RNG = np.random.RandomState
+RNG = jax.random.KeyArray
 
 Layers = collections.abc.Sequence[int]
 Metrics = collections.abc.MutableMapping[str, float]

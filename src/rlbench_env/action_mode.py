@@ -1,5 +1,3 @@
-from collections import namedtuple
-
 import numpy as np
 import dm_env.specs
 
@@ -16,11 +14,12 @@ Array = types.Array
 
 class ActionMode(_ActionMode):
 
-    Discretization = namedtuple('Discretization', ('pos', 'rot', 'grip'))
+    SCENE_BINS = 30
+    ROT_BINS = 7
+    GRIP_BINS = 2
 
     def __init__(self,
                  scene_bounds: tuple[Array, Array],
-                 discretization: Discretization
                  ) -> None:
         """Axis share number of bins just to simplify policy distribution.
 
@@ -29,16 +28,16 @@ class ActionMode(_ActionMode):
         """
         super().__init__(EndEffectorPoseViaPlanning(), Discrete())
         self.scene_bounds = scene_bounds
-        self.discretization = d = discretization
         lb = np.concatenate([scene_bounds[0], [-1, -1, -1, -1, 0]])
         ub = np.concatenate([scene_bounds[1], [1, 1, 1, 1, 1]])
-        self._nbins = np.int32(3 * [d.pos] + 4 * [d.rot] + [d.grip]) - 1
+        nbins = 3 * [self.SCENE_BINS] + 4 * [self.ROT_BINS] + [self.GRIP_BINS]
         self._action_bounds = lb, ub
         self._range = ub - lb
+        self._nbins = np.int32(nbins) - 1
 
     def action(self, scene: Scene, action: types.Action) -> None:
+        assert action.shape == (8,) and action.dtype == np.int32, action
         lb, ub = self._action_bounds
-        action = np.asarray(action, np.int32)
         action = lb + self._range * action / self._nbins
         pos, quat, grip = np.split(action, [3, 7])
         quat /= np.linalg.norm(quat)
