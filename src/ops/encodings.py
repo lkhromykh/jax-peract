@@ -9,11 +9,11 @@ def positional_encoding(x: Array,
                         nyquist_freqs: tuple[float, ...] | None = None
                         ) -> Array:
     shape = tuple(x.shape[ax] for ax in axes)
-    ls = (np.linspace(-1., 1., ax, endpoint=True) for ax in shape)
+    ls = (np.linspace(-1., 1., ax) for ax in shape)
     pos = np.meshgrid(*ls, indexing='ij')
     pos = np.stack(pos, -1)
     nf = np.asarray(nyquist_freqs or shape)
-    freqs = np.linspace(np.ones_like(nf), nf / 2., num_freqs, endpoint=True)
+    freqs = np.linspace(np.ones_like(nf), nf / 2., num_freqs)
     enc = np.pi * np.einsum('...d,Kd->...dK', pos, freqs)
     enc = enc.reshape(shape + (len(axes) * num_freqs,))
     return np.concatenate([pos, np.cos(enc), np.sin(enc)], -1)

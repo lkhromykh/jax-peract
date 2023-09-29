@@ -5,8 +5,8 @@ import flax.linen as nn
 import tensorflow_probability.substrates.jax as tfp
 tfd = tfp.distributions
 
+from src import ops
 import src.types_ as types
-import src.encodings as enc
 from src.config import Config
 
 Array = jnp.ndarray
@@ -20,16 +20,6 @@ act = nn.gelu
 def layer_norm(x: Array) -> Array:
     ln = nn.LayerNorm()
     return ln(x)
-
-
-def scaled_dot_product(query: Array,
-                       key: Array,
-                       value: Array,
-                       ) -> Array:
-    attn = jnp.einsum('...qhd,...khd->...hqk', query, key)
-    attn /= np.sqrt(query.shape[-1])
-    attn = jax.nn.softmax(attn)
-    return jnp.einsum('...hqk,...khd->...qhd', attn, value)
 
 
 class MLP(nn.Module):
@@ -70,7 +60,7 @@ class MultiHeadAttention(nn.Module):
         query = dense(qk_channels, name='query')(inputs_q)
         key = dense(qk_channels, name='key')(inputs_kv)
         value = dense(v_channels, name='value')(inputs_kv)
-        value = scaled_dot_product(query, key, value)
+        value = ops.scaled_dot_product(query, key, value)
         proj = nn.DenseGeneral(output_channels,
                                axis=(-2, -1),
                                kernel_init=_dki,
@@ -88,12 +78,10 @@ class CrossAttention(nn.Module):
                  inputs_q: Array,
                  inputs_kv: Array,
                  ) -> Array:
-        # TODO: properly restore input/output shapes as in the paper.
-        output_channels = inputs_q.shape[-1]
-        input_channels = min(output_channels, inputs_kv.shape[-1])
+        channels = inputs_q.shape[-1]
         mha = MultiHeadAttention(self.num_heads,
-                                 qk_channels=input_channels,
-                                 output_channels=output_channels)
+                                 qk_channels=channels,
+                                 output_channels=channels)
         val = mha(layer_norm(inputs_q), layer_norm(inputs_kv))
         x = inputs_q + val
         mlp = MLP(self.widening_factor)
@@ -174,23 +162,22 @@ class ObsPreprocessor(nn.Module):
         # 2. Add positional encodings
         # 3. Add modality encoding
         # 4. concatenate in a single array
+        obs = self._maybe_batch(obs)
         known_modalities = {
             'voxels': self._convs,
             'low_dim': self._mlp,
             'task': self._mlp
         }
-        obs = self._maybe_batch(obs)
-        fused = []
+        out = {}
         for key, fn in known_modalities.items():
-            obs[key] = fn(obs[key])
-        for key, val in enc.multimodal_encoding(obs).items():
-            val = jnp.concatenate([obs[key], val], -1)
-            fused.append(val)
-        return jnp.concatenate(fused, 1)
+            out[key] = fn(obs[key])
+        for key, val in ops.multimodal_encoding(out).items():
+            out[key] = jnp.concatenate([out[key], val], -1)
+        return jnp.concatenate(list(out.values()), 1)
 
     def _convs(self, voxel_grid: Array) -> Array:
         x = voxel_grid / 255.
-        for _ in range(1):
+        for _ in range(2):
             x = nn.Conv(self.dim, (3, 3, 3), 2,
                         use_bias=False, padding='VALID')(x)
             x = layer_norm(x)
@@ -208,19 +195,15 @@ class ObsPreprocessor(nn.Module):
         # lower batched input assumption
         batch, *nyquist_freqs = x.shape[:-1]
         axis = range(1, 1 + len(nyquist_freqs))
-        pos_enc = enc.positional_encoding(
+        pos_enc = ops.positional_encoding(
             x, axis, self.num_bands, nyquist_freqs)
         pos_enc = jnp.repeat(pos_enc[jnp.newaxis], batch, 0)
         return jnp.concatenate([x, pos_enc], -1)
 
     def _maybe_batch(self, obs: types.Observation) -> types.Observation:
-        match obs['low_dim'].ndim:
-            case 1:
-                return jax.tree_util.tree_map(lambda x: x[jnp.newaxis], obs)
-            case 2:
-                return obs
-            case _:
-                raise NotImplemented('Convs require manual reshape.')
+        if obs['low_dim'].ndim == 1:
+            return jax.tree_util.tree_map(lambda x: x[jnp.newaxis], obs)
+        return obs
 
 
 class ActPreprocess(nn.Module):
@@ -248,9 +231,11 @@ class Networks(nn.Module):
 
     def setup(self) -> None:
         c = self.config
+        # Subtract #modalities to actually match latent_channels dim.
+        num_modalities = len(self.obs_spec)
         self.preprocessor = ObsPreprocessor(
             self.obs_spec,
-            c.latent_dim,
+            c.latent_channels - num_modalities,
             c.num_bands
         )
         self.encoder = Perceiver(

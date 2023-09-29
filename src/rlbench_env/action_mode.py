@@ -36,7 +36,7 @@ class ActionMode(_ActionMode):
         self._nbins = np.int32(nbins) - 1
 
     def action(self, scene: Scene, action: types.Action) -> None:
-        assert action.shape == (8,) and action.dtype == np.int32, action
+        self._assert_valid_action(action)
         lb, ub = self._action_bounds
         action = lb + self._range * action / self._nbins
         pos, quat, grip = np.split(action, [3, 7])
@@ -54,14 +54,20 @@ class ActionMode(_ActionMode):
 
     def action_spec(self) -> types.ActionSpec:
         def spec(num_values): return dm_env.specs.DiscreteArray(num_values)
-        return [spec(num + 1) for num in self._nbins]  # thus factorized.
+        return [spec(num + 1) for num in self._nbins]  # factorized.
 
     def from_observation(self, obs: Observation) -> types.Action:
-        # This is possible
         lb, ub = self._action_bounds
         action = np.concatenate([obs.gripper_pose, [1. - obs.gripper_open]])
         action = np.clip(action, a_min=lb, a_max=ub)
         action = (action - lb) / self._range
         action = np.round(self._nbins * action).astype(np.int32)
-        assert np.all(action >= 0) and np.all(action <= self._nbins), action
+        self._assert_valid_action(action)
         return action
+
+    def _assert_valid_action(self, action) -> None:
+        assert action.shape == (8,) \
+               and action.dtype == np.int32 \
+               and np.all(action >= 0) \
+               and np.all(action <= self._nbins), \
+               action

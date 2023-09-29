@@ -1,8 +1,6 @@
 from enum import IntEnum
 import logging
 
-_log = logging.getLogger(__name__)
-
 import tree
 import numpy as np
 import dm_env.specs
@@ -20,9 +18,9 @@ from src.rlbench_env.dataset import extract_trajectory
 from src import types_ as types
 
 Array = types.Array
-
 _OBS_CONFIG = ObservationConfig()
 _OBS_CONFIG.gripper_touch_forces = True
+_OBS_CONFIG.task_low_dim_state = True
 
 
 class Tasks(IntEnum):
@@ -71,18 +69,18 @@ class RLBenchEnv(dm_env.Environment):
     def step(self, action: Array) -> dm_env.TimeStep:
         try:
             obs, reward, terminate = self.task.step(action)
+        except (IKError, InvalidActionError, ConfigurationPathError) as exc:
+            logging.error(exc)
+            obs, reward, terminate = self._prev_obs, -100., True
+        else:
             obs = self._transform_observation(obs)
             self._prev_obs = obs
-            self._steps += 1
-            if terminate:
-                return dm_env.termination(reward, obs)
-            if self._steps >= self.time_limit:
-                return dm_env.truncation(reward, obs)
-            return dm_env.transition(reward, obs)
-        except (IKError, InvalidActionError, ConfigurationPathError) as exc:
-            _log.info(exc)
-            print(exc)
-            return dm_env.termination(0., self._prev_obs)
+        self._steps += 1
+        if terminate:
+            return dm_env.termination(reward, obs)
+        if self._steps >= self.time_limit:
+            return dm_env.truncation(reward, obs)
+        return dm_env.transition(reward, obs)
 
     def action_spec(self) -> types.ActionSpec:
         return self.action_mode.action_spec()

@@ -1,3 +1,4 @@
+import cloudpickle
 import jax
 # jax.config.update('jax_platform_name', 'cpu')
 
@@ -10,6 +11,8 @@ from src.rlbench_env.enviroment import environment_loop
 def main():
     cfg = Config()
     builder = Builder(cfg)
+    # with open(builder.exp_path(Builder.CONFIG), 'wb') as f:
+    #     cloudpickle.dump(cfg, f)
     rngs = jax.random.split(jax.random.PRNGKey(cfg.seed), 3)
     env = builder.make_env(rngs[0])
     nets, params = builder.make_networks_and_params(rngs[1], env)
@@ -31,6 +34,8 @@ def main():
             reward = environment_loop(policy, env)
             metrics.update(step=t, eval_reward=reward)
             print(metrics)
+            # with open(builder.exp_path(Builder.STATE), 'wb') as f:
+            #     cloudpickle.dump(state, f)
 
 
 if __name__ == '__main__':

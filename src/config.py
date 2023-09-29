@@ -8,8 +8,8 @@ class Config:
     mixup_lambda: float = 0.
 
     # Perceiver
-    latent_dim: int = 64
-    latent_channels: int = 128
+    latent_dim: int = 32
+    latent_channels: int = 64
     cross_attend_blocks: int = 1
     self_attend_blocks: int = 4
     cross_attend_heads: int = 1
@@ -29,9 +29,9 @@ class Config:
     precision: str = 'p=32,c=32,o=32'
 
     # Environment
-    scene_lower_bound: list[float] = (-0.3, -0.5, 0.6)
-    scene_upper_bound: list[float] = (0.7, 0.5, 1.6)
-    time_limit: int = 20
+    scene_lower_bound: list[float] = (-0.25, -0.5, 0.75)
+    scene_upper_bound: list[float] = (0.75, 0.5, 1.75)
+    time_limit: int = 10
 
     seed: int = 1
-    logdir: str = 'logdir'
+    logdir: str = 'logdir/'

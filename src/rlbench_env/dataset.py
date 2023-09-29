@@ -9,7 +9,7 @@ import src.types_ as types
 
 
 def is_keyframe(obs: Observation, next_obs: Observation) -> bool:
-    predicate = np.all(next_obs.joint_velocities < 1e-1)
+    predicate = np.all(next_obs.joint_velocities < 1e-2)
     predicate &= obs.gripper_open == next_obs.gripper_open
     return predicate
 
