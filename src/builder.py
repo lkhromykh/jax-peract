@@ -46,17 +46,14 @@ class Builder:
         params = nets.init(seed, obs)
         return nets, params
 
-    def make_optim(self) -> optax.GradientTransformation:
-        c = self.cfg
-        optim = optax.lamb(c.learning_rate, weight_decay=c.weight_decay)
-        clip = optax.clip_by_global_norm(c.max_grad_norm)
-        return optax.chain(clip, optim)
-
     def make_state(self,
                    rng: types.RNG,
                    params: core.FrozenDict[str, Any],
                    ) -> TrainState:
-        optim = self.make_optim()
+        c = self.cfg
+        optim = optax.adamw(c.learning_rate, weight_decay=c.weight_decay)
+        clip = optax.clip_by_global_norm(c.max_grad_norm)
+        optim = optax.chain(clip, optim)
         return TrainState.init(rng=rng,
                                params=params,
                                optim=optim,

@@ -9,7 +9,7 @@ from src import ops
 import src.types_ as types
 from src.config import Config
 
-Array = jnp.ndarray
+Array = jax.Array
 _dki = nn.initializers.variance_scaling(
     scale=.4,
     mode='fan_in',
@@ -135,7 +135,7 @@ class Perceiver(nn.Module):
         for i in range(self.cross_attend_blocks):
             if i: latent = cross_attention(latent, x)
             latent = latent_transformer(latent)
-        return jnp.mean(latent, axis=-2)
+        return jnp.reshape(latent, latent.shape[:-2] + (-1,))
 
     def initial_latent(self, batch_size: int | None = None) -> Array:
         shape = (self.latent_dim, self.latent_channels)
@@ -164,11 +164,12 @@ class ObsPreprocessor(nn.Module):
         # 4. concatenate in a single array
         obs = self._maybe_batch(obs)
         known_modalities = {
-            'voxels': self._convs,
+            # 'voxels': self._convs,
             'low_dim': self._mlp,
-            'task': self._mlp
+            # 'task': self._mlp
         }
         out = {}
+        breakpoint()
         for key, fn in known_modalities.items():
             out[key] = fn(obs[key])
         for key, val in ops.multimodal_encoding(out).items():
@@ -193,11 +194,12 @@ class ObsPreprocessor(nn.Module):
 
     def _positional_encoding(self, x: Array) -> Array:
         # lower batched input assumption
+        breakpoint()
         batch, *nyquist_freqs = x.shape[:-1]
-        axis = range(1, 1 + len(nyquist_freqs))
+        axes = range(1, 1 + len(nyquist_freqs))
         pos_enc = ops.positional_encoding(
-            x, axis, self.num_bands, nyquist_freqs)
-        pos_enc = jnp.repeat(pos_enc[jnp.newaxis], batch, 0)
+            x, axes, self.num_bands, nyquist_freqs)
+        pos_enc = np.repeat(pos_enc[np.newaxis], batch, 0)
         return jnp.concatenate([x, pos_enc], -1)
 
     def _maybe_batch(self, obs: types.Observation) -> types.Observation:
@@ -233,26 +235,36 @@ class Networks(nn.Module):
         c = self.config
         # Subtract #modalities to actually match latent_channels dim.
         num_modalities = len(self.obs_spec)
-        self.preprocessor = ObsPreprocessor(
-            self.obs_spec,
-            c.latent_channels - num_modalities,
-            c.num_bands
-        )
-        self.encoder = Perceiver(
-            c.latent_dim,
-            c.latent_channels,
-            c.cross_attend_blocks,
-            c.self_attend_blocks,
-            c.cross_attend_heads,
-            c.self_attend_heads,
-            c.cross_attend_widening_factor,
-            c.self_attend_widening_factor,
-            c.prior_initial_scale
-        )
+        # self.preprocessor = ObsPreprocessor(
+        #     self.obs_spec,
+        #     c.latent_channels - num_modalities,
+        #     c.num_bands
+        # )
+        # self.encoder = Perceiver(
+        #     c.latent_dim,
+        #     c.latent_channels,
+        #     c.cross_attend_blocks,
+        #     c.self_attend_blocks,
+        #     c.cross_attend_heads,
+        #     c.self_attend_heads,
+        #     c.cross_attend_widening_factor,
+        #     c.self_attend_widening_factor,
+        #     c.prior_initial_scale
+        # )
         self.postprocessor = ActPreprocess(self.act_spec)
 
     @nn.compact
     def __call__(self, obs: types.Observation) -> tfd.Distribution:
-        x = self.preprocessor(obs)
-        x = self.encoder(x)
+        x = MLP(512)(jnp.atleast_2d(obs['low_dim']))
+        # x = self.preprocessor(obs)
+        # x = self.encoder(x)
         return self.postprocessor(x)
+
+
+class Perceiver(nn.Module):
+    config: Config
+    observation_spec: types.ObservationSpec
+    action_spec: types.ActionSpec
+
+    def __call__(self, obs: types.Observation) -> tfd.Distribution:
+        """God-module required if plan to use skip-connection"""

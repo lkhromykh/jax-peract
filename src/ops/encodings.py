@@ -19,7 +19,8 @@ def positional_encoding(x: Array,
     return np.concatenate([pos, np.cos(enc), np.sin(enc)], -1)
 
 
-def multimodal_encoding(obs: dict[str, Array]) -> dict[str, Array]:
+def multimodal_encoding(obs: dict[str, Array],
+                        ) -> dict[str, Array]:
     n_modalities = len(obs)
 
     def one_hot(idx):

@@ -12,4 +12,5 @@ tensorflow_datasets
 git+https://github.com/stepjam/RLBench.git
 git+https://github.com/stepjam/PyRep.git
 git+https://github.com/deepmind/jmp
+git+https://github.com/lkhromykh/rltools.git
 open3d-cpu

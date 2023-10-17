@@ -4,7 +4,7 @@ import dm_env.specs
 from rlbench.backend.scene import Scene
 from rlbench.backend.observation import Observation
 from rlbench.action_modes.gripper_action_modes import Discrete
-from rlbench.action_modes.action_mode import ActionMode as _ActionMode
+from rlbench.action_modes.action_mode import ActionMode
 from rlbench.action_modes.arm_action_modes import EndEffectorPoseViaPlanning
 
 from src import types_ as types
@@ -12,7 +12,7 @@ from src import types_ as types
 Array = types.Array
 
 
-class ActionMode(_ActionMode):
+class DiscreteActionMode(ActionMode):
 
     SCENE_BINS = 30
     ROT_BINS = 7
@@ -58,14 +58,15 @@ class ActionMode(_ActionMode):
 
     def from_observation(self, obs: Observation) -> types.Action:
         lb, ub = self._action_bounds
-        action = np.concatenate([obs.gripper_pose, [1. - obs.gripper_open]])
+        # maybe handle quaternion sign: if q[-1] < 0 then q <- -q
+        action = np.concatenate([obs.gripper_pose, [obs.gripper_open]])
         action = np.clip(action, a_min=lb, a_max=ub)
         action = (action - lb) / self._range
         action = np.round(self._nbins * action).astype(np.int32)
         self._assert_valid_action(action)
         return action
 
-    def _assert_valid_action(self, action) -> None:
+    def _assert_valid_action(self, action: Array) -> None:
         assert action.shape == (8,) \
                and action.dtype == np.int32 \
                and np.all(action >= 0) \

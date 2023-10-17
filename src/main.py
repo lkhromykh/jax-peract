@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings('ignore')
+
 import cloudpickle
 import jax
 # jax.config.update('jax_platform_name', 'cpu')
@@ -6,7 +9,7 @@ from src.config import Config
 from src.builder import Builder
 from src.rlbench_env.dataset import as_tfdataset
 from src.rlbench_env.enviroment import environment_loop
-
+from rltools.loggers import TerminalOutput
 
 def main():
     cfg = Config()
@@ -24,6 +27,7 @@ def main():
         .batch(cfg.batch_size)\
         .prefetch(-1)
     ds = ds.as_numpy_iterator()
+    logger = TerminalOutput()
 
     for batch in ds:
         batch = jax.device_put(batch)
@@ -33,7 +37,8 @@ def main():
             policy = lambda obs: jax.jit(nets.apply)(state.params, obs).mode().squeeze(0)
             reward = environment_loop(policy, env)
             metrics.update(step=t, eval_reward=reward)
-            print(metrics)
+            logger.write(metrics)
+
             # with open(builder.exp_path(Builder.STATE), 'wb') as f:
             #     cloudpickle.dump(state, f)
 

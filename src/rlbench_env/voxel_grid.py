@@ -19,7 +19,7 @@ class VoxelGrid:
                  ) -> None:
         lb, ub = self.scene_bounds = scene_bounds
         range_ = ub - lb
-        self._normalize = lambda x: (x - lb) / range_
+        self._scale = lambda x: (x - lb) / range_
         self.nbins = nbins
         shape = lb.size * (nbins,) + (4,)
         self._scene = np.zeros(shape, dtype=np.uint8)
@@ -28,8 +28,6 @@ class VoxelGrid:
             np.zeros_like(lb), np.ones_like(ub))
 
     def __call__(self, obs: Observation) -> Array:
-        self._scene.fill(0)
-
         def get_view(cam):
             return map(lambda s: getattr(obs, '_'.join([cam, s])),
                        ('point_cloud', 'rgb'))
@@ -48,7 +46,7 @@ class VoxelGrid:
             lambda x: (reshape(stack(x))),
             (points, colors)
         )
-        points = self._normalize(points)
+        points = self._scale(points)
         points, colors = map(np2o3d, (points, colors))
         pcd = o3d.geometry.PointCloud()
         pcd.points = points
@@ -59,7 +57,7 @@ class VoxelGrid:
             self._voxel_size,
             self._bbox.min_bound, self._bbox.max_bound
         )
-        # check once more if there is a suitable o3d method
+        self._scene.fill(0)
         for voxel in grid.get_voxels():
             idx = voxel.grid_index
             rgb = voxel.color  # floating precision is lost.
