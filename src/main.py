@@ -9,7 +9,7 @@ from src.config import Config
 from src.builder import Builder
 from src.rlbench_env.dataset import as_tfdataset
 from src.rlbench_env.enviroment import environment_loop
-from rltools.loggers import TerminalOutput
+from rltools.loggers import TFSummaryLogger
 
 def main():
     cfg = Config()
@@ -27,13 +27,13 @@ def main():
         .batch(cfg.batch_size)\
         .prefetch(-1)
     ds = ds.as_numpy_iterator()
-    logger = TerminalOutput()
+    logger = TFSummaryLogger(logdir=cfg.logdir, label='bc', step_key='step')
 
     for batch in ds:
         batch = jax.device_put(batch)
         state, metrics = step(state, batch)
         t = state.step.item()
-        if t % 100 == 0:
+        if t % cfg.eval_every == 0:
             policy = lambda obs: jax.jit(nets.apply)(state.params, obs).mode().squeeze(0)
             reward = environment_loop(policy, env)
             metrics.update(step=t, eval_reward=reward)

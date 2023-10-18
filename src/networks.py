@@ -1,7 +1,10 @@
+from typing import Callable
+
+import numpy as np
 import jax
 import jax.numpy as jnp
-import numpy as np
 import flax.linen as nn
+import chex
 import tensorflow_probability.substrates.jax as tfp
 tfd = tfp.distributions
 
@@ -117,6 +120,8 @@ class Perceiver(nn.Module):
 
     @nn.compact
     def __call__(self, x: Array) -> Array:
+        chex.assert_type(x, float)
+        chex.assert_rank(x, 3)  # (batch, sequence_len, channel_dim)
 
         def ca_factory():
             return CrossAttention(self.cross_attend_heads,
@@ -137,7 +142,7 @@ class Perceiver(nn.Module):
             latent = latent_transformer(latent)
         return jnp.reshape(latent, latent.shape[:-2] + (-1,))
 
-    def initial_latent(self, batch_size: int | None = None) -> Array:
+    def initial_latent(self, batch_size: int) -> Array:
         shape = (self.latent_dim, self.latent_channels)
         init = nn.initializers.variance_scaling(
             self.prior_initial_scale,
@@ -145,14 +150,64 @@ class Perceiver(nn.Module):
             distribution='truncated_normal'
         )
         prior = self.param('prior', init, shape)
-        if batch_size is not None:
-            prior = jnp.repeat(prior[jnp.newaxis], batch_size, 0)
+        prior = jnp.repeat(prior[jnp.newaxis], batch_size, 0)
         return prior
 
 
-class ObsPreprocessor(nn.Module):
+class VoxelGridProcessor(nn.Module):
 
-    obs_spec: types.ObservationSpec
+    features: int
+    num_blocks: int
+
+    @nn.compact
+    def __call__(self, *args):
+        # TODO: refactor this: method should be supplied instead.
+        if self.is_initializing():
+            return self.decode(*self.encode(*args))
+        match len(args):
+            case 1: return self.encode(*args)
+            case 2: return self.decode(*args)
+            case _: raise ValueError
+
+    def encode(self, voxel_grid: Array) -> tuple[Array, list[Array]]:
+        chex.assert_type(voxel_grid, int)
+        chex.assert_rank(voxel_grid, 4)
+
+        x = (voxel_grid - 128) / 255.
+        skip_connections = []
+        for _ in range(self.num_blocks):
+            x = self._conv_block(nn.Conv)(x)
+            skip_connections.append(x)
+        x = jnp.reshape(x, (-1,))
+        return x, skip_connections
+
+    def decode(self, latent: Array, skip_connections: list[Array]) -> Array:
+        chex.assert_type(latent, float)
+        chex.assert_rank(latent, 2)
+
+        shape = skip_connections[-1].shape
+        x = nn.Dense(np.prod(shape))(latent)
+        x = jnp.reshape(x, shape)
+        for y in reversed(skip_connections):
+            x = jnp.concatenate([x, y], -1)
+            x = self._conv_block(nn.ConvTranspose)(x)
+        return x
+
+    def _conv_block(self, conv: nn.Conv | nn.ConvTranspose) -> nn.Sequential:
+        return nn.Sequential([
+            conv(features=self.features,
+                 kernel_size=(3, 3, 3),
+                 strides=(2, 2, 2),
+                 use_bias=False,
+                 padding='VALID'),
+            nn.LayerNorm(),
+            nn.relu
+        ])
+
+
+class ObsProcessor(nn.Module):
+
+    modality_processors: dict[str, Callable]
     dim: int
     num_bands: int
 
@@ -160,24 +215,21 @@ class ObsPreprocessor(nn.Module):
     def __call__(self, obs: types.Observation) -> Array:
         # 1. Preprocess inputs
         # 2. Add positional encodings
-        # 3. Add modality encoding
+        # 3. Add learned modality specific embedding.
         # 4. concatenate in a single array
         obs = self._maybe_batch(obs)
-        known_modalities = {
-            # 'voxels': self._convs,
-            'low_dim': self._mlp,
-            # 'task': self._mlp
-        }
+        max_dim = -1
         out = {}
         breakpoint()
-        for key, fn in known_modalities.items():
-            out[key] = fn(obs[key])
+        for key, fn in self.modality_processors.items():
+            val = fn(obs[key])
+            out[key] = val
         for key, val in ops.multimodal_encoding(out).items():
             out[key] = jnp.concatenate([out[key], val], -1)
         return jnp.concatenate(list(out.values()), 1)
 
     def _convs(self, voxel_grid: Array) -> Array:
-        x = voxel_grid / 255.
+        x = voxel_grid / 128. - 1
         for _ in range(2):
             x = nn.Conv(self.dim, (3, 3, 3), 2,
                         use_bias=False, padding='VALID')(x)
@@ -208,9 +260,10 @@ class ObsPreprocessor(nn.Module):
         return obs
 
 
-class ActPreprocess(nn.Module):
+class ActProcessor(nn.Module):
 
     act_spec: types.ActionSpec
+    vgrid_decoder: VoxelGridProcessor
 
     class Blockwise(tfd.Blockwise):
         def mode(self, *args, **kwargs):
@@ -218,11 +271,14 @@ class ActPreprocess(nn.Module):
             return jnp.stack(list(mode), -1)
 
     @nn.compact
-    def __call__(self, state: Array) -> tfd.Distribution:
-        nbins = list(map(lambda sp: sp.num_values, self.act_spec))
+    def __call__(self,
+                 latent: Array,
+                 skip_connections: tuple[Array]
+                 ) -> tfd.Distribution:
+        vgrid = self.vgrid_decoder()
         logits = nn.Dense(sum(nbins))(state)
         *logits, _ = jnp.split(logits, np.cumsum(nbins), -1)
-        return ActPreprocess.Blockwise([tfd.Categorical(log) for log in logits])
+        return ActProcessor.Blockwise([tfd.Categorical(log) for log in logits])
 
 
 class Networks(nn.Module):
@@ -251,20 +307,11 @@ class Networks(nn.Module):
         #     c.self_attend_widening_factor,
         #     c.prior_initial_scale
         # )
-        self.postprocessor = ActPreprocess(self.act_spec)
+        self.postprocessor = ActProcessor(self.act_spec)
 
     @nn.compact
     def __call__(self, obs: types.Observation) -> tfd.Distribution:
-        x = MLP(512)(jnp.atleast_2d(obs['low_dim']))
+        x = MLP(64)(jnp.atleast_2d(obs['low_dim']))
         # x = self.preprocessor(obs)
         # x = self.encoder(x)
         return self.postprocessor(x)
-
-
-class Perceiver(nn.Module):
-    config: Config
-    observation_spec: types.ObservationSpec
-    action_spec: types.ActionSpec
-
-    def __call__(self, obs: types.Observation) -> tfd.Distribution:
-        """God-module required if plan to use skip-connection"""

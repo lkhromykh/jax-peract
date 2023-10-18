@@ -22,6 +22,8 @@ class Builder:
 
     def __init__(self, cfg: Config) -> None:
         self.cfg = cfg
+        if not os.path.exists(path := self.exp_path(Builder.DEMOS)):
+            os.makedirs(path)
 
     def make_env(self, rng: types.RNG) -> RLBenchEnv:
         """training env ctor."""
@@ -30,7 +32,8 @@ class Builder:
         scene_bounds = c.scene_lower_bound, c.scene_upper_bound
         return RLBenchEnv(rng=rng,
                           scene_bounds=scene_bounds,
-                          time_limit=c.time_limit)
+                          time_limit=c.time_limit,
+                          )
 
     def make_networks_and_params(
             self,

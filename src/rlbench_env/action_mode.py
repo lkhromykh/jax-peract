@@ -14,8 +14,8 @@ Array = types.Array
 
 class DiscreteActionMode(ActionMode):
 
-    SCENE_BINS = 30
-    ROT_BINS = 7
+    SCENE_BINS = 20
+    ROT_BINS = 5
     GRIP_BINS = 2
 
     def __init__(self,
@@ -53,8 +53,11 @@ class DiscreteActionMode(ActionMode):
         return self._action_bounds
 
     def action_spec(self) -> types.ActionSpec:
-        def spec(num_values): return dm_env.specs.DiscreteArray(num_values)
-        return [spec(num + 1) for num in self._nbins]  # factorized.
+        Spec = dm_env.specs.DiscreteArray
+        scene_spec = Spec(self.SCENE_BINS ** 3)
+        rot_specs = 4 * [Spec(self.ROT_BINS)]
+        grip_spec = Spec(self.GRIP_BINS)
+        return [scene_spec] + rot_specs + [grip_spec]
 
     def from_observation(self, obs: Observation) -> types.Action:
         lb, ub = self._action_bounds
@@ -68,7 +71,7 @@ class DiscreteActionMode(ActionMode):
 
     def _assert_valid_action(self, action: Array) -> None:
         assert action.shape == (8,) \
-               and action.dtype == np.int32 \
-               and np.all(action >= 0) \
-               and np.all(action <= self._nbins), \
+           and action.dtype == np.int32 \
+           and np.all(action >= 0) \
+           and np.all(action <= self._nbins), \
                action

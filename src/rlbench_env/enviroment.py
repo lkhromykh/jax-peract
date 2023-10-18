@@ -5,7 +5,7 @@ import tree
 import numpy as np
 import dm_env.specs
 
-from rlbench import tasks as rlb_tasks
+from rlbench import tasks
 from rlbench.environment import Environment
 from rlbench.backend.observation import Observation
 from rlbench.observation_config import ObservationConfig
@@ -34,7 +34,7 @@ class Task(IntEnum):
         return task
 
     def as_rlbench_task(self):
-        return getattr(rlb_tasks, self.name)
+        return getattr(tasks, self.name)
 
     @staticmethod
     def sample(rng: np.random.RandomState) -> 'Task':
@@ -47,14 +47,14 @@ class RLBenchEnv(dm_env.Environment):
                  rng: np.random.RandomState,
                  scene_bounds: tuple[Array, Array],
                  time_limit: int = float('inf'),
-                 obs_config: ObservationConfig = _OBS_CONFIG
+                 obs_config: ObservationConfig = _OBS_CONFIG,
                  ) -> None:
         self.rng = np.random.default_rng(rng)
         self.time_limit = time_limit
         scene_bounds = tuple(map(np.asanyarray, scene_bounds))
         self.action_mode = DiscreteActionMode(scene_bounds)
         self.env = Environment(self.action_mode,
-                               headless=True,
+                               headless=False,
                                shaped_rewards=False,
                                obs_config=obs_config,
                                )
@@ -74,8 +74,8 @@ class RLBenchEnv(dm_env.Environment):
         try:
             obs, reward, terminate = self.task.step(action)
         except (IKError, InvalidActionError, ConfigurationPathError) as exc:
-            logging.info(exc)
-            obs, reward, terminate = self._prev_obs, -100., True
+            logging.info(f'{action} lead to exception {exc}.')
+            obs, reward, terminate = self._prev_obs, 0., True
         else:
             obs = self._prev_obs = self._transform_observation(obs)
         self._steps += 1

@@ -19,18 +19,18 @@ class Config:
     prior_initial_scale: float = 0.02
 
     # Training
-    batch_size: int = 32
-    learning_rate: float = 1e-4
+    batch_size: int = 64
+    learning_rate: float = 1e-3
     max_grad_norm: float = 10.
     weight_decay: float = 1e-5
     training_steps: int = 10 ** 6
-    eval_every: int = 10000
+    eval_every: int = 1000
     jit: bool = True
     precision: str = 'p=32,c=32,o=32'
 
     # Environment
-    scene_lower_bound: list[float] = (-0.3, -0.5, 0.6)
-    scene_upper_bound: list[float] = (0.7, 0.5, 1.6)
+    scene_lower_bound: list[float] = (-0.2, -0.4, 0.7)
+    scene_upper_bound: list[float] = (0.6, 0.4, 1.5)
     time_limit: int = 10
 
     seed: int = 1
