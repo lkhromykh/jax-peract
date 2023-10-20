@@ -51,7 +51,7 @@ class TrainState(NamedTuple):
             loss_scale=loss_scale
         )
 
-    def replace(self, **kwargs):
+    def replace(self, **kwargs) -> 'TrainState':
         return self._replace(**kwargs)
 
     def tree_flatten(self):

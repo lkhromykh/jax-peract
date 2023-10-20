@@ -1,5 +1,4 @@
 import os
-from typing import Any
 
 import jax
 import jmp
@@ -12,6 +11,8 @@ from src.networks import Networks
 from src.rlbench_env.enviroment import RLBenchEnv
 from src.behavior_cloning import bc, StepFn
 import src.types_ as types
+
+Params = core.FrozenDict[str, types.Array]
 
 
 class Builder:
@@ -28,7 +29,7 @@ class Builder:
     def make_env(self, rng: types.RNG) -> RLBenchEnv:
         """training env ctor."""
         c = self.cfg
-        rng = rng[0].item()
+        rng = jax.random.randint(rng, (), 1, jax.numpy.iinfo(jax.numpy.int32))
         scene_bounds = c.scene_lower_bound, c.scene_upper_bound
         return RLBenchEnv(rng=rng,
                           scene_bounds=scene_bounds,
@@ -39,7 +40,7 @@ class Builder:
             self,
             seed: types.RNG,
             env: RLBenchEnv
-    ) -> tuple[Networks, core.FrozenDict[str, types.Array]]:
+    ) -> tuple[Networks, Params]:
         nets = Networks(self.cfg,
                         env.observation_spec(),
                         env.action_spec()
@@ -51,7 +52,7 @@ class Builder:
 
     def make_state(self,
                    rng: types.RNG,
-                   params: core.FrozenDict[str, Any],
+                   params: Params,
                    ) -> TrainState:
         c = self.cfg
         optim = optax.adamw(c.learning_rate, weight_decay=c.weight_decay)

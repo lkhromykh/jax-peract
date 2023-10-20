@@ -62,7 +62,7 @@ class VoxelGrid:
             idx = voxel.grid_index
             rgb = voxel.color  # floating precision is lost.
             self._scene[tuple(idx)] = np.concatenate([[255], rgb], -1)
-        return self._scene
+        return self._scene.copy()
 
     def observation_spec(self) -> types.ObservationSpec:
         return dm_env.specs.Array(self._scene.shape, self._scene.dtype,

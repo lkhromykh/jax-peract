@@ -5,7 +5,7 @@ numpy
 chex
 optax
 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-jax[cuda11_local]
+jax[cuda11_local]==0.4.16
 tensorflow==2.13.*
 tensorflow_probability[jax]
 tensorflow_datasets
@@ -13,4 +13,4 @@ git+https://github.com/stepjam/RLBench.git
 git+https://github.com/stepjam/PyRep.git
 git+https://github.com/deepmind/jmp
 git+https://github.com/lkhromykh/rltools.git
-open3d-cpu
+open3d

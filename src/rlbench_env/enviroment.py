@@ -1,4 +1,5 @@
 from enum import IntEnum
+from typing import Type
 import logging
 
 import tree
@@ -7,6 +8,7 @@ import dm_env.specs
 
 from rlbench import tasks
 from rlbench.environment import Environment
+from rlbench.backend.task import Task as rlbTask
 from rlbench.backend.observation import Observation
 from rlbench.observation_config import ObservationConfig
 from rlbench.backend.exceptions import InvalidActionError
@@ -28,12 +30,12 @@ class Task(IntEnum):
     ReachTarget = 0
     # PickAndLift = 0
 
-    def as_one_hot(self):
+    def as_one_hot(self) -> np.ndarray:
         task = np.zeros(len(Task), dtype=np.int32)
         task[self] = 1
         return task
 
-    def as_rlbench_task(self):
+    def as_rlbench_task(self) -> Type[rlbTask]:
         return getattr(tasks, self.name)
 
     @staticmethod
@@ -74,7 +76,7 @@ class RLBenchEnv(dm_env.Environment):
         try:
             obs, reward, terminate = self.task.step(action)
         except (IKError, InvalidActionError, ConfigurationPathError) as exc:
-            logging.info(f'{action} lead to exception {exc}.')
+            logging.info(f'{action} led to exception: {exc}.')
             obs, reward, terminate = self._prev_obs, 0., True
         else:
             obs = self._prev_obs = self._transform_observation(obs)

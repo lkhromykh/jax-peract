@@ -156,108 +156,62 @@ class Perceiver(nn.Module):
 
 class VoxelGridProcessor(nn.Module):
 
-    features: int
-    num_blocks: int
+    features: types.Layers
+    kernels: types.Layers
+    strides: types.Layers
 
-    @nn.compact
-    def __call__(self, *args):
-        # TODO: refactor this: method should be supplied instead.
-        if self.is_initializing():
-            return self.decode(*self.encode(*args))
-        match len(args):
-            case 1: return self.encode(*args)
-            case 2: return self.decode(*args)
-            case _: raise ValueError
+    def setup(self) -> None:
+        self.convs = self._make_stem(nn.Conv)
+        self.deconvs = self._make_stem(nn.ConvTranspose)
 
     def encode(self, voxel_grid: Array) -> tuple[Array, list[Array]]:
         chex.assert_type(voxel_grid, int)
         chex.assert_rank(voxel_grid, 4)
 
-        x = (voxel_grid - 128) / 255.
+        x = voxel_grid / 128. - 1
         skip_connections = []
-        for _ in range(self.num_blocks):
-            x = self._conv_block(nn.Conv)(x)
+        for block in self.convs:
+            x = block(x)
             skip_connections.append(x)
-        x = jnp.reshape(x, (-1,))
         return x, skip_connections
 
-    def decode(self, latent: Array, skip_connections: list[Array]) -> Array:
-        chex.assert_type(latent, float)
-        chex.assert_rank(latent, 2)
+    def decode(self, x: Array, skip_connections: list[Array]) -> Array:
+        chex.assert_type(x, float)
+        chex.assert_rank(x, 4)
 
-        shape = skip_connections[-1].shape
-        x = nn.Dense(np.prod(shape))(latent)
-        x = jnp.reshape(x, shape)
-        for y in reversed(skip_connections):
+        for block, y in reversed(zip(self.deconvs, skip_connections)):
             x = jnp.concatenate([x, y], -1)
-            x = self._conv_block(nn.ConvTranspose)(x)
+            x = block(x)
         return x
 
-    def _conv_block(self, conv: nn.Conv | nn.ConvTranspose) -> nn.Sequential:
-        return nn.Sequential([
-            conv(features=self.features,
-                 kernel_size=(3, 3, 3),
-                 strides=(2, 2, 2),
-                 use_bias=False,
-                 padding='VALID'),
-            nn.LayerNorm(),
-            nn.relu
-        ])
+    def _make_stem(self, conv_cls: nn.Conv | nn.ConvTranspose) -> nn.Sequential:
+        blocks = []
+        arch = zip(self.features, self.kernels, self.strides)
+        for f, k, s in arch:
+            conv = conv_cls(features=f,
+                            kernel_size=3 * (k,),
+                            strides=3 * (s,),
+                            use_bias=False,
+                            padding='VALID'
+                            )
+            block = nn.Sequential([conv,
+                                   nn.LayerNorm(),
+                                   act
+                                   ])
+            blocks.append(block)
+        return blocks
 
 
-class ObsProcessor(nn.Module):
-
-    modality_processors: dict[str, Callable]
-    dim: int
-    num_bands: int
+class ObsMultiplexer(nn.Module):
 
     @nn.compact
     def __call__(self, obs: types.Observation) -> Array:
-        # 1. Preprocess inputs
-        # 2. Add positional encodings
-        # 3. Add learned modality specific embedding.
-        # 4. concatenate in a single array
-        obs = self._maybe_batch(obs)
-        max_dim = -1
-        out = {}
-        breakpoint()
-        for key, fn in self.modality_processors.items():
-            val = fn(obs[key])
-            out[key] = val
-        for key, val in ops.multimodal_encoding(out).items():
-            out[key] = jnp.concatenate([out[key], val], -1)
-        return jnp.concatenate(list(out.values()), 1)
-
-    def _convs(self, voxel_grid: Array) -> Array:
-        x = voxel_grid / 128. - 1
-        for _ in range(2):
-            x = nn.Conv(self.dim, (3, 3, 3), 2,
-                        use_bias=False, padding='VALID')(x)
-            x = layer_norm(x)
-            x = act(x)
-        x = self._positional_encoding(x)
-        x = nn.Conv(self.dim, (1, 1, 1))(x)
-        return jnp.reshape(x, (x.shape[0], -1, self.dim))
-
-    def _mlp(self, x: Array) -> Array:
-        x = jnp.expand_dims(x, -1)
-        x = self._positional_encoding(x)
-        return nn.Dense(self.dim)(x)
-
-    def _positional_encoding(self, x: Array) -> Array:
-        # lower batched input assumption
-        breakpoint()
-        batch, *nyquist_freqs = x.shape[:-1]
-        axes = range(1, 1 + len(nyquist_freqs))
-        pos_enc = ops.positional_encoding(
-            x, axes, self.num_bands, nyquist_freqs)
-        pos_enc = np.repeat(pos_enc[np.newaxis], batch, 0)
-        return jnp.concatenate([x, pos_enc], -1)
-
-    def _maybe_batch(self, obs: types.Observation) -> types.Observation:
-        if obs['low_dim'].ndim == 1:
-            return jax.tree_util.tree_map(lambda x: x[jnp.newaxis], obs)
-        return obs
+        chex.assert_rank(obs.values(), 3)  # B x {L} x {C}
+        maxlen = max(map(lambda x: x.shape[-1], obs.values()))
+        maxlen += 4  # force minimal padding
+        for k, v in sorted(obs.items()):
+            obs[k] = nn.Dense(maxlen)(v)
+        return jnp.concatenate(list(obs.values()), 1)
 
 
 class ActProcessor(nn.Module):
@@ -275,10 +229,21 @@ class ActProcessor(nn.Module):
                  latent: Array,
                  skip_connections: tuple[Array]
                  ) -> tfd.Distribution:
-        vgrid = self.vgrid_decoder()
-        logits = nn.Dense(sum(nbins))(state)
-        *logits, _ = jnp.split(logits, np.cumsum(nbins), -1)
+        nbins = map(lambda x: x.num_values, self.act_spec)
+        logits = nn.Dense(sum(nbins))(latent)
+        vgrid, *logits, _ = jnp.split(logits, np.cumsum(nbins), -1)
+        vgrid = self._decode_voxels_grid(vgrid, skip_connections)
+        logits = (vgrid,) + logits
         return ActProcessor.Blockwise([tfd.Categorical(log) for log in logits])
+
+    def _decode_voxels_grid(self, vgrid: Array,
+                            skip_connections: tuple[Array]
+                            ) -> Array:
+        scene_bins = np.cbrt(self.act_spec[0].num_values).astype(int)
+        vgrid = jnp.reshape(vgrid, (-1,) + 3 * (scene_bins,))
+        vgrid = self.vgrid_decoder(vgrid, skip_connections)
+        assert np.prod(vgrid.shape) == scene_bins
+        return vgrid
 
 
 class Networks(nn.Module):
@@ -315,3 +280,17 @@ class Networks(nn.Module):
         # x = self.preprocessor(obs)
         # x = self.encoder(x)
         return self.postprocessor(x)
+
+
+class PerAct(nn.Module):
+
+    cfg: Config
+    observation_spec: types.ObservationSpec
+    action_spec: types.ActionSpec
+
+    def setup(self) -> None:
+        self.vgrid_proc = VoxelGridProcessor()
+
+    @nn.compact
+    def __call__(self, obs: types.Observation) -> tfd.Distribution:
+        ...
