@@ -1,13 +1,11 @@
 import numpy as np
 
-Array = np.ndarray
 
-
-def fourier_features(x: Array,
+def fourier_features(x: np.ndarray,
                      axes: tuple[int, ...],
                      num_freqs: int,
                      nyquist_freqs: tuple[float, ...] | None = None
-                     ) -> Array:
+                     ) -> np.ndarray:
     shape = tuple(x.shape[ax] for ax in axes)
     ls = (np.linspace(-1., 1., ax) for ax in shape)
     pos = np.meshgrid(*ls, indexing='ij')

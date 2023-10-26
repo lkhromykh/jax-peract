@@ -1,5 +1,5 @@
 import numpy as np
-import dm_env.specs
+from dm_env.specs import DiscreteArray
 
 from rlbench.backend.scene import Scene
 from rlbench.backend.observation import Observation
@@ -53,15 +53,14 @@ class DiscreteActionMode(ActionMode):
         return self._action_bounds
 
     def action_spec(self) -> types.ActionSpec:
-        Spec = dm_env.specs.DiscreteArray
-        scene_spec = Spec(self.SCENE_BINS ** 3)
-        rot_specs = 4 * [Spec(self.ROT_BINS)]
-        grip_spec = Spec(self.GRIP_BINS)
-        return [scene_spec] + rot_specs + [grip_spec]
+        scene_spec = 3 * [DiscreteArray(self.SCENE_BINS)]
+        rot_specs = 4 * [DiscreteArray(self.ROT_BINS)]
+        grip_spec = [DiscreteArray(self.GRIP_BINS)]
+        return scene_spec + rot_specs + grip_spec
 
     def from_observation(self, obs: Observation) -> types.Action:
         lb, ub = self._action_bounds
-        # maybe handle quaternion sign: if q[-1] < 0 then q <- -q
+        # maybe handle quaternion ambiguity: if q[-1] < 0 then q <- -q
         action = np.concatenate([obs.gripper_pose, [obs.gripper_open]])
         action = np.clip(action, a_min=lb, a_max=ub)
         action = (action - lb) / self._range

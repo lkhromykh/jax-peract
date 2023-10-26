@@ -46,19 +46,18 @@ class Task(IntEnum):
 class RLBenchEnv(dm_env.Environment):
 
     def __init__(self,
-                 rng: np.random.RandomState,
+                 seed: int | np.random.RandomState,
                  scene_bounds: tuple[Array, Array],
                  time_limit: int = float('inf'),
-                 obs_config: ObservationConfig = _OBS_CONFIG,
                  ) -> None:
-        self.rng = np.random.default_rng(rng)
+        self.rng = np.random.default_rng(seed)
         self.time_limit = time_limit
         scene_bounds = tuple(map(np.asanyarray, scene_bounds))
         self.action_mode = DiscreteActionMode(scene_bounds)
         self.env = Environment(self.action_mode,
                                headless=False,
                                shaped_rewards=False,
-                               obs_config=obs_config,
+                               obs_config=_OBS_CONFIG,
                                )
         self.vgrid = VoxelGrid(scene_bounds, self.action_mode.SCENE_BINS)
         self.reset()  # launch PyRep, init_all attributes.

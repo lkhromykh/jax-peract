@@ -1,6 +1,5 @@
 dm-env
 flax
-jax
 numpy
 chex
 optax
