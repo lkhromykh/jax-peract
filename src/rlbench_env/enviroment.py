@@ -21,8 +21,7 @@ from src import types_ as types
 
 Array = types.Array
 _OBS_CONFIG = ObservationConfig()
-_OBS_CONFIG.gripper_touch_forces = True
-_OBS_CONFIG.task_low_dim_state = True
+_OBS_CONFIG.set_all(True)
 
 
 class Task(IntEnum):
@@ -94,11 +93,8 @@ class RLBenchEnv(dm_env.Environment):
         return tree.map_structure(convert, self._prev_obs)
 
     def _transform_observation(self, obs: Observation) -> types.Observation:
-        voxels = self.vgrid(obs)
-        # low_dim = obs.get_low_dim_data()
-        low_dim = obs.task_low_dim_state
-        return types.Observation(voxels=voxels,
-                                 low_dim=low_dim,
+        return types.Observation(voxels=self.vgrid(obs),
+                                 low_dim=obs.task_low_dim_state,
                                  task=self.description
                                  )
 

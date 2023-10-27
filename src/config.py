@@ -1,16 +1,13 @@
-import dataclasses
+from rltools.config import Config as _Config
 
 Layers = tuple[int, ...]
 
 
-@dataclasses.dataclass
-class Config:
-    seed: int = 1
-    logdir: str = 'logdir/'
+class Config(_Config):
     # Conv stem
-    conv_stem_features: Layers = (256,)
+    conv_stem_features: Layers = (64,)
     conv_stem_kernels: Layers = (3,)
-    conv_stem_strides: Layers = (25,)
+    conv_stem_strides: Layers = (2,)
     # Perceiver
     latent_dim: int = 32
     latent_channels: int = 64
@@ -22,17 +19,21 @@ class Config:
     self_attend_widening_factor: float = 1.
     use_query_residual: bool = True
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 1
+    ff_num_bands: int = 5
     # Training
-    batch_size: int = 64
-    learning_rate: float = 1e-3
+    batch_size: int = 8
+    learning_rate: float = 1e-4
     max_grad_norm: float = 10.
-    weight_decay: float = 1e-5
+    weight_decay: float = 0.
     training_steps: int = 10 ** 6
-    eval_every: int = 1000
+    eval_every: int = 1
     jit: bool = True
-    precision: str = 'p=32,c=32,o=32'
+    # precision: str = 'p=32,c=32,o=32'
     # Environment
     scene_lower_bound: list[float] = (-0.2, -0.4, 0.7)
     scene_upper_bound: list[float] = (0.6, 0.4, 1.5)
     time_limit: int = 10
+    num_demos: int = 1
+
+    seed: int = 1
+    logdir: str = 'logdir/'

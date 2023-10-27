@@ -11,7 +11,7 @@ import src.types_ as types
 Array = jax.Array
 
 
-class VoxelGridProcessor(nn.Module):
+class VoxelsProcessor(nn.Module):
 
     features: types.Layers
     kernels: types.Layers
@@ -25,11 +25,11 @@ class VoxelGridProcessor(nn.Module):
     #     # Not for direct use, but for .init and .tabulate.
     #     return self.decode(*self.encode(*args, **kwargs))
 
-    def encode(self, voxel_grid: Array) -> tuple[Array, list[Array]]:
-        chex.assert_type(voxel_grid, jnp.uint8)
-        chex.assert_rank(voxel_grid, 4)  # (H, W, D, C)
+    def encode(self, voxels: Array) -> tuple[Array, list[Array]]:
+        chex.assert_type(voxels, jnp.uint8)
+        chex.assert_rank(voxels, 4)  # (H, W, D, C)
 
-        x = voxel_grid / 128. - 1
+        x = voxels / 128. - 1
         skip_connections = []
         for block in self.convs:
             x = block(x)
@@ -89,46 +89,41 @@ class ActionDecoder(nn.Module):
 
     class Blockwise(tfd.Blockwise):
         def mode(self, *args, **kwargs):
-            mode = map(lambda x: x.mode(*args, **kwargs), self.distributions)
-            return jnp.stack(list(mode), -1)
+            modes = map(lambda x: x.mode(*args, **kwargs), self.distributions)
+            modes = map(jnp.atleast_1d, modes)
+            return jnp.concatenate(list(modes), -1)
 
-    class Idx2Grid(tfp.bijectors.Bijector):
+    class Idx2Grid(tfp.bijectors.AutoCompositeTensorBijector):
 
-        def __init__(self, shape, validate_args=False, name='idx2grid'):
+        def __init__(self, shape, validate_args=True, name='idx2grid'):
             super().__init__(validate_args=validate_args,
                              is_constant_jacobian=True,
                              forward_min_event_ndims=0,
                              inverse_min_event_ndims=1,
                              dtype=jnp.int32,
+                             parameters=dict(shape=shape),
                              name=name)
             self.shape = shape
-            self._cumprod = np.prod(shape) // np.cumprod(shape)
 
         @property
         def _is_permutation(self):
             return True
 
         def _forward(self, x):
-            idxs = []
-            for size in reversed(self.shape):
-                x, idx = jnp.divmod(x, size)
-                idxs.append(idx)
-            return jnp.stack(idxs[::-1], -1)
+            idxs = jnp.unravel_index(x, self.shape)
+            return jnp.stack(idxs, -1)
 
         def _inverse(self, y):
-            return jnp.matmul(y, self._cumprod)
+            return jnp.ravel_multi_index(y, self.shape, mode='clip')
 
         def _inverse_log_det_jacobian(self, y):
             return jnp.zeros([], y.dtype)
 
-        def _forward_log_det_jacobian(self, x):
-            return jnp.zeros([], x.dtype)
-
         def _forward_event_shape_tensor(self, input_shape):
             return np.concatenate([input_shape, [len(self.shape)]],
-                                  dtype=input_shape.dtype)
+                                  dtype=self.dtype)
 
-        def _inverse_event_shape(self, output_shape):
+        def _inverse_event_shape_tensor(self, output_shape):
             return output_shape[:-1]
 
         def _forward_event_shape(self, input_shape):
@@ -137,24 +132,26 @@ class ActionDecoder(nn.Module):
         def _inverse_event_shape(self, output_shape):
             return output_shape[:-1]
 
+        def _forward_dtype(self, input_dtype, **kwargs):
+            return self.dtype
+
+        def _inverse_dtype(self, output_dtype, **kwargs):
+            return self.dtype
+
     @nn.compact
-    def __call__(self, vgrid: Array, low_dim: Array) -> tfd.Distribution:
-        chex.assert_rank([vgrid, low_dim], [4, 1])  # (seq_len, channels)
-
-        vgrid_dist = self._decode_vgrid(vgrid)
-        low_dim_dists = self._decode_low_dim(low_dim)
-        return ActionDecoder.Blockwise([vgrid_dist] + low_dim_dists)
-
-    def _decode_vgrid(self, vgrid: Array) -> tfd.Distribution:
-        vgrid = nn.Conv(1, (1, 1, 1))(vgrid)
-        grid_size = tuple(map(lambda sp: sp.num_values, self.act_spec[:3]))
-        return tfd.TransformedDistribution(
-            distribution=tfd.Categorical(vgrid.flatten()),
+    def __call__(self, voxels: Array, low_dim: Array) -> tfd.Distribution:
+        chex.assert_rank([voxels, low_dim], [4, 1])  # (seq_len, channels)
+        nbins = tuple(map(lambda sp: sp.num_values, self.act_spec))
+        grid_size, low_dim_bins = nbins[:3], nbins[3:]
+        voxels = nn.Conv(1, (1, 1, 1))(voxels)
+        grid_dist = tfd.TransformedDistribution(
+            distribution=tfd.Categorical(voxels.flatten()),
             bijector=ActionDecoder.Idx2Grid(grid_size)
         )
-
-    def _decode_low_dim(self, x: Array) -> list[tfd.Distribution]:
-        nbins = tuple(map(lambda sp: sp.num_values, self.act_spec[3:]))
-        low_dim_logits = nn.Dense(sum(nbins))(x)
-        *low_dim_logits, _ = jnp.split(low_dim_logits, np.cumsum(nbins))
-        return [tfd.Categorical(logits) for logits in low_dim_logits]
+        low_dim_logits = nn.Dense(sum(low_dim_bins))(low_dim)
+        *low_dim_logits, _ = jnp.split(low_dim_logits, np.cumsum(low_dim_bins))
+        low_dim_dists = [tfd.Categorical(logits) for logits in low_dim_logits]
+        return ActionDecoder.Blockwise(
+            distributions=[grid_dist] + low_dim_dists,
+            dtype_override=jnp.int32
+        )

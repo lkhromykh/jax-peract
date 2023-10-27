@@ -7,7 +7,7 @@ from flax import core
 
 from src.config import Config
 from src.train_state import TrainState
-from src.networks import Networks
+from src.peract import PerAct
 from src.rlbench_env.enviroment import RLBenchEnv
 from src.behavior_cloning import bc, StepFn
 import src.types_ as types
@@ -29,9 +29,10 @@ class Builder:
     def make_env(self, rng: types.RNG) -> RLBenchEnv:
         """training env ctor."""
         c = self.cfg
-        rng = jax.random.randint(rng, (), 1, jax.numpy.iinfo(jax.numpy.int32))
+        max_int = jax.numpy.iinfo(jax.numpy.int32).max
+        rng = jax.random.randint(rng, (), 1, max_int).item()
         scene_bounds = c.scene_lower_bound, c.scene_upper_bound
-        return RLBenchEnv(rng=rng,
+        return RLBenchEnv(seed=rng,
                           scene_bounds=scene_bounds,
                           time_limit=c.time_limit,
                           )
@@ -40,11 +41,11 @@ class Builder:
             self,
             seed: types.RNG,
             env: RLBenchEnv
-    ) -> tuple[Networks, Params]:
-        nets = Networks(self.cfg,
-                        env.observation_spec(),
-                        env.action_spec()
-                        )
+    ) -> tuple[PerAct, Params]:
+        nets = PerAct(self.cfg,
+                      env.observation_spec(),
+                      env.action_spec()
+                      )
         obs = jax.tree_util.tree_map(lambda x: x.generate_value(),
                                      env.observation_spec())
         params = nets.init(seed, obs)
@@ -64,7 +65,7 @@ class Builder:
                                loss_scale=jmp.NoOpLossScale()
                                )
 
-    def make_step_fn(self, nets: Networks) -> StepFn:
+    def make_step_fn(self, nets: PerAct) -> StepFn:
         fn = bc(self.cfg, nets)
         if self.cfg.jit:
             fn = jax.jit(fn)

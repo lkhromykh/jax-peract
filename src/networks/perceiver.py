@@ -5,10 +5,11 @@ import numpy as np
 import flax.linen as nn
 
 Array = jax.Array
-_dki = nn.initializers.variance_scaling(
-    scale=.4,
-    mode='fan_in',
-    distribution='truncated_normal')
+# _dki = nn.initializers.variance_scaling(
+#     scale=.4,
+#     mode='fan_in',
+#     distribution='truncated_normal')
+_dki = nn.initializers.lecun_normal()
 
 
 def norm(x: Array) -> Array:

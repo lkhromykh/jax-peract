@@ -1,5 +1,5 @@
 import numpy as np
-import dm_env.specs
+from dm_env import specs
 import open3d as o3d
 
 from rlbench.backend.observation import Observation
@@ -64,6 +64,5 @@ class VoxelGrid:
             self._scene[tuple(idx)] = np.concatenate([[255], rgb], -1)
         return self._scene.copy()
 
-    def observation_spec(self) -> types.ObservationSpec:
-        return dm_env.specs.Array(self._scene.shape, self._scene.dtype,
-                                  name='voxels')
+    def observation_spec(self) -> specs.Array:
+        return specs.Array(self._scene.shape, self._scene.dtype, name='voxels')
