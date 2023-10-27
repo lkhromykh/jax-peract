@@ -14,17 +14,14 @@ Array = types.Array
 
 class DiscreteActionMode(ActionMode):
 
-    SCENE_BINS = 10
+    SCENE_BINS = 32
     ROT_BINS = 5
     GRIP_BINS = 2
 
-    def __init__(self,
-                 scene_bounds: tuple[Array, Array],
-                 ) -> None:
-        """Axis share number of bins just to simplify policy distribution.
-
-        Action is described as [x, y, z, qw, qi, qj, qk, gripper_pos].
-            and discretized to #[  pos,        rot,          grip    ] bins.
+    def __init__(self, scene_bounds: tuple[Array, Array]) -> None:
+        """
+        Action is described as [x, y, z, qw, qi, qj, qk, gripper_pos]
+          and discretized to   [ scene,       rot,          grip    ] bins.
         """
         super().__init__(EndEffectorPoseViaPlanning(), Discrete())
         self.scene_bounds = scene_bounds

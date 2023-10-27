@@ -31,6 +31,7 @@ def bc(cfg: Config, nets: PerAct) -> StepFn:
 
     def step(state: TrainState, batch: types.Trajectory
              ) -> tuple[TrainState, types.Metrics]:
+        print('Tracing BC step.')
         params = state.params
         grad_fn = jax.grad(loss_fn, has_aux=True)
         grad_fn = jax.vmap(grad_fn, in_axes=(None, None, 0, 0))

@@ -16,14 +16,11 @@ class VoxelsProcessor(nn.Module):
     features: types.Layers
     kernels: types.Layers
     strides: types.Layers
+    use_skip_connections: bool = True
 
     def setup(self) -> None:
         self.convs = self._make_stem(nn.Conv)
         self.deconvs = self._make_stem(nn.ConvTranspose)
-
-    # def __call__(self, *args, **kwargs):
-    #     # Not for direct use, but for .init and .tabulate.
-    #     return self.decode(*self.encode(*args, **kwargs))
 
     def encode(self, voxels: Array) -> tuple[Array, list[Array]]:
         chex.assert_type(voxels, jnp.uint8)
@@ -40,6 +37,8 @@ class VoxelsProcessor(nn.Module):
         chex.assert_type(x, float)
         chex.assert_rank(x, 4)
 
+        if not self.use_skip_connections:
+            skip_connections = map(jnp.zeros_like, skip_connections)
         blocks_ys = list(zip(self.deconvs, skip_connections))
         for block, y in reversed(blocks_ys):
             x = jnp.concatenate([x, y], -1)
@@ -68,7 +67,7 @@ class InputsMultiplexer(nn.Module):
     @nn.compact
     def __call__(self, *inputs: Array) -> Array:
         chex.assert_rank(inputs, 2)  # [(seq_len, channels)]
-        max_dim = max(map(lambda x: x.shape[-1], inputs))
+        max_dim = max(map(lambda x: x.shape[1], inputs))
         max_dim += 8 - max_dim % 4
         outputs = []
         for idx, val in enumerate(inputs):
@@ -101,7 +100,7 @@ class ActionDecoder(nn.Module):
                              forward_min_event_ndims=0,
                              inverse_min_event_ndims=1,
                              dtype=jnp.int32,
-                             parameters=dict(shape=shape),
+                             parameters=dict(locals()),
                              name=name)
             self.shape = shape
 
@@ -120,8 +119,8 @@ class ActionDecoder(nn.Module):
             return jnp.zeros([], y.dtype)
 
         def _forward_event_shape_tensor(self, input_shape):
-            return np.concatenate([input_shape, [len(self.shape)]],
-                                  dtype=self.dtype)
+            shape = [input_shape, [len(self.shape)]]
+            return np.concatenate(shape, dtype=input_shape.dtype)
 
         def _inverse_event_shape_tensor(self, output_shape):
             return output_shape[:-1]
@@ -151,7 +150,4 @@ class ActionDecoder(nn.Module):
         low_dim_logits = nn.Dense(sum(low_dim_bins))(low_dim)
         *low_dim_logits, _ = jnp.split(low_dim_logits, np.cumsum(low_dim_bins))
         low_dim_dists = [tfd.Categorical(logits) for logits in low_dim_logits]
-        return ActionDecoder.Blockwise(
-            distributions=[grid_dist] + low_dim_dists,
-            dtype_override=jnp.int32
-        )
+        return ActionDecoder.Blockwise([grid_dist] + low_dim_dists)

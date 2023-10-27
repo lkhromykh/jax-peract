@@ -130,11 +130,11 @@ class PerceiverIO(nn.Module):
         chex.assert_type([inputs_q, outputs_q], float)
         chex.assert_rank([inputs_q, outputs_q], 2)  # (seq_len, channels)
 
-        encoder_query = CrossAttention(self.num_cross_attend_heads,
-                                       self.cross_attend_widening_factor)
-        decoder_query = CrossAttention(self.num_cross_attend_heads,
-                                       self.cross_attend_widening_factor,
-                                       self.use_query_residual)
+        encode_query = CrossAttention(self.num_cross_attend_heads,
+                                      self.cross_attend_widening_factor)
+        decode_query = CrossAttention(self.num_cross_attend_heads,
+                                      self.cross_attend_widening_factor,
+                                      self.use_query_residual)
         latent_transformer = nn.Sequential([
             SelfAttention(self.num_self_attend_heads,
                           self.self_attend_widening_factor)
@@ -146,7 +146,7 @@ class PerceiverIO(nn.Module):
             nn.initializers.normal(self.prior_initial_scale),
             (self.latent_dim, self.latent_channels)
         )
-        latent = encoder_query(latent, inputs_q)
+        latent = encode_query(latent, inputs_q)
         for _ in range(self.num_blocks):
             latent = latent_transformer(latent)
-        return decoder_query(outputs_q, latent)
+        return decode_query(outputs_q, latent)

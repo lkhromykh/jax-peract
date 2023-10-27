@@ -19,7 +19,7 @@ from src.rlbench_env.voxel_grid import VoxelGrid
 from src.rlbench_env.dataset import extract_trajectory
 from src import types_ as types
 
-Array = types.Array
+Array = np.ndarray
 _OBS_CONFIG = ObservationConfig()
 _OBS_CONFIG.set_all(True)
 
@@ -27,9 +27,9 @@ _OBS_CONFIG.set_all(True)
 class Task(IntEnum):
 
     ReachTarget = 0
-    # PickAndLift = 0
+    # PickAndLift = 1
 
-    def as_one_hot(self) -> np.ndarray:
+    def as_one_hot(self) -> Array:
         task = np.zeros(len(Task), dtype=np.int32)
         task[self] = 1
         return task
@@ -74,7 +74,7 @@ class RLBenchEnv(dm_env.Environment):
         try:
             obs, reward, terminate = self.task.step(action)
         except (IKError, InvalidActionError, ConfigurationPathError) as exc:
-            logging.info(f'{action} led to exception: {exc}.')
+            logging.info(f'{action} led to the exception: {exc}.')
             obs, reward, terminate = self._prev_obs, 0., True
         else:
             obs = self._prev_obs = self._transform_observation(obs)
@@ -94,14 +94,15 @@ class RLBenchEnv(dm_env.Environment):
 
     def _transform_observation(self, obs: Observation) -> types.Observation:
         return types.Observation(voxels=self.vgrid(obs),
-                                 low_dim=obs.task_low_dim_state,
+                                 low_dim=obs.get_low_dim_data(),
                                  task=self.description
                                  )
 
     def get_demos(self, amount: int) -> list[types.Trajectory]:
         trajs = []
-        raw_demos = self.task.get_demos(amount=amount, live_demos=True)
-        for demo in raw_demos:
+        for _ in range(amount):
+            self.reset()  # resample task, update description.
+            demo = self.task.get_demos(amount=1, live_demos=True)[0]
             traj = extract_trajectory(
                 demo=demo,
                 observation_transform=self._transform_observation,
