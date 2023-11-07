@@ -26,8 +26,8 @@ _OBS_CONFIG.set_all(True)
 
 class Task(IntEnum):
 
-    ReachTarget = 0
-    # PickAndLift = 1
+    # ReachTarget = 0
+    PickAndLift = 0
 
     def as_one_hot(self) -> Array:
         task = np.zeros(len(Task), dtype=np.int32)
@@ -56,6 +56,7 @@ class RLBenchEnv(dm_env.Environment):
         self.env = Environment(self.action_mode,
                                headless=False,
                                shaped_rewards=False,
+                               static_positions=True,
                                obs_config=_OBS_CONFIG,
                                )
         self.vgrid = VoxelGrid(scene_bounds, self.action_mode.SCENE_BINS)
@@ -75,7 +76,7 @@ class RLBenchEnv(dm_env.Environment):
             obs, reward, terminate = self.task.step(action)
         except (IKError, InvalidActionError, ConfigurationPathError) as exc:
             logging.info(f'{action} led to the exception: {exc}.')
-            obs, reward, terminate = self._prev_obs, 0., True
+            obs, reward, terminate = self._prev_obs, -1., True
         else:
             obs = self._prev_obs = self._transform_observation(obs)
         self._steps += 1

@@ -7,9 +7,9 @@ import jax
 
 from src.config import Config
 from src.builder import Builder
-from src.rlbench_env.dataset import as_tfdataset
 from src.rlbench_env.enviroment import environment_loop
-from rltools.loggers import TFSummaryLogger, TerminalOutput
+from rltools.loggers import TFSummaryLogger
+
 
 def main():
     cfg = Config()
@@ -18,17 +18,13 @@ def main():
     #     cloudpickle.dump(cfg, f)
     rngs = jax.random.split(jax.random.PRNGKey(cfg.seed), 3)
     env = builder.make_env(rngs[0])
+    ds = builder.make_dataset(env)
     nets, params = builder.make_networks_and_params(rngs[1], env)
     step = builder.make_step_fn(nets)
     apply = jax.jit(nets.apply)
     state = builder.make_state(rngs[2], params)
     state = jax.device_put(state)
 
-    ds = as_tfdataset(env.get_demos(cfg.num_demos))
-    ds = ds.repeat()\
-        .batch(cfg.batch_size)\
-        .prefetch(-1)
-    ds = ds.as_numpy_iterator()
     logger = TFSummaryLogger(logdir=cfg.logdir, label='bc', step_key='step')
 
     for batch in ds:

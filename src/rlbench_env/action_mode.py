@@ -14,7 +14,7 @@ Array = types.Array
 
 class DiscreteActionMode(ActionMode):
 
-    SCENE_BINS = 32
+    SCENE_BINS = 50
     ROT_BINS = 5
     GRIP_BINS = 2
 
@@ -42,7 +42,7 @@ class DiscreteActionMode(ActionMode):
         self.arm_action_mode.action(scene, arm)
         self.gripper_action_mode.action(scene, grip)
 
-    def action_shape(self, scene: Scene) -> tuple[int, ...]:
+    def action_shape(self, scene: Scene) -> int:
         return np.prod(self.arm_action_mode.action_shape(scene)) + np.prod(
             self.gripper_action_mode.action_shape(scene))
 

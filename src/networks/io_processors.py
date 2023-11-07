@@ -38,6 +38,7 @@ class VoxelsProcessor(nn.Module):
         chex.assert_rank(x, 4)
 
         if not self.use_skip_connections:
+            # preserve number of params.
             skip_connections = map(jnp.zeros_like, skip_connections)
         blocks_ys = list(zip(self.deconvs, skip_connections))
         for block, y in reversed(blocks_ys):

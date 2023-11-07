@@ -2,6 +2,7 @@ from typing import Callable
 
 import tree
 import numpy as np
+import tensorflow as tf
 from rlbench.demo import Demo
 from rlbench.backend.observation import Observation
 
@@ -9,9 +10,10 @@ import src.types_ as types
 
 
 def is_keyframe(obs: Observation, next_obs: Observation) -> bool:
-    predicate = np.all(next_obs.joint_velocities < 1e-2)
-    predicate &= obs.gripper_open == next_obs.gripper_open
-    return predicate
+    is_waypoint = obs.gripper_open == next_obs.gripper_open
+    is_waypoint &= np.allclose(next_obs.joint_velocities, 0, atol=1e-1)
+    is_grasp = obs.gripper_open != next_obs.gripper_open
+    return is_waypoint | is_grasp
 
 
 def extract_trajectory(
@@ -34,10 +36,6 @@ def extract_trajectory(
     return types.Trajectory(observations=observations, actions=actions)
 
 
-def as_tfdataset(trajs: list[types.Trajectory]) -> 'tf.data.Dataset':
-    import tensorflow as tf
-    tf.config.set_visible_devices([], 'GPU')
-
+def as_tfdataset(trajs: list[types.Trajectory]) -> tf.data.Dataset:
     ds = tree.map_structure(lambda *x: np.concatenate(x), *trajs)
-    # In a such way longer tasks will be sampled more often.
     return tf.data.Dataset.from_tensor_slices(ds)

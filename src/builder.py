@@ -4,11 +4,14 @@ import jax
 import jmp
 import optax
 from flax import core
+import tensorflow as tf
+tf.config.set_visible_devices([], 'GPU')
 
 from src.config import Config
 from src.train_state import TrainState
 from src.peract import PerAct
 from src.rlbench_env.enviroment import RLBenchEnv
+from src.rlbench_env.dataset import as_tfdataset
 from src.behavior_cloning import bc, StepFn
 import src.types_ as types
 
@@ -19,12 +22,14 @@ class Builder:
 
     CONFIG = 'config.yaml'
     STATE = 'state.cpkl'
-    DEMOS = 'replay/'
+    DEMO = 'demo'
 
     def __init__(self, cfg: Config) -> None:
         self.cfg = cfg
-        if not os.path.exists(path := self.exp_path(Builder.DEMOS)):
+        if not os.path.exists(path := self.exp_path()):
             os.makedirs(path)
+        if not os.path.exists(path := self.exp_path(Builder.CONFIG)):
+            cfg.save(path)
 
     def make_env(self, rng: types.RNG) -> RLBenchEnv:
         """training env ctor."""
@@ -64,6 +69,18 @@ class Builder:
                                optim=optim,
                                loss_scale=jmp.NoOpLossScale()
                                )
+
+    def make_dataset(self, env: RLBenchEnv) -> tf.data.Dataset:
+        if os.path.exists(path := self.exp_path(Builder.DEMO)):
+            ds = tf.data.Dataset.load(path)
+        else:
+            ds = env.get_demos(self.cfg.num_demos)
+            ds = as_tfdataset(ds)
+            ds.save(path)
+        ds = ds.repeat()\
+           .batch(self.cfg.batch_size)\
+           .prefetch(-1)
+        return ds.as_numpy_iterator()
 
     def make_step_fn(self, nets: PerAct) -> StepFn:
         fn = bc(self.cfg, nets)

@@ -49,7 +49,7 @@ class PerAct(nn.Module):
         )
         c = self.cfg
         voxels, skip_connections = self.voxels_proc.encode(obs.voxels)
-        pos3d_enc = utils.fourier_features(voxels.shape[:-1], c.ff_num_bands)
+        pos3d_enc = utils.fourier_features(voxels.shape[:3], c.ff_num_bands)
         voxels = jnp.concatenate([voxels, pos3d_enc], -1)
         voxels = voxels.reshape(-1, voxels.shape[-1])
         low_dim = obs.low_dim.reshape(1, -1)
