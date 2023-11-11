@@ -1,3 +1,5 @@
+from typing import Any
+
 import jax
 import jax.numpy as jnp
 import chex
@@ -5,28 +7,38 @@ import numpy as np
 import flax.linen as nn
 
 Array = jax.Array
-# _dki = nn.initializers.variance_scaling(
-#     scale=.4,
-#     mode='fan_in',
-#     distribution='truncated_normal')
-_dki = nn.initializers.lecun_normal()
+DType = Any
 
 
-def norm(x: Array) -> Array:
-    ln = nn.LayerNorm(use_bias=True, use_scale=True)
-    return ln(x)
+class _Module(nn.Module):
+
+    dtype: DType
+    kernel_init: nn.initializers.Initializer
+    use_layernorm: bool
+
+    def dense(self, x: Array, **kwargs) -> Array:
+        return nn.DenseGeneral(dtype=self.dtype,
+                               kernel_init=self.kernel_init,
+                               **kwargs
+                               )(x)
+
+    def norm(self, x: Array, **kwargs) -> Array:
+        if self.use_layernorm:
+            return nn.LayerNorm(dtype=jnp.float32,
+                                **kwargs)(x)
+        return x
 
 
-class MLP(nn.Module):
+class MLP(_Module):
 
     widening_factor: float
 
     @nn.compact
     def __call__(self, x: Array) -> Array:
         dim = x.shape[-1]
-        x = nn.Dense(int(self.widening_factor * dim), kernel_init=_dki)(x)
+        x = self.dense(x, features=int(self.widening_factor * dim))
         x = nn.gelu(x)
-        return nn.Dense(dim, kernel_init=_dki)(x)
+        return self.dense(x, features=dim)
 
 
 def scaled_dot_product(query: Array,
@@ -39,7 +51,7 @@ def scaled_dot_product(query: Array,
     return jnp.einsum('...hqk,...khd->...qhd', attn, value)
 
 
-class MultiHeadAttention(nn.Module):
+class MultiHeadAttention(_Module):
 
     num_heads: int
     qk_channels: int | None = None
@@ -51,62 +63,58 @@ class MultiHeadAttention(nn.Module):
                  inputs_q: Array,
                  inputs_kv: Array,
                  ) -> Array:
-        def dense(dim, name):
+        def mh_dense(x, dim, name):
             dim, res = np.divmod(dim, self.num_heads)
             assert res == 0, f'Not divisible by the number of heads: {dim}.'
-            return nn.DenseGeneral(features=(self.num_heads, dim),
-                                   name=name,
-                                   kernel_init=_dki
-                                   )
+            return self.dense(x,
+                              features=(self.num_heads, dim),
+                              name=name)
         qk_channels = self.qk_channels or inputs_q.shape[-1]
         v_channels = self.v_channels or qk_channels
         output_channels = self.output_channels or v_channels
 
-        query = dense(qk_channels, name='query')(inputs_q)
-        key = dense(qk_channels, name='key')(inputs_kv)
-        value = dense(v_channels, name='value')(inputs_kv)
+        query = mh_dense(inputs_q, qk_channels, 'query')
+        key = mh_dense(inputs_kv, qk_channels, 'key')
+        value = mh_dense(inputs_kv, v_channels, 'value')
         value = scaled_dot_product(query, key, value)
-        proj = nn.DenseGeneral(output_channels,
-                               axis=(-2, -1),
-                               kernel_init=_dki,
-                               name='proj')
-        return proj(value)
+        return self.dense(value,
+                          features=output_channels,
+                          axis=(-2, -1),
+                          name='proj')
 
 
-class CrossAttention(nn.Module):
+class CrossAttention(_Module):
 
     num_heads: int
     widening_factor: float
-    use_residual: bool = True
+    use_query_residual: bool = True
 
     @nn.compact
     def __call__(self,
                  inputs_q: Array,
-                 inputs_kv: Array,
+                 inputs_kv: Array | None = None,
                  ) -> Array:
-        channels = inputs_q.shape[-1]
-        mha = MultiHeadAttention(self.num_heads,
-                                 qk_channels=channels,
-                                 output_channels=channels)
-        x = mha(norm(inputs_q), norm(inputs_kv))
-        if self.use_residual:
+        inputs_q = self.norm(inputs_q)
+        if inputs_kv is not None:
+            inputs_kv = self.norm(inputs_kv)  # cross-attention
+        else:
+            inputs_kv = inputs_q  # self-attention
+        x = MultiHeadAttention(
+            num_heads=self.num_heads,
+            qk_channels=inputs_q.shape[-1],
+            dtype=self.dtype,
+            kernel_init=self.kernel_init,
+            use_layernorm=self.use_layernorm
+        )(inputs_q, inputs_kv)
+        if self.use_query_residual:
             x += inputs_q
-        mlp = MLP(self.widening_factor)
-        return x + mlp(norm(x))
-
-
-class SelfAttention(nn.Module):
-
-    num_heads: int
-    widening_factor: float
-
-    @nn.compact
-    def __call__(self, x: Array) -> Array:
-        qkv = norm(x)
-        mha = MultiHeadAttention(self.num_heads)
-        x += mha(qkv, qkv)
-        mlp = MLP(self.widening_factor)
-        return x + mlp(norm(x))
+        mlp = MLP(
+            widening_factor=self.widening_factor,
+            dtype=self.dtype,
+            kernel_init=self.kernel_init,
+            use_layernorm=self.use_layernorm
+        )
+        return x + mlp(self.norm(x))
 
 
 class PerceiverIO(nn.Module):
@@ -121,6 +129,9 @@ class PerceiverIO(nn.Module):
     self_attend_widening_factor: float
     use_query_residual: bool = True
     prior_initial_scale: float = 0.02
+    dtype: DType = jnp.float32
+    kernel_init: nn.initializers.Initializer = nn.initializers.lecun_normal()
+    use_layernorm: bool = True
 
     @nn.compact
     def __call__(self,
@@ -129,15 +140,30 @@ class PerceiverIO(nn.Module):
                  ) -> Array:
         chex.assert_type([inputs_q, outputs_q], float)
         chex.assert_rank([inputs_q, outputs_q], 2)  # (seq_len, channels)
-
-        encode_query = CrossAttention(self.num_cross_attend_heads,
-                                      self.cross_attend_widening_factor)
-        decode_query = CrossAttention(self.num_cross_attend_heads,
-                                      self.cross_attend_widening_factor,
-                                      self.use_query_residual)
+        encode_query = CrossAttention(
+            num_heads=self.num_cross_attend_heads,
+            widening_factor=self.cross_attend_widening_factor,
+            use_query_residual=True,
+            dtype=self.dtype,
+            kernel_init=self.kernel_init,
+            use_layernorm=self.use_layernorm
+        )
+        decode_query = CrossAttention(
+            num_heads=self.num_cross_attend_heads,
+            widening_factor=self.cross_attend_widening_factor,
+            use_query_residual=self.use_query_residual,
+            dtype=self.dtype,
+            kernel_init=self.kernel_init,
+            use_layernorm=self.use_layernorm
+        )
         latent_transformer = nn.Sequential([
-            SelfAttention(self.num_self_attend_heads,
-                          self.self_attend_widening_factor)
+            CrossAttention(
+                num_heads=self.num_cross_attend_heads,
+                widening_factor=self.cross_attend_widening_factor,
+                dtype=self.dtype,
+                kernel_init=self.kernel_init,
+                use_layernorm=self.use_layernorm
+            )
             for _ in range(self.num_self_attend_per_block)
         ])
 

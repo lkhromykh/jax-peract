@@ -5,6 +5,7 @@ import jax
 import dm_env.specs
 
 Array = RNG = jax.Array
+DType = Any
 
 Layers = collections.abc.Sequence[int]
 Metrics = collections.abc.MutableMapping[str, float]

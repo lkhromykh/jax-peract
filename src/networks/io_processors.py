@@ -16,17 +16,17 @@ class VoxelsProcessor(nn.Module):
     features: types.Layers
     kernels: types.Layers
     strides: types.Layers
+    dtype: types.DType
     use_skip_connections: bool = True
 
     def setup(self) -> None:
         self.convs = self._make_stem(nn.Conv)
         self.deconvs = self._make_stem(nn.ConvTranspose)
 
-    def encode(self, voxels: Array) -> tuple[Array, list[Array]]:
-        chex.assert_type(voxels, jnp.uint8)
-        chex.assert_rank(voxels, 4)  # (H, W, D, C)
+    def encode(self, x: Array) -> tuple[Array, list[Array]]:
+        chex.assert_type(x, float)
+        chex.assert_rank(x, 4)  # (H, W, D, C)
 
-        x = voxels / 128. - 1
         skip_connections = []
         for block in self.convs:
             x = block(x)
@@ -38,7 +38,6 @@ class VoxelsProcessor(nn.Module):
         chex.assert_rank(x, 4)
 
         if not self.use_skip_connections:
-            # preserve number of params.
             skip_connections = map(jnp.zeros_like, skip_connections)
         blocks_ys = list(zip(self.deconvs, skip_connections))
         for block, y in reversed(blocks_ys):
@@ -53,8 +52,9 @@ class VoxelsProcessor(nn.Module):
             conv = Conv(features=f,
                         kernel_size=3 * (k,),
                         strides=3 * (s,),
-                        use_bias=False,
-                        padding='VALID'
+                        dtype=self.dtype,
+                        use_bias=True,
+                        padding='VALID',
                         )
             block = nn.Sequential([conv, nn.gelu])
             blocks.append(block)
@@ -68,24 +68,60 @@ class InputsMultiplexer(nn.Module):
     @nn.compact
     def __call__(self, *inputs: Array) -> Array:
         chex.assert_rank(inputs, 2)  # [(seq_len, channels)]
+        chex.assert_trees_all_equal_dtypes(*inputs)
         max_dim = max(map(lambda x: x.shape[1], inputs))
         max_dim += 8 - max_dim % 4
-        outputs = []
+        output = []
         for idx, val in enumerate(inputs):
             seq_len, channels = val.shape
             enc = self.param(f'encoding_{idx}',
-                             nn.initializers.normal(self.init_scale),
+                             nn.initializers.normal(self.init_scale, val.dtype),
                              (1, max_dim - channels)
                              )
             enc = jnp.repeat(enc, seq_len, 0)
             val = jnp.concatenate([val, enc], 1)
-            outputs.append(val)
-        return jnp.concatenate(outputs, 0)
+            output.append(val)
+        return jnp.concatenate(output, 0)
+
+    @staticmethod
+    def inverse(input_: Array,
+                *shapes: tuple[int, ...]
+                ) -> list[Array]:
+        chex.assert_rank(input_, 2)
+        seq_len, channels = input_.shape
+        index = 0
+        outputs = []
+        for shape in shapes:
+            size = np.prod(shape).astype(np.int32)
+            output = input_[index:index + size]
+            output = output.reshape(shape + (channels,))
+            outputs.append(output)
+            index += size
+        assert index == seq_len
+        return outputs
 
 
 class ActionDecoder(nn.Module):
 
-    act_spec: types.ActionSpec
+    action_spec: types.ActionSpec
+    dtype: types.DType
+
+    @nn.compact
+    def __call__(self, voxels: Array, low_dim: Array) -> tfd.Distribution:
+        chex.assert_rank([voxels, low_dim], [4, 1])
+        nbins = tuple(map(lambda sp: sp.num_values, self.action_spec))
+        grid_size, low_dim_bins = nbins[:3], nbins[3:]
+        voxels = nn.Conv(1, (1, 1, 1), dtype=self.dtype)(voxels)
+        voxels = voxels.astype(jnp.float32)
+        grid_dist = tfd.TransformedDistribution(
+            distribution=tfd.Categorical(voxels.flatten()),
+            bijector=ActionDecoder.Idx2Grid(grid_size)
+        )
+        low_dim_logits = nn.Dense(sum(low_dim_bins), dtype=self.dtype)(low_dim)
+        low_dim_logits = low_dim_logits.astype(jnp.float32)
+        *low_dim_logits, _ = jnp.split(low_dim_logits, np.cumsum(low_dim_bins))
+        low_dim_dists = [tfd.Categorical(logits) for logits in low_dim_logits]
+        return ActionDecoder.Blockwise([grid_dist] + low_dim_dists)
 
     class Blockwise(tfd.Blockwise):
         def mode(self, *args, **kwargs):
@@ -137,18 +173,3 @@ class ActionDecoder(nn.Module):
 
         def _inverse_dtype(self, output_dtype, **kwargs):
             return self.dtype
-
-    @nn.compact
-    def __call__(self, voxels: Array, low_dim: Array) -> tfd.Distribution:
-        chex.assert_rank([voxels, low_dim], [4, 1])  # (seq_len, channels)
-        nbins = tuple(map(lambda sp: sp.num_values, self.act_spec))
-        grid_size, low_dim_bins = nbins[:3], nbins[3:]
-        voxels = nn.Conv(1, (1, 1, 1))(voxels)
-        grid_dist = tfd.TransformedDistribution(
-            distribution=tfd.Categorical(voxels.flatten()),
-            bijector=ActionDecoder.Idx2Grid(grid_size)
-        )
-        low_dim_logits = nn.Dense(sum(low_dim_bins))(low_dim)
-        *low_dim_logits, _ = jnp.split(low_dim_logits, np.cumsum(low_dim_bins))
-        low_dim_dists = [tfd.Categorical(logits) for logits in low_dim_logits]
-        return ActionDecoder.Blockwise([grid_dist] + low_dim_dists)

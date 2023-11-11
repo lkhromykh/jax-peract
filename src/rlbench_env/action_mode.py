@@ -14,7 +14,7 @@ Array = types.Array
 
 class DiscreteActionMode(ActionMode):
 
-    SCENE_BINS = 50
+    SCENE_BINS = 32
     ROT_BINS = 5
     GRIP_BINS = 2
 

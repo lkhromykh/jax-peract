@@ -1,3 +1,4 @@
+import collections
 from typing import Callable
 
 import tree
@@ -8,12 +9,25 @@ from rlbench.backend.observation import Observation
 
 import src.types_ as types
 
+Carry = collections.namedtuple('Carry', ('next_obs', 'wayp_buffer', 'total_kframes'))
+_Qd_THRESHOLD = 1e-1
+_SKIP_EVERY = 3
 
-def is_keyframe(obs: Observation, next_obs: Observation) -> bool:
+
+def keyframe_scan(carry: Carry,
+                  obs: Observation,
+                  ) -> tuple[Carry, bool]:
+    next_obs, wp_buffer, total_kframes = carry
     is_waypoint = obs.gripper_open == next_obs.gripper_open
-    is_waypoint &= np.allclose(next_obs.joint_velocities, 0, atol=1e-1)
+    is_waypoint &= np.allclose(next_obs.joint_velocities, 0, atol=_Qd_THRESHOLD)
+    is_waypoint &= wp_buffer > _SKIP_EVERY
     is_grasp = obs.gripper_open != next_obs.gripper_open
-    return is_waypoint | is_grasp
+    is_keypoint = is_waypoint | is_grasp
+    carry = Carry(next_obs=obs,
+                  wayp_buffer=0 if is_keypoint else wp_buffer + 1,
+                  total_kframes=total_kframes + is_keypoint
+                  )
+    return carry, is_keypoint
 
 
 def extract_trajectory(
@@ -22,15 +36,18 @@ def extract_trajectory(
         action_transform: Callable[[Observation], types.Action]
 ) -> types.Trajectory:
     observations, actions = [], []
-    keyframe = action_transform(demo[-1])
-    counter = 0
-    for obs, next_obs in reversed(list(zip(demo[:-1], demo[1:]))):
-        if is_keyframe(obs, next_obs):
-            counter += 1
+    rdemo = reversed(demo)
+    last_obs = next(rdemo)
+    keyframe = action_transform(last_obs)
+    carry = Carry(next_obs=last_obs, wayp_buffer=0, total_kframes=1)
+    for obs in rdemo:
+        next_obs = carry.next_obs
+        carry, is_keyframe = keyframe_scan(carry, obs)
+        if is_keyframe:
             keyframe = action_transform(next_obs)
         observations.append(observation_transform(obs))
         actions.append(keyframe)
-    print('Keyframes num: ', counter)
+    print('Keyframes/timesteps num:', carry.total_kframes, '/', len(demo))
     def stack(ts): return tree.map_structure(lambda *t: np.stack(t), *ts)
     observations, actions = map(stack, (observations, actions))
     return types.Trajectory(observations=observations, actions=actions)

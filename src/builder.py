@@ -1,7 +1,6 @@
 import os
 
 import jax
-import jmp
 import optax
 from flax import core
 import tensorflow as tf
@@ -61,13 +60,12 @@ class Builder:
                    params: Params,
                    ) -> TrainState:
         c = self.cfg
-        optim = optax.adamw(c.learning_rate, weight_decay=c.weight_decay)
+        optim = optax.lamb(c.learning_rate, weight_decay=c.weight_decay)
         clip = optax.clip_by_global_norm(c.max_grad_norm)
         optim = optax.chain(clip, optim)
         return TrainState.init(rng=rng,
                                params=params,
                                optim=optim,
-                               loss_scale=jmp.NoOpLossScale()
                                )
 
     def make_dataset(self, env: RLBenchEnv) -> tf.data.Dataset:
@@ -79,7 +77,7 @@ class Builder:
             ds.save(path)
         ds = ds.repeat()\
            .batch(self.cfg.batch_size)\
-           .prefetch(-1)
+           .prefetch(tf.data.AUTOTUNE)
         return ds.as_numpy_iterator()
 
     def make_step_fn(self, nets: PerAct) -> StepFn:

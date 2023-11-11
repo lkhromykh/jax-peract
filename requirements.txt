@@ -1,7 +1,8 @@
+chex
 dm-env
 flax
 numpy
-chex
+open3d
 optax
 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 jax[cuda11_local]==0.4.16
@@ -10,6 +11,4 @@ tensorflow_probability
 tensorflow_datasets
 git+https://github.com/stepjam/RLBench.git
 git+https://github.com/stepjam/PyRep.git
-git+https://github.com/deepmind/jmp
 git+https://github.com/lkhromykh/rltools.git
-open3d
