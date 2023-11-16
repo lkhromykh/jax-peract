@@ -131,7 +131,7 @@ class ActionDecoder(nn.Module):
 
     class Idx2Grid(tfp.bijectors.AutoCompositeTensorBijector):
 
-        def __init__(self, shape, validate_args=True, name='idx2grid'):
+        def __init__(self, shape, validate_args=False, name='idx2grid'):
             super().__init__(validate_args=validate_args,
                              is_constant_jacobian=True,
                              forward_min_event_ndims=0,

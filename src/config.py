@@ -10,8 +10,8 @@ class Config(_Config):
     conv_stem_kernels: Layers = (4,)
     conv_stem_strides: Layers = (4,)
     # Perceiver
-    latent_dim: int = 32
-    latent_channels: int = 32
+    latent_dim: int = 64
+    latent_channels: int = 128
     num_blocks: int = 1
     num_self_attend_per_block: int = 4
     num_cross_attend_heads: int = 1
@@ -32,8 +32,8 @@ class Config(_Config):
     jit: bool = True
     compute_dtype: Literal['bf16', 'f32'] = 'bf16'
     # Environment
-    scene_lower_bound: list[float] = (-0.3, -0.5, 0.7)
-    scene_upper_bound: list[float] = (0.7, 0.5, 1.7)
+    scene_lower_bound: list[float] = (-0.25, -0.5, 0.75)
+    scene_upper_bound: list[float] = (0.75, 0.5, 1.75)
     time_limit: int = 10
     num_demos: int = 50
 

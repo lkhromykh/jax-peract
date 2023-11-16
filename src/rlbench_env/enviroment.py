@@ -42,6 +42,7 @@ class Task(IntEnum):
         return Task(rng.choice(Task))
 
 
+# TODO: add timestep to the observation? terminate_episode, collision?
 class RLBenchEnv(dm_env.Environment):
 
     def __init__(self,
@@ -54,9 +55,8 @@ class RLBenchEnv(dm_env.Environment):
         scene_bounds = tuple(map(np.asanyarray, scene_bounds))
         self.action_mode = DiscreteActionMode(scene_bounds)
         self.env = Environment(self.action_mode,
-                               headless=False,
+                               headless=True,
                                shaped_rewards=False,
-                               static_positions=True,
                                obs_config=_OBS_CONFIG,
                                )
         self.vgrid = VoxelGrid(scene_bounds, self.action_mode.SCENE_BINS)
@@ -94,8 +94,10 @@ class RLBenchEnv(dm_env.Environment):
         return tree.map_structure(convert, self._prev_obs)
 
     def _transform_observation(self, obs: Observation) -> types.Observation:
+        low_dim = [[obs.gripper_open]]
+        low_dim = np.concatenate(low_dim, dtype=np.float32)
         return types.Observation(voxels=self.vgrid(obs),
-                                 low_dim=obs.get_low_dim_data(),
+                                 low_dim=low_dim,
                                  task=self.description
                                  )
 

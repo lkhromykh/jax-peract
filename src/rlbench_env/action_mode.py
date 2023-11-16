@@ -66,7 +66,7 @@ class DiscreteActionMode(ActionMode):
         return action
 
     def _assert_valid_action(self, action: Array) -> None:
-        assert action.shape == (8,) \
+        assert action.shape == np.shape(self._nbins) \
            and action.dtype == np.int32 \
            and np.all(action >= 0) \
            and np.all(action <= self._nbins), \

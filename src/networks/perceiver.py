@@ -158,8 +158,8 @@ class PerceiverIO(nn.Module):
         )
         latent_transformer = nn.Sequential([
             CrossAttention(
-                num_heads=self.num_cross_attend_heads,
-                widening_factor=self.cross_attend_widening_factor,
+                num_heads=self.num_self_attend_heads,
+                widening_factor=self.self_attend_widening_factor,
                 dtype=self.dtype,
                 kernel_init=self.kernel_init,
                 use_layernorm=self.use_layernorm

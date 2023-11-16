@@ -17,6 +17,7 @@ _SKIP_EVERY = 3
 def keyframe_scan(carry: Carry,
                   obs: Observation,
                   ) -> tuple[Carry, bool]:
+    """Determine if the next_observation is a keyframe."""
     next_obs, wp_buffer, total_kframes = carry
     is_waypoint = obs.gripper_open == next_obs.gripper_open
     is_waypoint &= np.allclose(next_obs.joint_velocities, 0, atol=_Qd_THRESHOLD)

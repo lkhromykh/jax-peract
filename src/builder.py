@@ -70,12 +70,14 @@ class Builder:
 
     def make_dataset(self, env: RLBenchEnv) -> tf.data.Dataset:
         if os.path.exists(path := self.exp_path(Builder.DEMO)):
+            print('Loading existing dataset.')
             ds = tf.data.Dataset.load(path)
         else:
+            print('Collecting demos.')
             ds = env.get_demos(self.cfg.num_demos)
             ds = as_tfdataset(ds)
             ds.save(path)
-        ds = ds.repeat()\
+        ds = ds.cache().repeat()\
            .batch(self.cfg.batch_size)\
            .prefetch(tf.data.AUTOTUNE)
         return ds.as_numpy_iterator()
