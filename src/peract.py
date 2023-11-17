@@ -51,7 +51,7 @@ class PerAct(nn.Module):
         chex.assert_rank([obs.voxels, obs.low_dim, obs.task],
                          [4, 1, 1])
         chex.assert_type([obs.voxels, obs.low_dim, obs.task],
-                         [jnp.uint8, float, jnp.int32])
+                         [jnp.uint8, jnp.float16, jnp.int32])
         c = self.cfg
         dtype = _dtype_fromstr(c.compute_dtype)
         voxels = obs.voxels.astype(dtype) / 128. - 1

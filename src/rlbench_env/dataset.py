@@ -50,7 +50,9 @@ def extract_trajectory(
         actions.append(keyframe)
     print('Keyframes/timesteps num:', carry.total_kframes, '/', len(demo))
     def stack(ts): return tree.map_structure(lambda *t: np.stack(t), *ts)
+    def to_f16(x): return x.astype(np.float16) if x.dtype.kind == 'f' else x
     observations, actions = map(stack, (observations, actions))
+    observations = tree.map_structure(to_f16, observations)
     return types.Trajectory(observations=observations, actions=actions)
 
 
