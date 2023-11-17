@@ -68,7 +68,6 @@ class InputsMultiplexer(nn.Module):
     @nn.compact
     def __call__(self, *inputs: Array) -> Array:
         chex.assert_rank(inputs, 2)  # [(seq_len, channels)]
-        chex.assert_trees_all_equal_dtypes(*inputs)
         max_dim = max(map(lambda x: x.shape[1], inputs))
         max_dim += 8 - max_dim % 4
         output = []

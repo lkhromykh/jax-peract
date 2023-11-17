@@ -58,6 +58,7 @@ class RLBenchEnv(dm_env.Environment):
                                headless=True,
                                shaped_rewards=False,
                                obs_config=_OBS_CONFIG,
+                               static_positions=True
                                )
         self.vgrid = VoxelGrid(scene_bounds, self.action_mode.SCENE_BINS)
         self.reset()  # launch PyRep, init_all attributes.
