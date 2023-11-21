@@ -1,8 +1,10 @@
+import logging
 from typing import Callable
 
 import jax
 import jax.numpy as jnp
 import optax
+import chex
 
 from src.config import Config
 from src.peract import PerAct
@@ -27,9 +29,10 @@ def bc(cfg: Config, nets: PerAct) -> StepFn:
         ent_t = policy_t.entropy()
         return loss, dict(loss=loss, entropy=ent_t)
 
+    @chex.assert_max_traces(1)
     def step(state: TrainState, batch: types.Trajectory
              ) -> tuple[TrainState, types.Metrics]:
-        print('Tracing BC step.')
+        logging.info('Tracing BC step.')
         params = state.params
         grad_fn = jax.grad(loss_fn, has_aux=True)
         grad_fn = jax.vmap(grad_fn, in_axes=(None, 0, 0))

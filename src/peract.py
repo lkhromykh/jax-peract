@@ -56,12 +56,12 @@ class PerAct(nn.Module):
         dtype = _dtype_fromstr(c.compute_dtype)
         voxels = obs.voxels.astype(dtype) / 128. - 1
         voxels, skip_connections = self.voxels_proc.encode(voxels)
-        *inp_vgrid, inp_channels = voxels.shape
-        pos3d_enc = utils.fourier_features(voxels.shape[:3], c.ff_num_bands)
+        *vgrid_size, channels = voxels.shape
+        pos3d_enc = utils.fourier_features(tuple(vgrid_size), c.ff_num_bands)
         voxels = jnp.concatenate([voxels, pos3d_enc], -1)
         voxels = voxels.reshape(-1, voxels.shape[-1])
-        low_dim = nn.Dense(inp_channels)(obs.low_dim).reshape(1, -1)
-        task = obs.task.reshape(1, -1)
+        low_dim = nn.Dense(channels, dtype=dtype)(obs.low_dim).reshape(1, -1)
+        task = nn.Dense(channels, dtype=dtype)(obs.task).reshape(1, -1)
         voxels, low_dim, task = map(lambda x: x.astype(dtype),
                                     (voxels, low_dim, task))
 
@@ -71,7 +71,7 @@ class PerAct(nn.Module):
         low_dim = self.param(
             'low_dim_output_q',
             nn.initializers.normal(c.prior_initial_scale, dtype),
-            (1, inp_channels)
+            (1, channels)
         )
         outputs_q = nets.InputsMultiplexer(c.prior_initial_scale)(
             voxels, low_dim
@@ -79,7 +79,7 @@ class PerAct(nn.Module):
         outputs_val = self.perceiver(inputs_q, outputs_q)
         voxels, low_dim = nets.InputsMultiplexer.inverse(
             outputs_val,
-            tuple(inp_vgrid),
+            tuple(vgrid_size),
             ()
         )
         voxels = self.voxels_proc.decode(voxels, skip_connections)

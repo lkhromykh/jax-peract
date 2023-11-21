@@ -48,19 +48,21 @@ class RLBenchEnv(dm_env.Environment):
     def __init__(self,
                  seed: int | np.random.RandomState,
                  scene_bounds: tuple[Array, Array],
+                 scene_bins: int,
+                 rot_bins: int,
                  time_limit: int = float('inf'),
                  ) -> None:
         self.rng = np.random.default_rng(seed)
         self.time_limit = time_limit
         scene_bounds = tuple(map(np.asanyarray, scene_bounds))
-        self.action_mode = DiscreteActionMode(scene_bounds)
+        self.action_mode = DiscreteActionMode(scene_bounds, scene_bins, rot_bins)
         self.env = Environment(self.action_mode,
                                headless=True,
                                shaped_rewards=False,
                                obs_config=_OBS_CONFIG,
                                static_positions=True
                                )
-        self.vgrid = VoxelGrid(scene_bounds, self.action_mode.SCENE_BINS)
+        self.vgrid = VoxelGrid(scene_bounds, scene_bins)
         self.reset()  # launch PyRep, init_all attributes.
 
     def reset(self) -> dm_env.TimeStep:
@@ -68,22 +70,22 @@ class RLBenchEnv(dm_env.Environment):
         self.task = self.env.get_task(task.as_rlbench_task())
         self.description, obs = self.task.reset()
         self.description = task.as_one_hot()  # ignore text description for now.
-        obs = self._prev_obs = self._transform_observation(obs)
-        self._steps = 0
-        return dm_env.restart(obs)
+        self._prev_obs = self._transform_observation(obs)
+        self._step = 0
+        return dm_env.restart(self._prev_obs)
 
     def step(self, action: Array) -> dm_env.TimeStep:
         try:
             obs, reward, terminate = self.task.step(action)
         except (IKError, InvalidActionError, ConfigurationPathError) as exc:
-            logging.info(f'{action} led to the exception: {exc}.')
+            logging.info(f'Action {action} led to the exception: {exc}.')
             obs, reward, terminate = self._prev_obs, -1., True
         else:
             obs = self._prev_obs = self._transform_observation(obs)
-        self._steps += 1
+        self._step += 1
         if terminate:
             return dm_env.termination(reward, obs)
-        if self._steps >= self.time_limit:
+        if self._step >= self.time_limit:
             return dm_env.truncation(reward, obs)
         return dm_env.transition(reward, obs)
 
@@ -91,12 +93,11 @@ class RLBenchEnv(dm_env.Environment):
         return self.action_mode.action_spec()
 
     def observation_spec(self) -> types.ObservationSpec:
-        def convert(x): return dm_env.specs.Array(x.shape, x.dtype)
-        return tree.map_structure(convert, self._prev_obs)
+        def np_to_spec(x): return dm_env.specs.Array(x.shape, x.dtype)
+        return tree.map_structure(np_to_spec, self._prev_obs)
 
     def _transform_observation(self, obs: Observation) -> types.Observation:
-        low_dim = [[obs.gripper_open]]
-        low_dim = np.concatenate(low_dim, dtype=np.float32)
+        low_dim = np.atleast_1d(obs.gripper_open).astype(np.float32)
         return types.Observation(voxels=self.vgrid(obs),
                                  low_dim=low_dim,
                                  task=self.description

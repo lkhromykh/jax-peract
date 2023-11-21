@@ -73,7 +73,7 @@ class InputsMultiplexer(nn.Module):
         output = []
         for idx, val in enumerate(inputs):
             seq_len, channels = val.shape
-            enc = self.param(f'encoding_{idx}',
+            enc = self.param(f'modality_encoding{idx}',
                              nn.initializers.normal(self.init_scale, val.dtype),
                              (1, max_dim - channels)
                              )

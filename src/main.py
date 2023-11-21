@@ -1,4 +1,6 @@
+import logging
 import warnings
+logging.basicConfig(level=logging.INFO)
 warnings.filterwarnings('ignore')
 
 import cloudpickle
@@ -14,8 +16,6 @@ from rltools.loggers import TFSummaryLogger
 def main():
     cfg = Config()
     builder = Builder(cfg)
-    # with open(builder.exp_path(Builder.CONFIG), 'wb') as f:
-    #     cloudpickle.dump(cfg, f)
     rngs = jax.random.split(jax.random.PRNGKey(cfg.seed), 3)
     env = builder.make_env(rngs[0])
     ds = builder.make_dataset(env)
@@ -38,9 +38,8 @@ def main():
             reward = environment_loop(policy, env)
             metrics.update(step=t, eval_reward=reward)
             logger.write(metrics)
-
-            # with open(builder.exp_path(Builder.STATE), 'wb') as f:
-            #     cloudpickle.dump(state, f)
+            with open(builder.exp_path(Builder.STATE), 'wb') as f:
+                cloudpickle.dump(jax.device_get(state), f)
 
 
 if __name__ == '__main__':

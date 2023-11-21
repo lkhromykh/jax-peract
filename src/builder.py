@@ -1,7 +1,9 @@
 import os
+import logging
 
 import jax
 import optax
+import cloudpickle
 from flax import core
 import tensorflow as tf
 tf.config.set_visible_devices([], 'GPU')
@@ -26,6 +28,7 @@ class Builder:
     def __init__(self, cfg: Config) -> None:
         self.cfg = cfg
         if not os.path.exists(path := self.exp_path()):
+            logging.info('Init experiment dir.')
             os.makedirs(path)
         if not os.path.exists(path := self.exp_path(Builder.CONFIG)):
             cfg.save(path)
@@ -38,6 +41,8 @@ class Builder:
         scene_bounds = c.scene_lower_bound, c.scene_upper_bound
         return RLBenchEnv(seed=rng,
                           scene_bounds=scene_bounds,
+                          scene_bins=c.scene_bins,
+                          rot_bins=c.rot_bins,
                           time_limit=c.time_limit,
                           )
 
@@ -53,12 +58,20 @@ class Builder:
         obs = jax.tree_util.tree_map(lambda x: x.generate_value(),
                                      env.observation_spec())
         params = nets.init(seed, obs)
+        nparams = sum(jax.tree_util.tree_map(
+            lambda x: x.size, jax.tree_leaves(params)))
+        logging.info(f'Number of params: {nparams}')
         return nets, params
 
     def make_state(self,
                    rng: types.RNG,
                    params: Params,
                    ) -> TrainState:
+        if os.path.exists(path := self.exp_path(Builder.STATE)):
+            logging.info('Loading existing state.')
+            with open(path, 'rb') as f:
+                state = cloudpickle.load(f)
+            return jax.device_put(state)
         c = self.cfg
         optim = optax.lamb(c.learning_rate, weight_decay=c.weight_decay)
         clip = optax.clip_by_global_norm(c.max_grad_norm)
@@ -70,14 +83,16 @@ class Builder:
 
     def make_dataset(self, env: RLBenchEnv) -> tf.data.Dataset:
         if os.path.exists(path := self.exp_path(Builder.DEMO)):
-            print('Loading existing dataset.')
+            logging.info('Loading existing dataset.')
             ds = tf.data.Dataset.load(path)
         else:
-            print('Collecting demos.')
+            logging.info('Collecting demos.')
             ds = env.get_demos(self.cfg.num_demos)
             ds = as_tfdataset(ds)
             ds.save(path)
-        ds = ds.cache().repeat()\
+        ds = ds.cache()\
+           .repeat()\
+           .shuffle(10 * self.cfg.batch_size)\
            .batch(self.cfg.batch_size)\
            .prefetch(tf.data.AUTOTUNE)
         return ds.as_numpy_iterator()
