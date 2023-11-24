@@ -14,6 +14,7 @@ from src.peract import PerAct
 from src.rlbench_env.enviroment import RLBenchEnv
 from src.rlbench_env.dataset import as_tfdataset
 from src.behavior_cloning import bc, StepFn
+from src.utils.augmentations import random_shift
 import src.types_ as types
 
 Params = core.FrozenDict[str, types.Array]
@@ -38,9 +39,8 @@ class Builder:
         c = self.cfg
         max_int = jax.numpy.iinfo(jax.numpy.int32).max
         rng = jax.random.randint(rng, (), 1, max_int).item()
-        scene_bounds = c.scene_lower_bound, c.scene_upper_bound
         return RLBenchEnv(seed=rng,
-                          scene_bounds=scene_bounds,
+                          scene_bounds=c.scene_bounds,
                           scene_bins=c.scene_bins,
                           rot_bins=c.rot_bins,
                           time_limit=c.time_limit,
@@ -48,7 +48,7 @@ class Builder:
 
     def make_networks_and_params(
             self,
-            seed: types.RNG,
+            rng: types.RNG,
             env: RLBenchEnv
     ) -> tuple[PerAct, Params]:
         nets = PerAct(self.cfg,
@@ -57,7 +57,7 @@ class Builder:
                       )
         obs = jax.tree_util.tree_map(lambda x: x.generate_value(),
                                      env.observation_spec())
-        params = nets.init(seed, obs)
+        params = nets.init(rng, obs)
         nparams = sum(jax.tree_util.tree_map(
             lambda x: x.size, jax.tree_leaves(params)))
         logging.info(f'Number of params: {nparams}')
@@ -81,19 +81,24 @@ class Builder:
                                optim=optim,
                                )
 
-    def make_dataset(self, env: RLBenchEnv) -> tf.data.Dataset:
+    def make_dataset(self, rng: types.RNG, env: RLBenchEnv) -> tf.data.Dataset:
+        c = self.cfg
         if os.path.exists(path := self.exp_path(Builder.DEMO)):
             logging.info('Loading existing dataset.')
             ds = tf.data.Dataset.load(path)
         else:
             logging.info('Collecting demos.')
-            ds = env.get_demos(self.cfg.num_demos)
+            ds = env.get_demos(c.num_demos)
             ds = as_tfdataset(ds)
             ds.save(path)
+        max_int = jax.numpy.iinfo(jax.numpy.int32).max
+        rng = jax.random.randint(rng, (), 1, max_int).item()
+        tf.random.set_seed(rng)
         ds = ds.cache()\
            .repeat()\
-           .shuffle(10 * self.cfg.batch_size)\
-           .batch(self.cfg.batch_size)\
+           .shuffle(10 * c.batch_size)\
+           .map(lambda x: random_shift(x, c.max_shift))\
+           .batch(c.batch_size)\
            .prefetch(tf.data.AUTOTUNE)
         return ds.as_numpy_iterator()
 

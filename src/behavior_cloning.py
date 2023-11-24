@@ -21,13 +21,14 @@ StepFn = Callable[
 def bc(cfg: Config, nets: PerAct) -> StepFn:
 
     def loss_fn(params: Params,
-                obs_t: types.Observation,
-                act_t: types.Action,
+                obs: types.Observation,
+                act: types.Action,
                 ) -> tuple[float | jnp.ndarray, types.Metrics]:
-        policy_t = nets.apply(params, obs_t)
-        loss = -policy_t.log_prob(act_t)
-        ent_t = policy_t.entropy()
-        return loss, dict(loss=loss, entropy=ent_t)
+        policy = nets.apply(params, obs)
+        cross_ent = -policy.log_prob(act)
+        ent = policy.entropy()
+        return cross_ent - cfg.ent_coef * ent, dict(cross_entropy=cross_ent,
+                                                    entropy=ent)
 
     @chex.assert_max_traces(1)
     def step(state: TrainState, batch: types.Trajectory

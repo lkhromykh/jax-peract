@@ -26,8 +26,8 @@ _OBS_CONFIG.set_all(True)
 
 class Task(IntEnum):
 
-    # ReachTarget = 0
-    PickAndLift = 0
+    ReachTarget = 0
+    # PickAndLift = 0
 
     def as_one_hot(self) -> Array:
         task = np.zeros(len(Task), dtype=np.int32)
@@ -47,14 +47,14 @@ class RLBenchEnv(dm_env.Environment):
 
     def __init__(self,
                  seed: int | np.random.RandomState,
-                 scene_bounds: tuple[Array, Array],
+                 scene_bounds: tuple[float, ...],
                  scene_bins: int,
                  rot_bins: int,
                  time_limit: int = float('inf'),
                  ) -> None:
         self.rng = np.random.default_rng(seed)
         self.time_limit = time_limit
-        scene_bounds = tuple(map(np.asanyarray, scene_bounds))
+        scene_bounds = np.split(np.asarray(scene_bounds, np.float32), 2)
         self.action_mode = DiscreteActionMode(scene_bounds, scene_bins, rot_bins)
         self.env = Environment(self.action_mode,
                                headless=True,

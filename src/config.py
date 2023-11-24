@@ -10,7 +10,7 @@ class Config(_Config):
     conv_stem_kernels: Layers = (4,)
     conv_stem_strides: Layers = (4,)
     # Perceiver
-    latent_dim: int = 64
+    latent_dim: int = 32
     latent_channels: int = 32
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
@@ -31,13 +31,14 @@ class Config(_Config):
     eval_every: int = 1000
     jit: bool = True
     compute_dtype: Literal['bf16', 'f32'] = 'bf16'
+    max_shift: int = 4
+    ent_coef: float = 1e-3
     # Environment
-    scene_lower_bound: list[float] = (-0.3, -0.5, 0.6)
-    scene_upper_bound: list[float] = (0.7, 0.5, 1.6)
+    scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     scene_bins: int = 32
     rot_bins: int = 7
     time_limit: int = 10
     num_demos: int = 50
 
     seed: int = 1
-    logdir: str = 'logdir/'
+    logdir: str = 'logdir/w_ent'

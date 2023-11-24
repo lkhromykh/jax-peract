@@ -9,6 +9,6 @@ jax[cuda11_local]==0.4.16
 tensorflow
 tensorflow_probability
 tensorflow_datasets
-git+https://github.com/stepjam/RLBench.git
+git+https://github.com/MohitShridhar/RLBench.git@peract
 git+https://github.com/stepjam/PyRep.git
 rltools[all] @ git+https://github.com/lkhromykh/rltools.git
