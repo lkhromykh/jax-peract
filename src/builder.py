@@ -23,6 +23,7 @@ Params = core.FrozenDict[str, types.Array]
 class Builder:
 
     CONFIG = 'config.yaml'
+    SPECS = 'specs.cpkl'
     STATE = 'state.cpkl'
     DEMO = 'demo'
 
@@ -39,38 +40,41 @@ class Builder:
         c = self.cfg
         max_int = jax.numpy.iinfo(jax.numpy.int32).max
         rng = jax.random.randint(rng, (), 1, max_int).item()
-        return RLBenchEnv(seed=rng,
-                          scene_bounds=c.scene_bounds,
-                          scene_bins=c.scene_bins,
-                          rot_bins=c.rot_bins,
-                          time_limit=c.time_limit,
-                          )
+        return RLBenchEnv(
+            seed=rng,
+            scene_bounds=c.scene_bounds,
+            scene_bins=c.scene_bins,
+            rot_bins=c.rot_bins,
+            text_emb_length=c.text_emb_len,
+            time_limit=c.time_limit,
+        )
 
     def make_networks_and_params(
             self,
             rng: types.RNG,
-            env: RLBenchEnv
+            env_specs: types.EnvSpecs
     ) -> tuple[PerAct, Params]:
-        nets = PerAct(self.cfg,
-                      env.observation_spec(),
-                      env.action_spec()
-                      )
-        obs = jax.tree_util.tree_map(lambda x: x.generate_value(),
-                                     env.observation_spec())
+        obs_spec, act_spec = env_specs
+        nets = PerAct(
+            config=self.cfg,
+            observation_spec=obs_spec,
+            action_spec=act_spec
+        )
+        obs = jax.tree_util.tree_map(lambda x: x.generate_value(), obs_spec)
         params = nets.init(rng, obs)
         nparams = sum(jax.tree_util.tree_map(
             lambda x: x.size, jax.tree_leaves(params)))
         logging.info(f'Number of params: {nparams}')
         return nets, params
 
-    def make_state(self,
-                   rng: types.RNG,
-                   params: Params,
-                   ) -> TrainState:
+    def make_state(
+            self,
+            rng: types.RNG,
+            params: Params,
+    ) -> TrainState:
         if os.path.exists(path := self.exp_path(Builder.STATE)):
             logging.info('Loading existing state.')
-            with open(path, 'rb') as f:
-                state = cloudpickle.load(f)
+            state = self.load(path)
             return jax.device_put(state)
         c = self.cfg
         optim = optax.lamb(c.learning_rate, weight_decay=c.weight_decay)
@@ -81,16 +85,25 @@ class Builder:
                                optim=optim,
                                )
 
-    def make_dataset(self, rng: types.RNG, env: RLBenchEnv) -> tf.data.Dataset:
+    def make_dataset_and_specs(
+            self,
+            rng: types.RNG,
+            env: RLBenchEnv | None
+    ) -> tuple[tf.data.Dataset, types.EnvSpecs]:
         c = self.cfg
         if os.path.exists(path := self.exp_path(Builder.DEMO)):
-            logging.info('Loading existing dataset.')
+            logging.info('Loading existing dataset and specs.')
             ds = tf.data.Dataset.load(path)
-        else:
+            specs = self.load(Builder.SPECS)
+        elif env is not None:
             logging.info('Collecting demos.')
             ds = env.get_demos(c.num_demos)
             ds = as_tfdataset(ds)
+            specs = (env.observation_spec(), env.action_spec())
             ds.save(path)
+            self.save(specs, Builder.SPECS)
+        else:
+            raise RuntimeError('Impossible to obtain demos.')
         max_int = jax.numpy.iinfo(jax.numpy.int32).max
         rng = jax.random.randint(rng, (), 1, max_int).item()
         tf.random.set_seed(rng)
@@ -100,7 +113,7 @@ class Builder:
            .map(lambda x: random_shift(x, c.max_shift))\
            .batch(c.batch_size)\
            .prefetch(tf.data.AUTOTUNE)
-        return ds.as_numpy_iterator()
+        return ds.as_numpy_iterator(), specs
 
     def make_step_fn(self, nets: PerAct) -> StepFn:
         fn = bc(self.cfg, nets)
@@ -112,3 +125,11 @@ class Builder:
         logdir = os.path.abspath(self.cfg.logdir)
         path = os.path.join(logdir, path)
         return os.path.abspath(path)
+
+    def save(self, obj, path):
+        with open(self.exp_path(path), 'wb') as f:
+            cloudpickle.dump(obj, f)
+
+    def load(self, path):
+        with open(self.exp_path(path), 'rb') as f:
+            return cloudpickle.load(f)

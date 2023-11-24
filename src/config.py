@@ -22,6 +22,7 @@ class Config(_Config):
     use_layernorm: bool = True
     prior_initial_scale: float = 0.02
     ff_num_bands: int = 0
+    text_emb_len: int = 77
     # Training
     batch_size: int = 16
     learning_rate: float = 1e-4
@@ -31,7 +32,7 @@ class Config(_Config):
     eval_every: int = 1000
     jit: bool = True
     compute_dtype: Literal['bf16', 'f32'] = 'bf16'
-    max_shift: int = 4
+    max_shift: int = 0
     ent_coef: float = 1e-3
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
@@ -41,4 +42,5 @@ class Config(_Config):
     num_demos: int = 50
 
     seed: int = 1
-    logdir: str = 'logdir/w_ent'
+    launch_env: bool = True
+    logdir: str = 'logdir/w_text'

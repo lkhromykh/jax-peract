@@ -3,9 +3,8 @@ import warnings
 logging.basicConfig(level=logging.INFO)
 warnings.filterwarnings('ignore')
 
-import cloudpickle
 import jax
-# jax.config.update('jax_platform_name', 'cpu')
+jax.config.update('jax_platform_name', 'cpu')
 
 from src.config import Config
 from src.builder import Builder
@@ -16,30 +15,30 @@ from rltools.loggers import TFSummaryLogger
 def main():
     cfg = Config()
     builder = Builder(cfg)
-    rngs = jax.random.split(jax.random.PRNGKey(cfg.seed), 3)
-    env = builder.make_env(rngs[0])
-    ds = builder.make_dataset(env)
-    nets, params = builder.make_networks_and_params(rngs[1], env)
+    rngseq = iter(jax.random.split(jax.random.PRNGKey(cfg.seed), 4))
+    env = builder.make_env(next(rngseq)) if cfg.launch_env else None
+    ds, specs = builder.make_dataset_and_specs(next(rngseq), env)
+    nets, params = builder.make_networks_and_params(next(rngseq), specs)
     step = builder.make_step_fn(nets)
     apply = jax.jit(nets.apply)
-    state = builder.make_state(rngs[2], params)
+    state = builder.make_state(next(rngseq), params)
     state = jax.device_put(state)
 
     logger = TFSummaryLogger(logdir=cfg.logdir, label='bc', step_key='step')
 
-    for batch in ds:
-        batch = jax.device_put(batch)
+    for t in range(cfg.training_steps):
+        batch = jax.device_put(next(ds))
         state, metrics = step(state, batch)
-        t = state.step.item()
         if t % cfg.eval_every == 0:
-            def policy(obs):
-                action = apply(state.params, obs).mode()
-                return jax.device_get(action)
-            reward = environment_loop(policy, env)
-            metrics.update(step=t, eval_reward=reward)
+            metrics.update(step=t)
+            if cfg.launch_env:
+                def policy(obs):
+                    action = apply(state.params, obs).mode()
+                    return jax.device_get(action)
+                reward = environment_loop(policy, env)
+                metrics.update(eval_reward=reward)
             logger.write(metrics)
-            with open(builder.exp_path(Builder.STATE), 'wb') as f:
-                cloudpickle.dump(jax.device_get(state), f)
+            builder.save(jax.device_get(state), Builder.STATE)
 
 
 if __name__ == '__main__':

@@ -12,12 +12,12 @@ from src import networks as nets
 
 class PerAct(nn.Module):
 
-    cfg: Config
+    config: Config
     observation_spec: types.ObservationSpec
     action_spec: types.ActionSpec
 
     def setup(self) -> None:
-        c = self.cfg
+        c = self.config
         dtype = _dtype_fromstr(c.compute_dtype)
         self.voxels_proc = nets.VoxelsProcessor(
             features=c.conv_stem_features,
@@ -49,21 +49,22 @@ class PerAct(nn.Module):
     @nn.compact
     def __call__(self, obs: types.Observation) -> tfd.Distribution:
         chex.assert_rank([obs.voxels, obs.low_dim, obs.task],
-                         [4, 1, 1])
+                         [4, 1, 2])
         chex.assert_type([obs.voxels, obs.low_dim, obs.task],
-                         [jnp.uint8, jnp.float16, jnp.int32])
-        c = self.cfg
+                         [jnp.uint8, float, float])
+        c = self.config
         dtype = _dtype_fromstr(c.compute_dtype)
-        voxels = obs.voxels.astype(dtype) / 128. - 1
+        voxels, low_dim, task = map(lambda x: x.astype(dtype), obs)
+        voxels = voxels / 128. - 1
         voxels, skip_connections = self.voxels_proc.encode(voxels)
         *vgrid_size, channels = voxels.shape
         pos3d_enc = utils.fourier_features(tuple(vgrid_size), c.ff_num_bands)
         voxels = jnp.concatenate([voxels, pos3d_enc], -1)
         voxels = voxels.reshape(-1, voxels.shape[-1])
-        low_dim = nn.Dense(channels, dtype=dtype)(obs.low_dim).reshape(1, -1)
-        task = nn.Dense(channels, dtype=dtype)(obs.task).reshape(1, -1)
-        voxels, low_dim, task = map(lambda x: x.astype(dtype),
-                                    (voxels, low_dim, task))
+        low_dim = nn.Dense(channels, dtype=dtype)(low_dim).reshape(1, -1)
+        task = nn.Dense(channels, dtype=dtype)(task)
+        pos1d_enc = utils.fourier_features(task.shape[:1], c.ff_num_bands)
+        task = jnp.concatenate([task, pos1d_enc], -1)
 
         inputs_q = nets.InputsMultiplexer(c.prior_initial_scale)(
             voxels, low_dim, task

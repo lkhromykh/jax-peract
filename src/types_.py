@@ -13,6 +13,7 @@ Metrics = collections.abc.MutableMapping[str, float]
 Action = Array
 ActionSpec = list[dm_env.specs.DiscreteArray]
 ObservationSpec = tuple[Array]
+EnvSpecs = tuple[ObservationSpec, ActionSpec]
 
 
 class Observation(NamedTuple):

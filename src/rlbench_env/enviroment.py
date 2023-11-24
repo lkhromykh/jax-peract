@@ -17,6 +17,7 @@ from pyrep.errors import IKError, ConfigurationPathError
 from src.rlbench_env.action_mode import DiscreteActionMode
 from src.rlbench_env.voxel_grid import VoxelGrid
 from src.rlbench_env.dataset import extract_trajectory
+from src.networks.pretrained import TextEncoder
 from src import types_ as types
 
 Array = np.ndarray
@@ -50,6 +51,7 @@ class RLBenchEnv(dm_env.Environment):
                  scene_bounds: tuple[float, ...],
                  scene_bins: int,
                  rot_bins: int,
+                 text_emb_length: int,
                  time_limit: int = float('inf'),
                  ) -> None:
         self.rng = np.random.default_rng(seed)
@@ -63,13 +65,14 @@ class RLBenchEnv(dm_env.Environment):
                                static_positions=True
                                )
         self.vgrid = VoxelGrid(scene_bounds, scene_bins)
+        self.text_encoder = TextEncoder(max_length=text_emb_length)
         self.reset()  # launch PyRep, init_all attributes.
 
     def reset(self) -> dm_env.TimeStep:
         task = Task.sample(self.rng)
         self.task = self.env.get_task(task.as_rlbench_task())
-        self.description, obs = self.task.reset()
-        self.description = task.as_one_hot()  # ignore text description for now.
+        description, obs = self.task.reset()
+        self._description = self.text_encoder(description[0])
         self._prev_obs = self._transform_observation(obs)
         self._step = 0
         return dm_env.restart(self._prev_obs)
@@ -100,7 +103,7 @@ class RLBenchEnv(dm_env.Environment):
         low_dim = np.atleast_1d(obs.gripper_open).astype(np.float32)
         return types.Observation(voxels=self.vgrid(obs),
                                  low_dim=low_dim,
-                                 task=self.description
+                                 task=self._description
                                  )
 
     def get_demos(self, amount: int) -> list[types.Trajectory]:

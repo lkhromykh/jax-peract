@@ -47,6 +47,7 @@ class VoxelGrid:
             (points, colors)
         )
         points = self._scale(points)
+        colors = colors.astype(np.float32) / 255.
         points, colors = map(np2o3d, (points, colors))
         pcd = o3d.geometry.PointCloud()
         pcd.points = points
@@ -60,7 +61,7 @@ class VoxelGrid:
         self._scene.fill(0)
         for voxel in grid.get_voxels():
             idx = voxel.grid_index
-            rgb = voxel.color  # floating precision is lost.
+            rgb = np.uint(255 * voxel.color)
             self._scene[tuple(idx)] = np.concatenate([[255], rgb], -1)
         return self._scene.copy()
 
