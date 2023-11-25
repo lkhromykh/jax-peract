@@ -108,11 +108,11 @@ class Builder:
         rng = jax.random.randint(rng, (), 1, max_int).item()
         tf.random.set_seed(rng)
         ds = ds.cache()\
-           .repeat()\
-           .shuffle(10 * c.batch_size)\
-           .map(lambda x: random_shift(x, c.max_shift))\
-           .batch(c.batch_size)\
-           .prefetch(tf.data.AUTOTUNE)
+               .repeat()\
+               .shuffle(10 * c.batch_size)\
+               .map(lambda x: random_shift(x, c.max_shift))\
+               .batch(c.batch_size)\
+               .prefetch(tf.data.AUTOTUNE)
         return ds.as_numpy_iterator(), specs
 
     def make_step_fn(self, nets: PerAct) -> StepFn:

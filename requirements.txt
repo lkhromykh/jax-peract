@@ -7,9 +7,8 @@ open3d-cpu
 optax
 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 jax[cuda11_local]==0.4.13
-tensorflow
-tensorflow_probability
-tensorflow_datasets
+tensorflow==2.13
+tensorflow_probability==0.21
 transformers[flax]
 git+https://github.com/stepjam/PyRep.git
 git+https://github.com/stepjam/RLBench.git

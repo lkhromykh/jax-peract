@@ -24,6 +24,7 @@ def bc(cfg: Config, nets: PerAct) -> StepFn:
                 obs: types.Observation,
                 act: types.Action,
                 ) -> tuple[float | jnp.ndarray, types.Metrics]:
+        chex.assert_rank(act, 1)
         policy = nets.apply(params, obs)
         cross_ent = -policy.log_prob(act)
         ent = policy.entropy()

@@ -1,6 +1,8 @@
 import jax
 import numpy as np
 from transformers import CLIPTokenizer, FlaxCLIPTextModel
+from transformers import logging
+logging.set_verbosity_error()
 
 
 class TextEncoder:
