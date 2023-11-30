@@ -108,7 +108,8 @@ class RLBenchEnv(dm_env.Environment):
 
     def get_demos(self, amount: int) -> list[types.Trajectory]:
         trajs = []
-        for _ in range(amount):
+        for i in range(amount):
+            print(f'Traj {i}. ', end='')
             self.reset()  # resample task, update description.
             demo = self.task.get_demos(amount=1, live_demos=True)[0]
             traj = extract_trajectory(

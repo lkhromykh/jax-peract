@@ -32,15 +32,15 @@ class Config(_Config):
     eval_every: int = 500
     jit: bool = True
     compute_dtype: Literal['bf16', 'f32'] = 'bf16'
-    max_shift: int = 0
+    max_shift: int = 2
     ent_coef: float = 1e-3
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     scene_bins: int = 32
     rot_bins: int = 7
     time_limit: int = 10
-    num_demos: int = 20
+    num_demos: int = 50
 
     seed: int = 1
     launch_env: bool = True
-    logdir: str = 'logdir/w_euler'
+    logdir: str = 'logdir/w_shifts'

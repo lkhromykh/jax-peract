@@ -62,6 +62,8 @@ class DiscreteActionMode(ActionMode):
     def from_observation(self, obs: Observation) -> types.Action:
         lb, ub = self._action_bounds
         pos, quat = np.split(obs.gripper_pose, [3])
+        if quat[-1] < 0:
+            quat = -quat
         euler = R.from_quat(quat).as_euler('xyz')
         action = np.concatenate([pos, euler, [obs.gripper_open]])
         action = np.clip(action, a_min=lb, a_max=ub)

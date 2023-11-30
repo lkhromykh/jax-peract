@@ -18,6 +18,6 @@ class TextEncoder:
                                 padding='max_length',
                                 truncation=True,
                                 return_tensors='np')
-        output = self.model(**inputs)
+        output = jax.jit(self.model)(**inputs)
         output = jax.numpy.squeeze(output.last_hidden_state, 0)
         return jax.device_get(output)
