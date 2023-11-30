@@ -24,7 +24,7 @@ class _Module(nn.Module):
 
     def norm(self, x: Array, **kwargs) -> Array:
         if self.use_layernorm:
-            return nn.LayerNorm(dtype=jnp.float32,
+            return nn.LayerNorm(dtype=self.dtype,
                                 **kwargs)(x)
         return x
 

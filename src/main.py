@@ -5,8 +5,8 @@ warnings.filterwarnings('ignore')
 
 import jax
 # jax.config.update('jax_platform_name', 'cpu')
-import chex
-chex.disable_asserts()
+# import chex
+# chex.disable_asserts()
 
 from src.config import Config
 from src.builder import Builder

@@ -61,7 +61,7 @@ class VoxelGrid:
         self._scene.fill(0)
         for voxel in grid.get_voxels():
             idx = voxel.grid_index
-            rgb = np.uint8(255 * voxel.color)
+            rgb = np.round(255 * voxel.color)
             self._scene[tuple(idx)] = np.concatenate([[255], rgb], -1)
         return self._scene.copy()
 

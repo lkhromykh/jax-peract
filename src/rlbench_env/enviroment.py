@@ -71,8 +71,8 @@ class RLBenchEnv(dm_env.Environment):
     def reset(self) -> dm_env.TimeStep:
         task = Task.sample(self.rng)
         self.task = self.env.get_task(task.as_rlbench_task())
-        description, obs = self.task.reset()
-        self._description = self.text_encoder(description[0])
+        self.text_descriptions, obs = self.task.reset()
+        self._description = self.text_encoder(self.text_descriptions[0])
         self._prev_obs = self._transform_observation(obs)
         self._step = 0
         return dm_env.restart(self._prev_obs)
