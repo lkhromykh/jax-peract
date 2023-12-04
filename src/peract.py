@@ -57,8 +57,16 @@ class PerAct(nn.Module):
         voxels = voxels / 128. - 1
         voxels, skip_connections = self.voxels_proc.encode(voxels)
         *vgrid_size, channels = voxels.shape
-        pos3d_enc = utils.fourier_features(tuple(vgrid_size), c.ff_num_bands)
-        voxels = jnp.concatenate([voxels, pos3d_enc], -1)
+        if c.use_trainable_pos_encoding:
+            pos3d_enc = self.param(
+                'trainable_encoding',
+                nn.initializers.normal(c.prior_initial_scale, voxels.dtype),
+                voxels.shape
+            )
+            voxels += pos3d_enc
+        else:
+            pos3d_enc = utils.fourier_features(tuple(vgrid_size), c.ff_num_bands)
+            voxels = jnp.concatenate([voxels, pos3d_enc], -1)
         voxels = voxels.reshape(-1, voxels.shape[-1])
         low_dim = nn.Dense(channels, dtype=dtype)(low_dim).reshape(1, -1)
         task = nn.Dense(channels, dtype=dtype)(task)
@@ -88,7 +96,6 @@ class PerAct(nn.Module):
 
 
 def _dtype_fromstr(dtype_str: str) -> types.DType:
-    # TODO: bf16 cause instabilities while f32 still lowered to bf16
-    #  via lax.Precision and works well.
+    # f32 still lowered to bf16 via jax.lax.Precision default.
     valid_dtypes = dict(bf16=jnp.bfloat16, f32=jnp.float32)
     return valid_dtypes[dtype_str]

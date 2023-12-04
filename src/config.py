@@ -20,13 +20,14 @@ class Config(_Config):
     self_attend_widening_factor: float = 1.
     use_query_residual: bool = True
     use_layernorm: bool = True
+    use_trainable_pos_encoding: bool = True
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 1
+    ff_num_bands: int = 10
     text_emb_len: int = -1  # 20 (max 77)
     # Training
-    max_grad_norm: float = 1.
+    max_grad_norm: float = 10.
     warmup_steps: int = 10_000
-    peak_learning_rate: float = 5e-4
+    peak_learning_rate: float = 1e-4
     training_steps: int = 10 ** 5
     batch_size: int = 32
     weight_decay: float = 1e-3
@@ -44,4 +45,4 @@ class Config(_Config):
 
     seed: int = 1
     launch_env: bool = True
-    logdir: str = 'logdir/no_textemb_w_optim'
+    logdir: str = 'logdir/trainable_encoding'

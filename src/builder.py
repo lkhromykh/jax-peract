@@ -71,7 +71,7 @@ class Builder:
     def make_optim(self, params: Params) -> optax.GradientTransformation:
         c = self.cfg
         schedule = optax.warmup_cosine_decay_schedule(
-            init_value=0,
+            init_value=0.,
             peak_value=c.peak_learning_rate,
             warmup_steps=c.warmup_steps,
             decay_steps=c.training_steps
@@ -86,9 +86,9 @@ class Builder:
         return optax.chain(
             optax.clip_by_global_norm(c.max_grad_norm),
             optax.scale_by_adam(),
-            optax.scale_by_schedule(schedule),
             weight_decay,
             optax.scale_by_trust_ratio(),
+            optax.scale_by_schedule(schedule),
             optax.scale(-1)
         )
 
