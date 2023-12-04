@@ -5,6 +5,7 @@ import jax
 import optax
 import cloudpickle
 from flax import core
+from flax import traverse_util
 import tensorflow as tf
 tf.config.set_visible_devices([], 'GPU')
 
@@ -67,6 +68,30 @@ class Builder:
         logging.info(f'Number of params: {nparams}')
         return nets, params
 
+    def make_optim(self, params: Params) -> optax.GradientTransformation:
+        c = self.cfg
+        schedule = optax.warmup_cosine_decay_schedule(
+            init_value=0,
+            peak_value=c.peak_learning_rate,
+            warmup_steps=c.warmup_steps,
+            decay_steps=c.training_steps
+        )
+        mask = traverse_util.path_aware_map(
+            lambda path, _: 'bias' not in path,
+            params
+        )
+        mask = type(params)(mask)
+        weight_decay = optax.add_decayed_weights(
+            c.weight_decay, mask=mask)
+        return optax.chain(
+            optax.clip_by_global_norm(c.max_grad_norm),
+            optax.scale_by_adam(),
+            optax.scale_by_schedule(schedule),
+            weight_decay,
+            optax.scale_by_trust_ratio(),
+            optax.scale(-1)
+        )
+
     def make_state(
             self,
             rng: types.RNG,
@@ -76,10 +101,7 @@ class Builder:
             logging.info('Loading existing state.')
             state = self.load(path)
             return jax.device_put(state)
-        c = self.cfg
-        optim = optax.lamb(c.learning_rate, weight_decay=c.weight_decay)
-        clip = optax.clip_by_global_norm(c.max_grad_norm)
-        optim = optax.chain(clip, optim)
+        optim = self.make_optim(params)
         return TrainState.init(rng=rng,
                                params=params,
                                optim=optim,

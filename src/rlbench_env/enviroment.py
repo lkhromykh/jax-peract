@@ -65,14 +65,21 @@ class RLBenchEnv(dm_env.Environment):
                                static_positions=True
                                )
         self.vgrid = VoxelGrid(scene_bounds, scene_bins)
-        self.text_encoder = TextEncoder(max_length=text_emb_length)
+        if text_emb_length > 0:
+            self.text_encoder = TextEncoder(max_length=text_emb_length)
+        else:
+            self.text_encoder = None
         self.reset()  # launch PyRep, init_all attributes.
 
     def reset(self) -> dm_env.TimeStep:
         task = Task.sample(self.rng)
         self.task = self.env.get_task(task.as_rlbench_task())
         self.text_descriptions, obs = self.task.reset()
-        self._description = self.text_encoder(self.text_descriptions[0])
+        if self.text_encoder is not None:
+            self._description = self.text_encoder(self.text_descriptions[0])
+        else:
+            task_code = task.as_one_hot()
+            self._description = np.expand_dims(task_code, 0)
         self._prev_obs = self._transform_observation(obs)
         self._step = 0
         return dm_env.restart(self._prev_obs)

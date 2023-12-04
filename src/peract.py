@@ -50,8 +50,7 @@ class PerAct(nn.Module):
     def __call__(self, obs: types.Observation) -> tfd.Distribution:
         chex.assert_rank([obs.voxels, obs.low_dim, obs.task],
                          [4, 1, 2])
-        chex.assert_type([obs.voxels, obs.low_dim, obs.task],
-                         [jnp.uint8, float, float])
+        chex.assert_type([obs.voxels, obs.low_dim], [jnp.uint8, float])
         c = self.config
         dtype = _dtype_fromstr(c.compute_dtype)
         voxels, low_dim, task = map(lambda x: x.astype(dtype), obs)
@@ -89,5 +88,7 @@ class PerAct(nn.Module):
 
 
 def _dtype_fromstr(dtype_str: str) -> types.DType:
+    # TODO: bf16 cause instabilities while f32 still lowered to bf16
+    #  via lax.Precision and works well.
     valid_dtypes = dict(bf16=jnp.bfloat16, f32=jnp.float32)
     return valid_dtypes[dtype_str]
