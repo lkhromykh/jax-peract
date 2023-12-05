@@ -27,8 +27,8 @@ _OBS_CONFIG.set_all(True)
 
 class Task(IntEnum):
 
-    ReachTarget = 0
-    # PickAndLift = 0
+    # ReachTarget = 0
+    PickAndLift = 0
 
     def as_one_hot(self) -> Array:
         task = np.zeros(len(Task), dtype=np.int32)
@@ -115,10 +115,11 @@ class RLBenchEnv(dm_env.Environment):
                                  )
 
     def get_demos(self, amount: int) -> list[types.Trajectory]:
+        # TODO: episodes should be stored separately.
         trajs = []
         for i in range(amount):
-            print(f'Traj {i}. ', end='')
             self.reset()  # resample task, update description.
+            print(f'Traj {i}. Task: {self.task.get_name()}.', end=' ')
             demo = self.task.get_demos(amount=1, live_demos=True)[0]
             traj = extract_trajectory(
                 demo=demo,

@@ -21,23 +21,23 @@ class Config(_Config):
     self_attend_widening_factor: float = 1.
     use_query_residual: bool = True
     use_layernorm: bool = True
-    use_trainable_pos_encoding: bool = True
+    use_trainable_pos_encoding: bool = False
     prior_initial_scale: float = 0.02
     ff_num_bands: int = 10
     text_emb_len: int = -1  # 20 (max 77)
     # Training
     max_grad_norm: float = 10.
-    warmup_steps: int = 3000
+    warmup_steps: int = 6000
     peak_learning_rate: float = 5e-4
     training_steps: int = 600_000
-    batch_size: int = 32
+    batch_size: int = 16
     weight_decay: float = 1e-4
     eval_every: int = 500
     jit: bool = True
     compute_dtype: str = 'f32'
     max_shift: int = 4
     # Environment
-    scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
+    scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.7, 0.7, 0.5, 1.7)
     scene_bins: int = 32
     rot_bins: int = 7
     time_limit: int = 10
@@ -45,7 +45,7 @@ class Config(_Config):
 
     seed: int = 1
     launch_env: bool = True
-    logdir: str = 'logdir/fix_aug'
+    logdir: str = 'logdir/pick_and_lift'
 
 
 peract_config = Config(

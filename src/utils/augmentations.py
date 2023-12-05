@@ -12,6 +12,7 @@ def random_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
     pos, low_dim = tf.split(act, [l := len(size), tf.size(act) - l])
     size = tf.convert_to_tensor(size)
     shift = tf.random.uniform(size.shape, -max_shift, max_shift + 1, tf.int32)
+    shift = tf.clip_by_value(shift, -pos, size - 1 - pos)
     def append(x, vals): return tf.concat([x, tf.constant(vals, x.dtype)], 0)
     padding = tf.fill((tf.size(shift), 2), max_shift)
     vgrid = tf.pad(vgrid, append(padding, [[0, 0]]))
@@ -20,6 +21,6 @@ def random_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
         begin=append(max_shift - shift, [0]),
         size=append(size, [channels])
     )
-    pos = tf.clip_by_value(pos + shift, tf.zeros_like(size), size - 1)
+    pos += shift
     return types.Trajectory(observations=obs._replace(voxels=vgrid),
                             actions=tf.concat([pos, low_dim], 0))
