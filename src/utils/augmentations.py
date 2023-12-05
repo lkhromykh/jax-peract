@@ -17,7 +17,7 @@ def random_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
     vgrid = tf.pad(vgrid, append(padding, [[0, 0]]))
     vgrid = tf.slice(
         vgrid,
-        begin=append(max_shift + shift, [0]),
+        begin=append(max_shift - shift, [0]),
         size=append(size, [channels])
     )
     pos = tf.clip_by_value(pos + shift, tf.zeros_like(size), size - 1)

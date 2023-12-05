@@ -68,7 +68,7 @@ class RLBenchEnv(dm_env.Environment):
         if text_emb_length > 0:
             self.text_encoder = TextEncoder(max_length=text_emb_length)
         else:
-            self.text_encoder = None
+            self.text_encoder = None  # use task one-hot encoding instead.
         self.reset()  # launch PyRep, init_all attributes.
 
     def reset(self) -> dm_env.TimeStep:
@@ -108,6 +108,7 @@ class RLBenchEnv(dm_env.Environment):
 
     def _transform_observation(self, obs: Observation) -> types.Observation:
         low_dim = np.atleast_1d(obs.gripper_open).astype(np.float32)
+        low_dim = np.concatenate([obs.gripper_joint_positions, low_dim])
         return types.Observation(voxels=self.vgrid(obs),
                                  low_dim=low_dim,
                                  task=self._description

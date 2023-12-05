@@ -27,9 +27,18 @@ def bc(cfg: Config, nets: PerAct) -> StepFn:
         chex.assert_rank(act, 1)
         policy = nets.apply(params, obs)
         cross_ent = -policy.log_prob(act)
-        ent = policy.entropy()
-        return cross_ent - cfg.ent_coef * ent, dict(cross_entropy=cross_ent,
-                                                    entropy=ent)
+        pos_ent = policy.distributions[0].entropy()
+        low_dim_ent = policy.entropy() - pos_ent
+        predict = policy.mode()
+        (pos_pred, low_dim_pred), (pos_expert, low_dim_expert) = map(
+            lambda x: jnp.split(x, [3]), (act, predict))
+        return cross_ent, dict(
+            cross_entropy=cross_ent,
+            pos_entropy=pos_ent,
+            low_dim_entropy=low_dim_ent,
+            pos_accuracy=jnp.array_equal(pos_pred, pos_expert),
+            low_dim_accuracy=jnp.array_equal(low_dim_pred, low_dim_expert)
+        )
 
     @chex.assert_max_traces(1)
     def step(state: TrainState, batch: types.Trajectory

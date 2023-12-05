@@ -32,8 +32,7 @@ class VoxelGrid:
             return map(lambda s: getattr(obs, '_'.join([cam, s])),
                        ('point_cloud', 'rgb'))
 
-        points = []
-        colors = []
+        points, colors = [], []
         for cam in self.CAMERAS:
             pcd, rgb = get_view(cam)
             points.append(pcd)

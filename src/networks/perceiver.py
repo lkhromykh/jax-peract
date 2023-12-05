@@ -29,6 +29,11 @@ class _Module(nn.Module):
         return x
 
 
+def geglu(x: Array) -> Array:
+    x, gates = jnp.split(x, 2, -1)
+    return x * nn.gelu(gates)
+
+
 class MLP(_Module):
 
     widening_factor: float
@@ -36,8 +41,8 @@ class MLP(_Module):
     @nn.compact
     def __call__(self, x: Array) -> Array:
         dim = x.shape[-1]
-        x = self.dense(x, features=int(self.widening_factor * dim))
-        x = nn.gelu(x)
+        x = self.dense(x, features=int(2 * self.widening_factor * dim))
+        x = geglu(x)
         return self.dense(x, features=dim)
 
 

@@ -110,7 +110,7 @@ class ActionDecoder(nn.Module):
         chex.assert_rank([voxels, low_dim], [4, 1])
         nbins = tuple(map(lambda sp: sp.num_values, self.action_spec))
         grid_size, low_dim_bins = nbins[:3], nbins[3:]
-        voxels = nn.Conv(1, (1, 1, 1), dtype=self.dtype)(voxels)
+        voxels = nn.Conv(1, (3, 3, 3), dtype=self.dtype)(voxels)
         voxels = voxels.astype(jnp.float32)
         grid_dist = tfd.TransformedDistribution(
             distribution=tfd.Categorical(voxels.flatten()),
