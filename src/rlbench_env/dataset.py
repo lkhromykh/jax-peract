@@ -23,12 +23,12 @@ def keyframe_scan(carry: Carry,
     is_waypoint &= np.allclose(next_obs.joint_velocities, 0, atol=_Qd_THRESHOLD)
     is_waypoint &= wp_buffer > _SKIP_EVERY
     is_grasp = obs.gripper_open != next_obs.gripper_open
-    is_keypoint = is_waypoint | is_grasp
+    is_keyframe = is_waypoint | is_grasp
     carry = Carry(next_obs=obs,
-                  wayp_buffer=0 if is_keypoint else wp_buffer + 1,
-                  total_kframes=total_kframes + is_keypoint
+                  wayp_buffer=0 if is_keyframe else wp_buffer + 1,
+                  total_kframes=total_kframes + is_keyframe
                   )
-    return carry, is_keypoint
+    return carry, is_keyframe
 
 
 def extract_trajectory(

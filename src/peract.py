@@ -48,8 +48,7 @@ class PerAct(nn.Module):
 
     @nn.compact
     def __call__(self, obs: types.Observation) -> tfd.Distribution:
-        chex.assert_rank([obs.voxels, obs.low_dim, obs.task],
-                         [4, 1, 2])
+        chex.assert_rank([obs.voxels, obs.low_dim, obs.task], [4, 1, 2])
         chex.assert_type([obs.voxels, obs.low_dim], [jnp.uint8, float])
         c = self.config
         dtype = _dtype_fromstr(c.compute_dtype)
@@ -57,16 +56,14 @@ class PerAct(nn.Module):
         voxels = voxels / 128. - 1
         voxels, skip_connections = self.voxels_proc.encode(voxels)
         *vgrid_size, channels = voxels.shape
+        pos3d_enc = utils.fourier_features(tuple(vgrid_size), c.ff_num_bands)
         if c.use_trainable_pos_encoding:
             pos3d_enc = self.param(
                 'trainable_encoding',
                 nn.initializers.normal(c.prior_initial_scale, voxels.dtype),
-                voxels.shape
+                pos3d_enc.shape  # make further capacity equivalent.
             )
-            voxels += pos3d_enc
-        else:
-            pos3d_enc = utils.fourier_features(tuple(vgrid_size), c.ff_num_bands)
-            voxels = jnp.concatenate([voxels, pos3d_enc], -1)
+        voxels = jnp.concatenate([voxels, pos3d_enc], -1)
         voxels = voxels.reshape(-1, voxels.shape[-1])
         low_dim = nn.Dense(channels, dtype=dtype)(low_dim).reshape(1, -1)
         task = nn.Dense(channels, dtype=dtype)(task)
@@ -79,7 +76,7 @@ class PerAct(nn.Module):
         low_dim = self.param(
             'low_dim_output_q',
             nn.initializers.normal(c.prior_initial_scale, dtype),
-            (1, channels)
+            (1, voxels.shape[-1])
         )
         outputs_q = nets.InputsMultiplexer(c.prior_initial_scale)(
             voxels, low_dim
@@ -96,6 +93,6 @@ class PerAct(nn.Module):
 
 
 def _dtype_fromstr(dtype_str: str) -> types.DType:
-    # f32 still lowered to bf16 via jax.lax.Precision default.
+    # f32 still lowered to bf16 via jax.lax.Precision.DEFAULT.
     valid_dtypes = dict(bf16=jnp.bfloat16, f32=jnp.float32)
     return valid_dtypes[dtype_str]

@@ -31,8 +31,8 @@ class Config(_Config):
     peak_learning_rate: float = 5e-4
     training_steps: int = 600_000
     batch_size: int = 16
-    weight_decay: float = 1e-4
-    eval_every: int = 500
+    weight_decay: float = 1e-5
+    eval_every: int = 1000
     jit: bool = True
     compute_dtype: str = 'f32'
     max_shift: int = 4
@@ -45,7 +45,7 @@ class Config(_Config):
 
     seed: int = 1
     launch_env: bool = True
-    logdir: str = 'logdir/pick_and_lift'
+    logdir: str = 'logdir/'
 
 
 peract_config = Config(

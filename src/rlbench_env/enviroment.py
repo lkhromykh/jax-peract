@@ -27,13 +27,13 @@ _OBS_CONFIG.set_all(True)
 
 class Task(IntEnum):
 
-    # ReachTarget = 0
-    PickAndLift = 0
+    ReachTarget = 0
+    # PickAndLift = 0
 
     def as_one_hot(self) -> Array:
         task = np.zeros(len(Task), dtype=np.int32)
         task[self] = 1
-        return task
+        return np.expand_dims(task, 0)
 
     def as_rlbench_task(self) -> Type[rlbTask]:
         return getattr(tasks, self.name)
@@ -78,8 +78,7 @@ class RLBenchEnv(dm_env.Environment):
         if self.text_encoder is not None:
             self._description = self.text_encoder(self.text_descriptions[0])
         else:
-            task_code = task.as_one_hot()
-            self._description = np.expand_dims(task_code, 0)
+            self._description = task.as_one_hot()
         self._prev_obs = self._transform_observation(obs)
         self._step = 0
         return dm_env.restart(self._prev_obs)

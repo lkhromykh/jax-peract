@@ -18,9 +18,9 @@ class VoxelGrid:
                  nbins: int,
                  ) -> None:
         lb, ub = self.scene_bounds = scene_bounds
+        self.nbins = nbins
         range_ = ub - lb
         self._scale = lambda x: (x - lb) / range_
-        self.nbins = nbins
         shape = lb.size * (nbins,) + (4,)
         self._scene = np.zeros(shape, dtype=np.uint8)
         self._voxel_size = 1. / (nbins - 1)
