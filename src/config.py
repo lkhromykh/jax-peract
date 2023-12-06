@@ -10,6 +10,7 @@ class Config(_Config):
     conv_stem_features: Layers = (32,)
     conv_stem_kernels: Layers = (4,)
     conv_stem_strides: Layers = (4,)
+    conv_stem_use_skip_connections: bool = True
     # Perceiver
     latent_dim: int = 32
     latent_channels: int = 32
@@ -19,8 +20,8 @@ class Config(_Config):
     num_self_attend_heads: int = 1
     cross_attend_widening_factor: float = 1.
     self_attend_widening_factor: float = 1.
-    use_query_residual: bool = True
     use_layernorm: bool = True
+    use_decoder_query_residual: bool = False
     use_trainable_pos_encoding: bool = False
     prior_initial_scale: float = 0.02
     ff_num_bands: int = 10
@@ -45,7 +46,7 @@ class Config(_Config):
 
     seed: int = 1
     launch_env: bool = True
-    logdir: str = 'logdir/'
+    logdir: str = 'logdir/no_decoder_residual'
 
 
 peract_config = Config(

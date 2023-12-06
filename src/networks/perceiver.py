@@ -133,7 +133,7 @@ class PerceiverIO(nn.Module):
     num_self_attend_heads: int
     cross_attend_widening_factor: float
     self_attend_widening_factor: float
-    use_query_residual: bool = True
+    use_decoder_query_residual: bool = False
     prior_initial_scale: float = 0.02
     dtype: DType = jnp.float32
     kernel_init: nn.initializers.Initializer = nn.initializers.lecun_normal()
@@ -157,7 +157,7 @@ class PerceiverIO(nn.Module):
         decode_query = CrossAttention(
             num_heads=self.num_cross_attend_heads,
             widening_factor=self.cross_attend_widening_factor,
-            use_query_residual=self.use_query_residual,
+            use_query_residual=self.use_decoder_query_residual,
             dtype=self.dtype,
             kernel_init=self.kernel_init,
             use_layernorm=self.use_layernorm

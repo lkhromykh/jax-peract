@@ -43,7 +43,7 @@ class Task(IntEnum):
         return Task(rng.choice(Task))
 
 
-# TODO: add timestep to the observation? terminate_episode, collision?
+# TODO: add timestep to an observation? terminate_episode, collision?
 class RLBenchEnv(dm_env.Environment):
 
     def __init__(self,

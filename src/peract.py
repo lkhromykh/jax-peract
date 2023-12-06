@@ -24,7 +24,7 @@ class PerAct(nn.Module):
             kernels=c.conv_stem_kernels,
             strides=c.conv_stem_strides,
             dtype=dtype,
-            use_skip_connections=True,
+            use_skip_connections=c.conv_stem_use_skip_connections,
         )
         self.perceiver = nets.PerceiverIO(
             latent_dim=c.latent_dim,
@@ -35,7 +35,7 @@ class PerAct(nn.Module):
             num_self_attend_heads=c.num_self_attend_heads,
             cross_attend_widening_factor=c.cross_attend_widening_factor,
             self_attend_widening_factor=c.self_attend_widening_factor,
-            use_query_residual=c.use_query_residual,
+            use_decoder_query_residual=c.use_decoder_query_residual,
             prior_initial_scale=c.prior_initial_scale,
             dtype=dtype,
             kernel_init=nn.initializers.lecun_normal(),
@@ -58,8 +58,9 @@ class PerAct(nn.Module):
         *vgrid_size, channels = voxels.shape
         pos3d_enc = utils.fourier_features(tuple(vgrid_size), c.ff_num_bands)
         if c.use_trainable_pos_encoding:
+            # Hide 3D structure of the vgrid.
             pos3d_enc = self.param(
-                'trainable_encoding',
+                'input_pos3d_enc',
                 nn.initializers.normal(c.prior_initial_scale, voxels.dtype),
                 pos3d_enc.shape  # make further capacity equivalent.
             )
@@ -73,6 +74,12 @@ class PerAct(nn.Module):
         inputs_q = nets.InputsMultiplexer(c.prior_initial_scale)(
             voxels, low_dim, task
         )
+        if c.use_trainable_pos_encoding:
+            voxels = self.param(
+                'output_pos3d_enc',
+                nn.initializers.normal(c.prior_initial_scale, voxels.dtype),
+                voxels.shape
+            )
         low_dim = self.param(
             'low_dim_output_q',
             nn.initializers.normal(c.prior_initial_scale, dtype),

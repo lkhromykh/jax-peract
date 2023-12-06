@@ -113,7 +113,7 @@ class ActionDecoder(nn.Module):
         voxels = nn.Conv(features=1,
                          kernel_size=(3, 3, 3),
                          dtype=self.dtype,
-                         kernel_init=nn.initializers.normal(1e-3)
+                         kernel_init=nn.initializers.normal(1e-2)
                          )(voxels)
         voxels = voxels.astype(jnp.float32)
         grid_dist = tfd.TransformedDistribution(
