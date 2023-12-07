@@ -131,8 +131,8 @@ class Builder:
         tf.random.set_seed(rng)
         ds = ds.cache()\
                .repeat()\
-               .shuffle(100 * c.batch_size)\
-               .map(lambda x: random_shift(x, c.max_shift))\
+               .map(lambda x: random_shift(x, c.max_shift)) \
+               .shuffle(100 * c.batch_size) \
                .batch(c.batch_size)\
                .prefetch(tf.data.AUTOTUNE)
         return ds.as_numpy_iterator(), specs

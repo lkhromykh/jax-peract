@@ -7,13 +7,13 @@ Layers = tuple[int, ...]
 @dataclasses.dataclass
 class Config(_Config):
     # Conv stem
-    conv_stem_features: Layers = (32,)
+    conv_stem_features: Layers = (64,)
     conv_stem_kernels: Layers = (4,)
     conv_stem_strides: Layers = (4,)
     conv_stem_use_skip_connections: bool = True
     # Perceiver
-    latent_dim: int = 32
-    latent_channels: int = 32
+    latent_dim: int = 128
+    latent_channels: int = 64
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
@@ -32,21 +32,21 @@ class Config(_Config):
     peak_learning_rate: float = 5e-4
     training_steps: int = 600_000
     batch_size: int = 16
-    weight_decay: float = 1e-5
+    weight_decay: float = 1e-4
     eval_every: int = 1000
     jit: bool = True
     compute_dtype: str = 'f32'
-    max_shift: int = 4
+    max_shift: int = 8
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.7, 0.7, 0.5, 1.7)
-    scene_bins: int = 32
-    rot_bins: int = 7
-    time_limit: int = 10
+    scene_bins: int = 64
+    rot_bins: int = 11
+    time_limit: int = 100
     num_demos: int = 50
 
     seed: int = 1
     launch_env: bool = True
-    logdir: str = 'logdir/no_decoder_residual'
+    logdir: str = 'logdir/pick_and_place_larger'
 
 
 peract_config = Config(
