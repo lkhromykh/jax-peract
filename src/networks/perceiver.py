@@ -19,6 +19,7 @@ class _Module(nn.Module):
     def dense(self, x: Array, **kwargs) -> Array:
         return nn.DenseGeneral(dtype=self.dtype,
                                kernel_init=self.kernel_init,
+                               use_bias=False,
                                **kwargs
                                )(x)
 
@@ -41,8 +42,9 @@ class MLP(_Module):
     @nn.compact
     def __call__(self, x: Array) -> Array:
         dim = x.shape[-1]
-        x = self.dense(x, features=int(2 * self.widening_factor * dim))
+        x = self.dense(x, features=2 * int(self.widening_factor * dim))
         x = geglu(x)
+        x = self.norm(x)
         return self.dense(x, features=dim)
 
 

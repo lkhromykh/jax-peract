@@ -43,6 +43,8 @@ class PerAct(nn.Module):
         )
         self.action_decoder = nets.ActionDecoder(
             action_spec=self.action_spec,
+            mlp_layers=c.act_decoder_mlp_layers,
+            conv_kernel=c.act_decoder_conv_kernel,
             dtype=dtype
         )
 
@@ -56,13 +58,13 @@ class PerAct(nn.Module):
         voxels = voxels / 128. - 1
         voxels, skip_connections = self.voxels_proc.encode(voxels)
         *vgrid_size, channels = voxels.shape
-        pos3d_enc = utils.fourier_features(tuple(vgrid_size), c.ff_num_bands)
-        if c.use_trainable_pos_encoding:
-            # Hide 3D structure of the vgrid.
+        vgrid_size = tuple(vgrid_size)
+        pos3d_enc = utils.fourier_features(vgrid_size, c.ff_num_bands)
+        if c.use_trainable_pos_encoding:  # Hide 3D structure of the voxels.
             pos3d_enc = self.param(
                 'input_pos3d_enc',
                 nn.initializers.normal(c.prior_initial_scale, voxels.dtype),
-                pos3d_enc.shape  # make further capacity equivalent.
+                pos3d_enc.shape  # Make further capacity equivalent.
             )
         voxels = jnp.concatenate([voxels, pos3d_enc], -1)
         voxels = voxels.reshape(-1, voxels.shape[-1])
@@ -90,9 +92,7 @@ class PerAct(nn.Module):
         )
         outputs_val = self.perceiver(inputs_q, outputs_q)
         voxels, low_dim = nets.InputsMultiplexer.inverse(
-            outputs_val,
-            tuple(vgrid_size),
-            ()
+            outputs_val, shapes=[vgrid_size, ()]
         )
         voxels = self.voxels_proc.decode(voxels, skip_connections)
         chex.assert_type([inputs_q, outputs_q, voxels], dtype)

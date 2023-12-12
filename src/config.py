@@ -7,12 +7,12 @@ Layers = tuple[int, ...]
 @dataclasses.dataclass
 class Config(_Config):
     # Conv stem
-    conv_stem_features: Layers = (64,)
-    conv_stem_kernels: Layers = (4,)
-    conv_stem_strides: Layers = (4,)
+    conv_stem_features: Layers = (64, 64)
+    conv_stem_kernels: Layers = (4, 1)
+    conv_stem_strides: Layers = (4, 1)
     conv_stem_use_skip_connections: bool = True
     # Perceiver
-    latent_dim: int = 128
+    latent_dim: int = 64
     latent_channels: int = 64
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
@@ -26,6 +26,9 @@ class Config(_Config):
     prior_initial_scale: float = 0.02
     ff_num_bands: int = 10
     text_emb_len: int = -1  # 20 (max 77)
+    # Action decoder
+    act_decoder_mlp_layers: Layers = (64,)
+    act_decoder_conv_kernel: int = 3
     # Training
     max_grad_norm: float = 10.
     warmup_steps: int = 6000
@@ -33,7 +36,7 @@ class Config(_Config):
     training_steps: int = 600_000
     batch_size: int = 16
     weight_decay: float = 1e-4
-    eval_every: int = 1000
+    eval_every: int = 500
     jit: bool = True
     compute_dtype: str = 'f32'
     max_shift: int = 8
@@ -41,18 +44,19 @@ class Config(_Config):
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.7, 0.7, 0.5, 1.7)
     scene_bins: int = 64
     rot_bins: int = 11
-    time_limit: int = 100
+    time_limit: int = 16
     num_demos: int = 50
 
     seed: int = 1
     launch_env: bool = True
-    logdir: str = 'logdir/pick_and_place_larger'
+    logdir: str = 'logdir/expressive_decoder'
 
 
 peract_config = Config(
-    conv_stem_features=(64,),
-    conv_stem_kernels=(5,),
-    conv_stem_strides=(5,),
+    conv_stem_features=(64, 64,),
+    conv_stem_kernels=(1, 5),
+    conv_stem_strides=(1, 5),
+    conv_stem_use_skip_connections=True,
     latent_dim=2048,
     latent_channels=512,
     num_blocks=1,
@@ -63,6 +67,8 @@ peract_config = Config(
     self_attend_widening_factor=4.,
     use_trainable_pos_encoding=True,
     text_emb_len=77,
+    act_decoder_mlp_layers=(256,),
+    act_decoder_conv_kernel=3,
     training_steps=600_000,
     batch_size=16,
     warmup_steps=3000,

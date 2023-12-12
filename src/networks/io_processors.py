@@ -9,6 +9,7 @@ tfd = tfp.distributions
 import src.types_ as types
 
 Array = jax.Array
+activation = nn.gelu
 
 
 class VoxelsProcessor(nn.Module):
@@ -20,6 +21,7 @@ class VoxelsProcessor(nn.Module):
     use_skip_connections: bool = True
 
     def setup(self) -> None:
+        assert len(self.features) == len(self.kernels) == len(self.strides)
         self.convs = self._make_stem(nn.Conv)
         self.deconvs = self._make_stem(nn.ConvTranspose)
 
@@ -39,8 +41,8 @@ class VoxelsProcessor(nn.Module):
 
         if not self.use_skip_connections:
             skip_connections = map(jnp.zeros_like, skip_connections)
-        blocks_ys = list(zip(self.deconvs, skip_connections))
-        for block, y in reversed(blocks_ys):
+        blocks_ys = zip(self.deconvs, skip_connections)
+        for block, y in reversed(list(blocks_ys)):
             x = jnp.concatenate([x, y], -1)
             x = block(x)
         return x
@@ -56,7 +58,7 @@ class VoxelsProcessor(nn.Module):
                         use_bias=True,
                         padding='VALID',
                         )
-            block = nn.Sequential([conv, nn.gelu])
+            block = nn.Sequential([conv, activation])
             blocks.append(block)
         return blocks
 
@@ -84,7 +86,7 @@ class InputsMultiplexer(nn.Module):
 
     @staticmethod
     def inverse(input_: Array,
-                *shapes: tuple[int, ...]
+                shapes: list[tuple[int, ...]]
                 ) -> list[Array]:
         chex.assert_rank(input_, 2)
         seq_len, channels = input_.shape
@@ -103,6 +105,8 @@ class InputsMultiplexer(nn.Module):
 class ActionDecoder(nn.Module):
 
     action_spec: types.ActionSpec
+    mlp_layers: types.Layers
+    conv_kernel: int
     dtype: types.DType
 
     @nn.compact
@@ -110,12 +114,15 @@ class ActionDecoder(nn.Module):
         chex.assert_rank([voxels, low_dim], [4, 1])
         nbins = tuple(map(lambda sp: sp.num_values, self.action_spec))
         grid_size, low_dim_bins = nbins[:3], nbins[3:]
-        voxels = nn.Conv(1, (3, 3, 3), dtype=self.dtype)(voxels)
+        voxels = nn.Conv(1, 3 * (self.conv_kernel,), dtype=self.dtype)(voxels)
         voxels = voxels.astype(jnp.float32)
         grid_dist = tfd.TransformedDistribution(
             distribution=tfd.Categorical(voxels.flatten()),
             bijector=ActionDecoder.Idx2Grid(grid_size)
         )
+        for layer in self.mlp_layers:
+            low_dim = nn.Dense(layer, dtype=self.dtype)(low_dim)
+            low_dim = activation(low_dim)
         low_dim_logits = nn.Dense(sum(low_dim_bins), dtype=self.dtype)(low_dim)
         low_dim_logits = low_dim_logits.astype(jnp.float32)
         *low_dim_logits, _ = jnp.split(low_dim_logits, np.cumsum(low_dim_bins))
@@ -123,6 +130,7 @@ class ActionDecoder(nn.Module):
         return ActionDecoder.Blockwise([grid_dist] + low_dim_dists)
 
     class Blockwise(tfd.Blockwise):
+
         def mode(self, *args, **kwargs):
             modes = map(lambda x: x.mode(*args, **kwargs), self.distributions)
             modes = map(jnp.atleast_1d, modes)
