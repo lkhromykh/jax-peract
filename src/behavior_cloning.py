@@ -19,6 +19,7 @@ StepFn = Callable[
 
 
 def bc(cfg: Config, nets: PerAct) -> StepFn:
+    chex.assert_gpu_available()
 
     def loss_fn(params: Params,
                 obs: types.Observation,

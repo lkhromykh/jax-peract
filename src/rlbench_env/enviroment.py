@@ -27,9 +27,8 @@ _OBS_CONFIG.set_all(True)
 
 class Task(IntEnum):
 
-    ReachTarget = 0
-    # PickAndLift = 0
-    # OpenDrawer = 0
+    # ReachTarget = 0
+    PickAndLift = 0
 
     def as_one_hot(self) -> Array:
         task = np.zeros(len(Task), dtype=np.int32)

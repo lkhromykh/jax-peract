@@ -77,7 +77,7 @@ class Builder:
             decay_steps=c.training_steps
         )
         mask = traverse_util.path_aware_map(
-            lambda path, _: 'bias' not in path,
+            lambda path, _: path[-1] not in ('bias', 'scale'),
             params
         )
         mask = type(params)(mask)

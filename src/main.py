@@ -1,17 +1,21 @@
 import logging
-import warnings
 logging.basicConfig(level=logging.INFO)
-warnings.filterwarnings('ignore')
 
 import jax
-# jax.config.update('jax_platform_name', 'cpu')
-# import chex
-# chex.disable_asserts()
+import chex
+chex.disable_asserts()
 
 from src.config import Config
 from src.builder import Builder
 from src.rlbench_env.enviroment import environment_loop
 from rltools.loggers import TFSummaryLogger
+
+
+def _debug():
+    import flax
+    jax.config.update('jax_disable_jit', True)
+    chex.enable_asserts()
+    flax.linen.enable_named_call()
 
 
 def main():
@@ -43,4 +47,5 @@ def main():
 
 
 if __name__ == '__main__':
+    # _debug()
     main()

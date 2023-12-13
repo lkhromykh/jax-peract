@@ -10,6 +10,7 @@ from src.config import Config
 from src import networks as nets
 
 
+# TODO: properly name all encodings/priors to apply weight decay.
 class PerAct(nn.Module):
 
     config: Config

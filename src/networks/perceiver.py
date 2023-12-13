@@ -108,7 +108,8 @@ class CrossAttention(_Module):
             inputs_kv = inputs_q  # self-attention
         x = MultiHeadAttention(
             num_heads=self.num_heads,
-            qk_channels=inputs_q.shape[-1],
+            qk_channels=inputs_kv.shape[-1],
+            output_channels=inputs_q.shape[-1],
             dtype=self.dtype,
             kernel_init=self.kernel_init,
             use_layernorm=self.use_layernorm
