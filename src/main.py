@@ -1,6 +1,7 @@
 import logging
 logging.basicConfig(level=logging.INFO)
 
+import numpy as np
 import jax
 import chex
 chex.disable_asserts()
@@ -35,15 +36,15 @@ def main():
         batch = jax.device_put(next(ds))
         state, metrics = step(state, batch)
         if t % cfg.eval_every == 0:
-            metrics.update(step=t)
             if cfg.launch_env:
                 def policy(obs):
                     action = apply(state.params, obs).mode()
                     return jax.device_get(action)
-                reward = environment_loop(policy, env)
-                metrics.update(eval_reward=reward)
-            logger.write(metrics)
+                eval_rewards = [environment_loop(policy, env) for _ in range(5)]
+                metrics.update(eval_reward=np.mean(eval_rewards))
             builder.save(jax.device_get(state), Builder.STATE)
+        metrics.update(step=t)
+        logger.write(metrics)
 
 
 if __name__ == '__main__':

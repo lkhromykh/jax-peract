@@ -39,11 +39,10 @@ class VoxelsProcessor(nn.Module):
         chex.assert_type(x, float)
         chex.assert_rank(x, 4)
 
-        if not self.use_skip_connections:
-            skip_connections = map(jnp.zeros_like, skip_connections)
         blocks_ys = zip(self.deconvs, skip_connections)
         for block, y in reversed(list(blocks_ys)):
-            x = jnp.concatenate([x, y], -1)
+            if self.use_skip_connections:
+                x = jnp.concatenate([x, y], -1)
             x = block(x)
         return x
 

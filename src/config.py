@@ -31,17 +31,17 @@ class Config(_Config):
     act_decoder_conv_kernel: int = 3
     # Training
     max_grad_norm: float = 1.
-    warmup_steps: int = 6000
-    peak_learning_rate: float = 1e-4
-    training_steps: int = 600_000
-    batch_size: int = 16
+    warmup_steps: int = 3000
+    peak_learning_rate: float = 5e-4
+    training_steps: int = 100_000
+    batch_size: int = 64
     weight_decay: float = 1e-4
     eval_every: int = 500
     jit: bool = True
     compute_dtype: str = 'bf16'
     max_shift: int = 8
     # Environment
-    scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.7, 0.7, 0.5, 1.7)
+    scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     scene_bins: int = 64
     rot_bins: int = 11
     time_limit: int = 16
@@ -49,7 +49,7 @@ class Config(_Config):
 
     seed: int = 1
     launch_env: bool = True
-    logdir: str = 'logdir/pick_and_lift_qk_channels'
+    logdir: str = 'logdir/stack_wine'
 
 
 peract_config = Config(

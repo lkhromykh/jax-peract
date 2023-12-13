@@ -31,6 +31,7 @@ def keyframe_scan(carry: Carry,
     return carry, is_keyframe
 
 
+# resample number of episodes between keyframe?
 def extract_trajectory(
         demo: Demo,
         observation_transform: Callable[[Observation], types.Observation],

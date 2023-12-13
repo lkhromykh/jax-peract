@@ -63,7 +63,7 @@ class PerAct(nn.Module):
         pos3d_enc = utils.fourier_features(vgrid_size, c.ff_num_bands)
         if c.use_trainable_pos_encoding:  # Hide 3D structure of the voxels.
             pos3d_enc = self.param(
-                'input_pos3d_enc',
+                'input_pos3d_encoding',
                 nn.initializers.normal(c.prior_initial_scale, voxels.dtype),
                 pos3d_enc.shape  # Make further capacity equivalent.
             )
@@ -79,12 +79,12 @@ class PerAct(nn.Module):
         )
         if c.use_trainable_pos_encoding:
             voxels = self.param(
-                'output_pos3d_enc',
+                'output_pos3d_encoding',
                 nn.initializers.normal(c.prior_initial_scale, voxels.dtype),
                 voxels.shape
             )
         low_dim = self.param(
-            'low_dim_output_q',
+            'low_dim_output_query',
             nn.initializers.normal(c.prior_initial_scale, dtype),
             (1, voxels.shape[-1])
         )

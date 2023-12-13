@@ -25,7 +25,9 @@ class _Module(nn.Module):
 
     def norm(self, x: Array, **kwargs) -> Array:
         if self.use_layernorm:
-            return nn.LayerNorm(dtype=self.dtype,
+            return nn.LayerNorm(use_bias=False,
+                                use_scale=False,
+                                dtype=self.dtype,
                                 **kwargs)(x)
         return x
 
@@ -177,7 +179,7 @@ class PerceiverIO(nn.Module):
         ])
 
         latent = self.param(
-            'prior',
+            'latent_prior',
             nn.initializers.normal(self.prior_initial_scale),
             (self.latent_dim, self.latent_channels)
         )
