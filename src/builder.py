@@ -85,7 +85,7 @@ class Builder:
             optax.clip_by_global_norm(c.max_grad_norm),
             optax.scale_by_adam(),
             optax.add_decayed_weights(c.weight_decay, mask),
-            # optax.scale_by_trust_ratio(),
+            optax.scale_by_trust_ratio(),
             optax.scale_by_schedule(schedule),
             optax.scale(-1)
         )

@@ -32,7 +32,7 @@ def main():
     state = jax.device_put(state)
 
     logger = TFSummaryLogger(logdir=cfg.logdir, label='bc', step_key='step')
-    for t in range(cfg.training_steps):
+    for t in range(1, cfg.training_steps):
         batch = jax.device_put(next(ds))
         state, metrics = step(state, batch)
         if t % cfg.eval_every == 0:

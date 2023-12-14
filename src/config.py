@@ -12,7 +12,7 @@ class Config(_Config):
     conv_stem_strides: Layers = (4,)
     conv_stem_use_skip_connections: bool = True
     # Perceiver
-    latent_dim: int = 128
+    latent_dim: int = 256
     latent_channels: int = 128
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
@@ -24,7 +24,7 @@ class Config(_Config):
     use_decoder_query_residual: bool = False
     use_trainable_pos_encoding: bool = False
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 10
+    ff_num_bands: int = 16
     text_emb_len: int = -1  # 20 (max 77)
     # Action decoder
     act_decoder_mlp_layers: Layers = (64,)
@@ -32,24 +32,24 @@ class Config(_Config):
     # Training
     max_grad_norm: float = 1.
     warmup_steps: int = 3000
-    peak_learning_rate: float = 5e-4
+    peak_learning_rate: float = 1e-4
     training_steps: int = 100_000
-    batch_size: int = 64
+    batch_size: int = 16
     weight_decay: float = 1e-4
     eval_every: int = 500
     jit: bool = True
     compute_dtype: str = 'bf16'
-    max_shift: int = 8
+    max_shift: int = 4
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
-    scene_bins: int = 64
+    scene_bins: int = 40
     rot_bins: int = 11
     time_limit: int = 16
     num_demos: int = 50
 
     seed: int = 1
     launch_env: bool = True
-    logdir: str = 'logdir/stack_wine'
+    logdir: str = 'logdir/open_door_40'
 
 
 peract_config = Config(

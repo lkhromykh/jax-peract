@@ -29,7 +29,8 @@ class Task(IntEnum):
 
     #ReachTarget = 0
     # PickAndLift = 0
-    StackWine = 0
+    # StackWine = 0
+    OpenDoor = 0
 
     def as_one_hot(self) -> Array:
         task = np.zeros(len(Task), dtype=np.int32)
@@ -61,10 +62,7 @@ class RLBenchEnv(dm_env.Environment):
         self.action_mode = DiscreteActionMode(scene_bounds, scene_bins, rot_bins)
         self.env = Environment(self.action_mode,
                                headless=True,
-                               shaped_rewards=False,
-                               obs_config=_OBS_CONFIG,
-                               static_positions=True
-                               )
+                               obs_config=_OBS_CONFIG)
         self.vgrid = VoxelGrid(scene_bounds, scene_bins)
         if text_emb_length > 0:
             self.text_encoder = TextEncoder(max_length=text_emb_length)
