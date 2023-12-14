@@ -11,7 +11,7 @@ import src.types_ as types
 
 Carry = collections.namedtuple('Carry', ('next_obs', 'wayp_buffer', 'total_kframes'))
 _Qd_THRESHOLD = 1e-1
-_SKIP_EVERY = 3
+_SKIP_EVERY = 6
 
 
 def keyframe_scan(carry: Carry,

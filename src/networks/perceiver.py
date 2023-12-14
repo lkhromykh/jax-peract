@@ -19,14 +19,14 @@ class _Module(nn.Module):
     def dense(self, x: Array, **kwargs) -> Array:
         return nn.DenseGeneral(dtype=self.dtype,
                                kernel_init=self.kernel_init,
-                               use_bias=False,
+                               use_bias=True,
                                **kwargs
                                )(x)
 
     def norm(self, x: Array, **kwargs) -> Array:
         if self.use_layernorm:
-            return nn.LayerNorm(use_bias=False,
-                                use_scale=False,
+            return nn.LayerNorm(use_bias=True,
+                                use_scale=True,
                                 dtype=self.dtype,
                                 **kwargs)(x)
         return x
@@ -46,7 +46,6 @@ class MLP(_Module):
         dim = x.shape[-1]
         x = self.dense(x, features=2 * int(self.widening_factor * dim))
         x = geglu(x)
-        x = self.norm(x)
         return self.dense(x, features=dim)
 
 

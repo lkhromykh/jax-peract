@@ -36,9 +36,9 @@ def bc(cfg: Config, nets: PerAct) -> StepFn:
             act_pred = jnp.atleast_1d(dist.mode())
             next_idx = idx + act_pred.size
             act_truth = action[idx:next_idx]
-            metrics |= {name + '_entropy': dist.entropy(),
-                        name + '_accuracy': jnp.array_equal(act_truth, act_pred)
-                        }
+            def _join(metric): return f'{name}_{metric}'
+            metrics |= {_join('entropy'): dist.entropy(),
+                        _join('accuracy'): jnp.array_equal(act_truth, act_pred)}
             idx = next_idx
         return cross_ent, metrics
 

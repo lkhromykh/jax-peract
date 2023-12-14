@@ -54,10 +54,12 @@ class VoxelsProcessor(nn.Module):
                         kernel_size=3 * (k,),
                         strides=3 * (s,),
                         dtype=self.dtype,
-                        use_bias=True,
+                        use_bias=False,
                         padding='VALID',
                         )
-            block = nn.Sequential([conv, activation])
+            norm = nn.LayerNorm(dtype=self.dtype)
+            block = nn.Sequential([conv, norm, activation])
+            # ViT and 2106.14881 don't apply activation on the PreAttention conv.
             blocks.append(block)
         return blocks
 
