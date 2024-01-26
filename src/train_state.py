@@ -15,7 +15,7 @@ class TrainState(NamedTuple):
     rng: jax.random.PRNGKey
     params: Params
     opt_state: optax.OptState
-    step: Array
+    step: jnp.int32
 
     tx: optax.TransformUpdateFn
 
@@ -28,7 +28,7 @@ class TrainState(NamedTuple):
         return self._replace(
             params=params,
             opt_state=opt_state,
-            step=step + 1
+            step=optax.safe_int32_increment(step)
         )
 
     @classmethod

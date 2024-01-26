@@ -1,3 +1,5 @@
+from typing import Type
+
 import numpy as np
 import jax
 import jax.numpy as jnp
@@ -27,7 +29,7 @@ class VoxelsProcessor(nn.Module):
 
     def encode(self, x: Array) -> tuple[Array, list[Array]]:
         chex.assert_type(x, float)
-        chex.assert_rank(x, 4)  # (H, W, D, C)
+        chex.assert_rank(x, 4)  # (X, Y, Z, C)
 
         skip_connections = []
         for block in self.convs:
@@ -46,20 +48,19 @@ class VoxelsProcessor(nn.Module):
             x = block(x)
         return x
 
-    def _make_stem(self, Conv: nn.Conv | nn.ConvTranspose) -> nn.Sequential:
-        blocks = []
+    def _make_stem(self, conv_cls: Type[nn.Conv] | Type[nn.ConvTranspose]) -> nn.Sequential:
+        blocks = []  # move to setup
         arch = zip(self.features, self.kernels, self.strides)
         for f, k, s in arch:
-            conv = Conv(features=f,
-                        kernel_size=3 * (k,),
-                        strides=3 * (s,),
-                        dtype=self.dtype,
-                        use_bias=False,
-                        padding='VALID',
-                        )
+            conv = conv_cls(features=f,
+                            kernel_size=3 * (k,),
+                            strides=3 * (s,),
+                            dtype=self.dtype,
+                            use_bias=False,
+                            padding='VALID')
             norm = nn.LayerNorm(dtype=self.dtype)
             block = nn.Sequential([conv, norm, activation])
-            # ViT and 2106.14881 don't apply activation on the PreAttention conv.
+            # 2106.14881 doesn't apply activation on the pre-transformer conv.
             blocks.append(block)
         return blocks
 
@@ -103,6 +104,7 @@ class InputsMultiplexer(nn.Module):
         return outputs
 
 
+# TODO: try conditioned low-dim decoding via tfp.JointDistributionSequential.
 class ActionDecoder(nn.Module):
 
     action_spec: types.ActionSpec

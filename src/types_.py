@@ -2,24 +2,16 @@ import collections.abc
 from typing import Any, NamedTuple, TypedDict
 
 import jax
-import dm_env.specs
 
 Array = RNG = jax.Array
 DType = Any
 
-Layers = collections.abc.Sequence[int]
-Metrics = collections.abc.MutableMapping[str, float]
 
-Action = Array
-ActionSpec = list[dm_env.specs.DiscreteArray]
-ObservationSpec = tuple[Array]
-EnvSpecs = tuple[ObservationSpec, ActionSpec]
-
-
-class Observation(NamedTuple):
+class State(NamedTuple):
+    """Processed data required to make an informed action."""
     voxels: Array
     low_dim: Array
-    task: Array
+    goal: dict[str, Array]
 
 
 class Trajectory(TypedDict, total=False):
@@ -27,3 +19,8 @@ class Trajectory(TypedDict, total=False):
     actions: Any
     rewards: Any
     discounts: Any
+
+
+SceneBounds = tuple[float, float, float, float, float, float]
+Layers = collections.abc.Sequence[int]
+Metrics = collections.abc.MutableMapping[str, float]

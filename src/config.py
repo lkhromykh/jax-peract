@@ -12,8 +12,8 @@ class Config(_Config):
     conv_stem_strides: Layers = (4,)
     conv_stem_use_skip_connections: bool = True
     # Perceiver
-    latent_dim: int = 128
-    latent_channels: int = 128
+    latent_dim: int = 64
+    latent_channels: int = 64
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
@@ -27,7 +27,7 @@ class Config(_Config):
     ff_num_bands: int = 16
     text_emb_len: int = -1  # 20 (max 77)
     # Action decoder
-    act_decoder_mlp_layers: Layers = (128,)
+    act_decoder_mlp_layers: Layers = (64,)
     act_decoder_conv_kernel: int = 3
     # Training
     max_grad_norm: float = 1.
@@ -42,10 +42,10 @@ class Config(_Config):
     max_shift: int = 4
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
-    scene_bins: int = 40
+    scene_bins: int = 32
     rot_bins: int = 36
     time_limit: int = 16
-    num_demos: int = 50
+    num_demos: int = 10
 
     seed: int = 1
     launch_env: bool = True

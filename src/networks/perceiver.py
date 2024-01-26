@@ -45,6 +45,7 @@ class MLP(_Module):
     def __call__(self, x: Array) -> Array:
         dim = x.shape[-1]
         x = self.dense(x, features=2 * int(self.widening_factor * dim))
+        # x = self.norm(x)
         x = geglu(x)
         return self.dense(x, features=dim)
 

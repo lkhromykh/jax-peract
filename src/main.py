@@ -44,7 +44,7 @@ def main():
                 metrics.update(eval_reward=np.mean(eval_rewards))
             builder.save(jax.device_get(state), Builder.STATE)
         metrics.update(step=t)
-        logger.write(metrics)
+        logger.write(jax.device_get(metrics))
 
 
 if __name__ == '__main__':

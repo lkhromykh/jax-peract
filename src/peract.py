@@ -1,6 +1,7 @@
 import jax.numpy as jnp
 import flax.linen as nn
 import chex
+from transformers import FlaxCLIPTextModel
 import tensorflow_probability.substrates.jax as tfp
 tfd = tfp.distributions
 
@@ -20,6 +21,7 @@ class PerAct(nn.Module):
     def setup(self) -> None:
         c = self.config
         dtype = _dtype_fromstr(c.compute_dtype)
+        self.text_encoder = FlaxCLIPTextModel.from_pretrained('openai/clip-vit-base-patch32')
         self.voxels_proc = nets.VoxelsProcessor(
             features=c.conv_stem_features,
             kernels=c.conv_stem_kernels,
@@ -50,11 +52,12 @@ class PerAct(nn.Module):
         )
 
     @nn.compact
-    def __call__(self, obs: types.Observation) -> tfd.Distribution:
-        chex.assert_rank([obs.voxels, obs.low_dim, obs.task], [4, 1, 2])
+    def __call__(self, obs: types.State) -> tfd.Distribution:
+        chex.assert_rank([obs.voxels, obs.low_dim, obs.goal], [4, 1, 2])
         chex.assert_type([obs.voxels, obs.low_dim], [jnp.uint8, float])
         c = self.config
         dtype = _dtype_fromstr(c.compute_dtype)
+        obs = obs._replace(goal=self.text_encoder(**obs.goal))
         voxels, low_dim, task = map(lambda x: x.astype(dtype), obs)
         voxels = voxels / 128. - 1
         voxels, skip_connections = self.voxels_proc.encode(voxels)

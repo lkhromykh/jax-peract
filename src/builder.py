@@ -4,21 +4,18 @@ import logging
 import jax
 import optax
 import cloudpickle
-from flax import core
 from flax import traverse_util
 import tensorflow as tf
 tf.config.set_visible_devices([], 'GPU')
 
 from src.config import Config
-from src.train_state import TrainState
+from src.train_state import TrainState, Params
 from src.peract import PerAct
 from src.rlbench_env.enviroment import RLBenchEnv
 from src.rlbench_env.dataset import as_tfdataset
 from src.behavior_cloning import bc, StepFn
 from src.utils.augmentations import random_shift
 import src.types_ as types
-
-Params = core.FrozenDict[str, types.Array]
 
 
 class Builder:
