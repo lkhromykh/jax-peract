@@ -6,9 +6,9 @@ import jax
 import chex
 chex.disable_asserts()
 
+from src import utils
 from src.config import Config
 from src.builder import Builder
-from src.rlbench_env.enviroment import environment_loop
 from rltools.loggers import TFSummaryLogger
 
 
@@ -19,7 +19,34 @@ def _debug():
     flax.linen.enable_named_call()
 
 
-def main():
+def collect_dataset(cfg: Config):
+    import os
+    import itertools
+
+    builder = Builder(cfg)
+    env = builder.make_env(rng=0)
+    ds_dir = os.path.abspath(cfg.dataset_dir)
+    idx = len(os.listdir(ds_dir))
+    for idx in itertools.count(idx):
+        print('Demo ', idx)
+        demo = env.get_demo()
+        traj_path = os.path.join(ds_dir, 'traj', idx)
+        utils.serialize(demo, traj_path)
+
+
+
+def environment_loop(policy, env):
+    ts = env.reset()
+    cumsum = 0
+    while not ts.last():
+        state = env.infer_state(ts.observation)
+        action = policy(state)
+        ts = env.step(action)
+        cumsum += ts.reward
+    return cumsum
+
+
+def train():
     cfg = Config()
     builder = Builder(cfg)
     rngseq = iter(jax.random.split(jax.random.PRNGKey(cfg.seed), 4))

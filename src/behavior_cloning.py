@@ -23,7 +23,7 @@ def bc(cfg: Config, nets: PerAct) -> StepFn:
     chex.assert_gpu_available()
 
     def loss_fn(params: Params,
-                observation: types.Observation,
+                observation: types.State,
                 action: types.Action,
                 ) -> tuple[float | jnp.ndarray, types.Metrics]:
         chex.assert_rank(action, 1)
@@ -32,7 +32,7 @@ def bc(cfg: Config, nets: PerAct) -> StepFn:
         metrics = dict(loss=cross_ent)
         # everything else is devoted to metrics computation.
         idx = 0
-        dists_names = ['pos'] + [f'euler{i}' for i in range(3)] + ['grasp']
+        dists_names = ['pos'] + [f'euler{ax}' for ax in 'XYZ'] + ['grasp']
         for name, dist in zip(dists_names, policy.distributions):
             act_pred = jnp.atleast_1d(dist.mode())
             next_idx = idx + act_pred.size
@@ -54,6 +54,8 @@ def bc(cfg: Config, nets: PerAct) -> StepFn:
         out = grad_fn(params, batch['observations'], batch['actions'])
         grad, metrics = jax.tree_util.tree_map(
             lambda x: jnp.mean(x, axis=0), out)
+        state = state.update(grad=grad)
+        # metrics
         layers_grad = traverse_util.flatten_dict(grad)
         layers_grad = {'grads_' + '_'.join(key): jnp.ravel(val)
                        for key, val in layers_grad.items()}
@@ -63,7 +65,6 @@ def bc(cfg: Config, nets: PerAct) -> StepFn:
         metrics.update(layers_grad)
         metrics.update(layers_val)
         metrics.update(grad_norm=optax.global_norm(grad))
-        state = state.update(grad=grad)
         return state, metrics
 
     return step

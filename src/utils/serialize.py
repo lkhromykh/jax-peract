@@ -8,7 +8,7 @@ PyTree = Any
 
 def serialize(obj: PyTree, path: str) -> None:
     leaves, tree = tree_util.tree_flatten(obj)
-    np.savez(path, tree, *leaves)
+    np.savez_compressed(path, tree, *leaves)
 
 
 def deserialize(path: str) -> PyTree:

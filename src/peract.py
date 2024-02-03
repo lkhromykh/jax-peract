@@ -1,7 +1,6 @@
 import jax.numpy as jnp
 import flax.linen as nn
 import chex
-from transformers import FlaxCLIPTextModel
 import tensorflow_probability.substrates.jax as tfp
 tfd = tfp.distributions
 
@@ -15,13 +14,11 @@ from src import networks as nets
 class PerAct(nn.Module):
 
     config: Config
-    observation_spec: types.ObservationSpec
     action_spec: types.ActionSpec
 
     def setup(self) -> None:
         c = self.config
         dtype = _dtype_fromstr(c.compute_dtype)
-        self.text_encoder = FlaxCLIPTextModel.from_pretrained('openai/clip-vit-base-patch32')
         self.voxels_proc = nets.VoxelsProcessor(
             features=c.conv_stem_features,
             kernels=c.conv_stem_kernels,
@@ -57,7 +54,6 @@ class PerAct(nn.Module):
         chex.assert_type([obs.voxels, obs.low_dim], [jnp.uint8, float])
         c = self.config
         dtype = _dtype_fromstr(c.compute_dtype)
-        obs = obs._replace(goal=self.text_encoder(**obs.goal))
         voxels, low_dim, task = map(lambda x: x.astype(dtype), obs)
         voxels = voxels / 128. - 1
         voxels, skip_connections = self.voxels_proc.encode(voxels)
@@ -104,6 +100,6 @@ class PerAct(nn.Module):
 
 
 def _dtype_fromstr(dtype_str: str) -> types.DType:
-    # f32 still lowered to bf16 via jax.lax.Precision.DEFAULT.
+    # somewhere f32 still lowered to bf16 via jax.lax.Precision.DEFAULT.
     valid_dtypes = dict(bf16=jnp.bfloat16, f32=jnp.float32)
     return valid_dtypes[dtype_str]

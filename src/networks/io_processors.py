@@ -1,5 +1,6 @@
 from typing import Type
 
+from dm_env import specs
 import numpy as np
 import jax
 import jax.numpy as jnp
@@ -15,6 +16,7 @@ activation = nn.gelu
 
 
 class VoxelsProcessor(nn.Module):
+    """Process voxel_grid with 3D convolutions."""
 
     features: types.Layers
     kernels: types.Layers
@@ -49,7 +51,7 @@ class VoxelsProcessor(nn.Module):
         return x
 
     def _make_stem(self, conv_cls: Type[nn.Conv] | Type[nn.ConvTranspose]) -> nn.Sequential:
-        blocks = []  # move to setup
+        blocks = []
         arch = zip(self.features, self.kernels, self.strides)
         for f, k, s in arch:
             conv = conv_cls(features=f,
@@ -66,6 +68,7 @@ class VoxelsProcessor(nn.Module):
 
 
 class InputsMultiplexer(nn.Module):
+    """Concatenate/split modalities."""
 
     init_scale: float
 
@@ -104,10 +107,11 @@ class InputsMultiplexer(nn.Module):
         return outputs
 
 
-# TODO: try conditioned low-dim decoding via tfp.JointDistributionSequential.
+# try conditioned low-dim decoding via tfp.JointDistributionSequential?
 class ActionDecoder(nn.Module):
+    """Infer action."""
 
-    action_spec: types.ActionSpec
+    action_spec: list[specs.DiscreteArray]
     mlp_layers: types.Layers
     conv_kernel: int
     dtype: types.DType

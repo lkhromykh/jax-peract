@@ -8,13 +8,13 @@ from flax import traverse_util
 import tensorflow as tf
 tf.config.set_visible_devices([], 'GPU')
 
+from src import utils
 from src.config import Config
 from src.train_state import TrainState, Params
 from src.peract import PerAct
-from src.rlbench_env.enviroment import RLBenchEnv
-from src.rlbench_env.dataset import as_tfdataset
+from src.environment import GoalConditionedEnv, RLBenchEnv
+from src.peract_env_wrapper import PerActEncoders, PerActEnvWrapper
 from src.behavior_cloning import bc, StepFn
-from src.utils.augmentations import random_shift
 import src.types_ as types
 
 
@@ -33,18 +33,17 @@ class Builder:
         if not os.path.exists(path := self.exp_path(Builder.CONFIG)):
             cfg.save(path)
 
-    def make_env(self, rng: types.RNG) -> RLBenchEnv:
+    def make_env(self, rng: types.RNG) -> PerActEnvWrapper:
         """training env ctor."""
         c = self.cfg
-        max_int = jax.numpy.iinfo(jax.numpy.int32).max
-        rng = jax.random.randint(rng, (), 1, max_int).item()
-        return RLBenchEnv(
-            seed=rng,
+        encoders = PerActEncoders.from_config(c)
+        env = RLBenchEnv(
             scene_bounds=c.scene_bounds,
-            scene_bins=c.scene_bins,
-            rot_bins=c.rot_bins,
-            text_emb_length=c.text_emb_len,
             time_limit=c.time_limit,
+        )
+        return PerActEnvWrapper(
+            env=env,
+            encoders=encoders
         )
 
     def make_networks_and_params(
@@ -55,7 +54,6 @@ class Builder:
         obs_spec, act_spec = env_specs
         nets = PerAct(
             config=self.cfg,
-            observation_spec=obs_spec,
             action_spec=act_spec
         )
         obs = jax.tree_util.tree_map(lambda x: x.generate_value(), obs_spec)
@@ -105,15 +103,19 @@ class Builder:
     def make_dataset_and_specs(
             self,
             rng: types.RNG,
-            env: RLBenchEnv | None
+            env: PerActEnvWrapper | None
     ) -> tuple[tf.data.Dataset, types.EnvSpecs]:
         c = self.cfg
         if os.path.exists(path := self.exp_path(Builder.DEMO)):
-            logging.info('Loading existing dataset and specs.')
+            logging.info('Loading an existing dataset and specs.')
             ds = tf.data.Dataset.load(path)
             specs = self.load(Builder.SPECS)
         elif env is not None:
             logging.info('Collecting demos.')
+            for idx in range(c.num_demos):
+                env.reset()
+                demo = env.get_demo()
+                demo = env.get_demo()
             ds = env.get_demos(c.num_demos)
             ds = as_tfdataset(ds)
             specs = (env.observation_spec(), env.action_spec())

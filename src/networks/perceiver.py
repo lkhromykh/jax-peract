@@ -1,3 +1,4 @@
+"""PerceiverIO"""
 from typing import Any
 
 import jax

@@ -2,13 +2,13 @@ import numpy as np
 import open3d as o3d
 from dm_env import specs
 
-from src.environment import base
+from src.environment import gcenv
 
 
 class VoxelGrid:
 
     def __init__(self,
-                 scene_bounds: tuple[float, float, float, float, float, float],
+                 scene_bounds: gcenv.SceneBounds,
                  nbins: int,
                  ) -> None:
         lb, ub = np.split(np.asarray(scene_bounds), 2)
@@ -19,7 +19,7 @@ class VoxelGrid:
         self._bbox = o3d.geometry.AxisAlignedBoundingBox(
             np.zeros_like(lb), np.ones_like(ub))
 
-    def encode(self, obs: base.Observation) -> base.Array:
+    def encode(self, obs: gcenv.Observation) -> gcenv.Array:
         def hstack(xs): return np.concatenate([np.reshape(x, (-1, 3)) for x in xs])
         points, colors = map(hstack, (obs['point_clouds'], obs['images']))
         points = self._scale(points)

@@ -44,11 +44,13 @@ class Config(_Config):
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     scene_bins: int = 32
     rot_bins: int = 36
+    grip_bins: int = 2
     time_limit: int = 16
     num_demos: int = 10
 
     seed: int = 1
     launch_env: bool = True
+    dataset_dir: str = 'dataset/'
     logdir: str = 'logdir/pick_and_lift'
 
 

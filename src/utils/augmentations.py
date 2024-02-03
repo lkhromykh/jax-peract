@@ -1,9 +1,11 @@
+"""Diversify training samples via augmentations."""
 import tensorflow as tf
 
 import src.types_ as types
 
 
-def random_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
+def voxel_grid_random_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
+    """To impose translation invariance."""
     obs = item['observations']
     act = item['actions']
     assert act.ndim == 1, 'Batching is not supported.'
@@ -24,3 +26,5 @@ def random_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
     pos += shift
     return types.Trajectory(observations=obs._replace(voxels=vgrid),
                             actions=tf.concat([pos, low_dim], 0))
+
+# TODO: SE(3) rotation.
