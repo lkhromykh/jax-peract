@@ -26,7 +26,7 @@ class PerActEncoders(NamedTuple):
         )
 
     def infer_action(self, obs: gcenv.Observation) -> types.Action:
-        action = np.r_[obs['tcp_pose'], obs['gripper_is_obj_detected'], obs['is_terminal']]
+        action = np.r_[obs['tcp_pose'], obs['gripper_pos'], obs['is_terminal']]
         return self.action_encoder.encode(action)
 
     def observation_spec(self) -> types.State:

@@ -1,5 +1,4 @@
 import logging
-from typing import Callable
 
 import jax
 import jax.numpy as jnp
@@ -8,18 +7,12 @@ import chex
 from flax import traverse_util
 
 from src.config import Config
-from src.peract import PerAct
+from src.networks.peract import PerAct
 from src.train_state import TrainState, Params
 from src import types_ as types
 
 
-StepFn = Callable[
-    [TrainState, types.Trajectory],
-    tuple[TrainState, types.Metrics]
-]
-
-
-def bc(cfg: Config, nets: PerAct) -> StepFn:
+def bc(cfg: Config, nets: PerAct) -> types.StepFn:
     chex.assert_gpu_available()
 
     def loss_fn(params: Params,

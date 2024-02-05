@@ -5,14 +5,13 @@ import jax.numpy as jnp
 import optax
 from flax import core
 
-Array = jax.numpy.ndarray
-Params = Array | core.FrozenDict[str, 'Params']
+Params = jax.Array | core.FrozenDict[str, 'Params']
 
 
 @jax.tree_util.register_pytree_node_class
 class TrainState(NamedTuple):
 
-    rng: jax.random.PRNGKey
+    rng: jax.Array
     params: Params
     opt_state: optax.OptState
     step: jnp.int32
@@ -34,7 +33,7 @@ class TrainState(NamedTuple):
     @classmethod
     def init(cls,
              *,
-             rng: jax.random.PRNGKey,
+             rng: jax.Array,
              params: Params,
              optim: optax.GradientTransformation,
              ) -> 'TrainState':

@@ -41,7 +41,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
         self.task = self.env.get_task(task)
         self.task.sample_variation()
         descriptions, obs = self.task.reset()
-        self._episode_goal = {gcenv.NLGoalKey: descriptions[0]}
+        self._set_goal(descriptions[0])
         self._prev_obs = self.transform_observation(obs)
         self._step = 0
         self._in_demo_state = False
@@ -71,7 +71,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
         self.task.sample_variation()
         demo = self.task.get_demos(amount=1, live_demos=True)[0]
         descriptions, _ = self.task.reset_to_demo(demo)
-        self._episode_goal = {gcenv.NLGoalKey: descriptions[0]}
+        self._set_goal(descriptions[0])
         demo = list(map(self.transform_observation, demo))
         demo[-1]['is_terminal'] = True
         return demo

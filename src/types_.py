@@ -1,8 +1,8 @@
 import collections.abc
-from typing import Any, NamedTuple, TypeAlias, TypedDict
+from typing import Any, Callable, NamedTuple, TypeAlias, TypedDict
 
-from dm_env import specs
 import jax
+from dm_env import specs
 
 Array: TypeAlias = jax.Array
 DType: TypeAlias = Any
@@ -29,3 +29,4 @@ class Trajectory(TypedDict, total=False):
 SceneBounds: TypeAlias = tuple[float, float, float, float, float, float]
 Layers = collections.abc.Sequence[int]
 Metrics = collections.abc.MutableMapping[str, float]
+StepFn = Callable[['TrainState', Trajectory], tuple['TrainState', Metrics]]

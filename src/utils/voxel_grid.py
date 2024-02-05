@@ -20,8 +20,7 @@ class VoxelGrid:
             np.zeros_like(lb), np.ones_like(ub))
 
     def encode(self, obs: gcenv.Observation) -> gcenv.Array:
-        def hstack(xs): return np.concatenate([np.reshape(x, (-1, 3)) for x in xs])
-        points, colors = map(hstack, (obs['point_clouds'], obs['images']))
+        points, colors = map(lambda x: np.reshape(-1, 3), (obs['point_clouds'], obs['images']))
         points = self._scale(points)
         colors = colors.astype(np.float32) / 255.
         pcd = o3d.geometry.PointCloud()
@@ -33,8 +32,19 @@ class VoxelGrid:
         for voxel in grid.get_voxels():
             idx = voxel.grid_index
             rgb = np.round(255 * voxel.color)
-            scene[tuple(idx)] = np.concatenate([[255], rgb])
+            scene[tuple(idx)] = np.r_[rgb, 255]
         return scene
+
+    def decode(self, voxels: gcenv.Array) -> o3d.geometry.VoxelGrid:
+        grid = o3d.geometry.VoxelGrid()
+        grid.voxel_size = self._voxel_size
+        voxels = voxels.reshape(-1, 4)
+        for idx, color in enumerate(voxels):
+            voxel = o3d.geometry.Voxel()
+            voxel.grid_index = np.unravel_index(idx, self._shape[:-1])
+            voxel.color = color[:3].astype(np.float32) / 255.
+            grid.add_voxel(voxel)
+        return grid
 
     def observation_spec(self) -> specs.Array:
         return specs.Array(self._shape, np.uint8, name='voxels')

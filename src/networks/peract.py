@@ -7,7 +7,8 @@ tfd = tfp.distributions
 from src import utils
 import src.types_ as types
 from src.config import Config
-from src import networks as nets
+from src.networks import io_processors
+from src.networks.perceiver import PerceiverIO
 
 
 # TODO: properly name all encodings/priors to apply weight decay.
@@ -19,14 +20,14 @@ class PerAct(nn.Module):
     def setup(self) -> None:
         c = self.config
         dtype = _dtype_fromstr(c.compute_dtype)
-        self.voxels_proc = nets.VoxelsProcessor(
+        self.voxels_proc = io_processors.VoxelsProcessor(
             features=c.conv_stem_features,
             kernels=c.conv_stem_kernels,
             strides=c.conv_stem_strides,
             dtype=dtype,
             use_skip_connections=c.conv_stem_use_skip_connections,
         )
-        self.perceiver = nets.PerceiverIO(
+        self.perceiver = PerceiverIO(
             latent_dim=c.latent_dim,
             latent_channels=c.latent_channels,
             num_blocks=c.num_blocks,
@@ -41,7 +42,7 @@ class PerAct(nn.Module):
             kernel_init=nn.initializers.lecun_normal(),
             use_layernorm=c.use_layernorm
         )
-        self.action_decoder = nets.ActionDecoder(
+        self.action_decoder = io_processors.ActionDecoder(
             action_spec=self.action_spec,
             mlp_layers=c.act_decoder_mlp_layers,
             conv_kernel=c.act_decoder_conv_kernel,
@@ -73,7 +74,7 @@ class PerAct(nn.Module):
         pos1d_enc = utils.fourier_features(task.shape[:1], c.ff_num_bands)
         task = jnp.concatenate([task, pos1d_enc], -1)
 
-        inputs_q = nets.InputsMultiplexer(c.prior_initial_scale)(
+        inputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
             voxels, low_dim, task
         )
         if c.use_trainable_pos_encoding:
@@ -87,11 +88,11 @@ class PerAct(nn.Module):
             nn.initializers.normal(c.prior_initial_scale, dtype),
             (1, voxels.shape[-1])
         )
-        outputs_q = nets.InputsMultiplexer(c.prior_initial_scale)(
+        outputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
             voxels, low_dim
         )
         outputs_val = self.perceiver(inputs_q, outputs_q)
-        voxels, low_dim = nets.InputsMultiplexer.inverse(
+        voxels, low_dim = io_processors.InputsMultiplexer.inverse(
             outputs_val, shapes=[vgrid_size, ()]
         )
         voxels = self.voxels_proc.decode(voxels, skip_connections)

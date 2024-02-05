@@ -15,16 +15,17 @@ NLGoalKey = 'description'
 class Observation(TypedDict, total=False):
     """Complete sensory perception of an environment."""
 
-    images: list[Array]  # N x (H, W, 3)
-    depth_maps: list[Array]  # N x (H, W)
-    point_clouds: list[Array]  # N x (H, W, 3)
-    joint_velocities: Array
-    joint_positions: Array
+    images: Array  # N x (H, W, 3)
+    depth_maps: Array  # N x (H, W)
     tcp_pose: Array  # [xyz, eulerXYZ]
-    gripper_pos: float  # [0, 1]
+    gripper_pos: float  # [opened=0, 1]
     gripper_is_obj_detected: bool
     is_terminal: bool
     goal: Goal
+
+    point_clouds: Array  # N x (H, W, 3)
+    joint_velocities: Array
+    joint_positions: Array
 
 
 Action: TypeAlias = Array
@@ -72,6 +73,12 @@ class GoalConditionedEnv(dm_env.Environment):
                 return dm_env.specs.StringArray(())
             return dm_env.specs.Array(x.shape, x.dtype)
         return tree.map_structure(np_to_spec, self._prev_obs)
+
+    def _set_goal(self, text_description: str) -> None:
+        """Update episode goal."""
+        dt = np.dtype('U77')  # CLIP limit.
+        description = np.array(text_description, dtype=dt)
+        self._episode_goal = {NLGoalKey: description}
 
     def _as_timestep(self,
                      obs: Observation,

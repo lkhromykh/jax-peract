@@ -50,7 +50,7 @@ class VoxelsProcessor(nn.Module):
             x = block(x)
         return x
 
-    def _make_stem(self, conv_cls: Type[nn.Conv] | Type[nn.ConvTranspose]) -> nn.Sequential:
+    def _make_stem(self, conv_cls: Type[nn.Conv] | Type[nn.ConvTranspose]) -> list[nn.Module]:
         blocks = []
         arch = zip(self.features, self.kernels, self.strides)
         for f, k, s in arch:
@@ -71,12 +71,13 @@ class InputsMultiplexer(nn.Module):
     """Concatenate/split modalities."""
 
     init_scale: float
+    pad_to: int = 4
 
     @nn.compact
     def __call__(self, *inputs: Array) -> Array:
         chex.assert_rank(inputs, 2)  # [(seq_len, channels)]
         max_dim = max(map(lambda x: x.shape[1], inputs))
-        max_dim += 16 - max_dim % 8
+        max_dim += 2 * self.pad_to - max_dim % self.pad_to
         output = []
         for idx, val in enumerate(inputs):
             seq_len, channels = val.shape

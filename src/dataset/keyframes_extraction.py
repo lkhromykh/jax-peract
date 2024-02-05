@@ -1,5 +1,6 @@
 from typing import Any, Callable
 from collections import namedtuple
+import logging
 
 import numpy as np
 
@@ -41,7 +42,7 @@ def default_scan(
 
 
 # resample number of episodes between keyframe?
-def extract_next_keyframe(
+def extract_keyframes(
         demo: gcenv.Demo,
         scan_fn: ScanFn = default_scan(),
         observation_transform: Callable[[gcenv.Observation], FromObservation] = lambda x: x,
@@ -64,5 +65,5 @@ def extract_next_keyframe(
         if is_keyframe:
             keyframe = keyframe_transform(next_obs)
         pairs.append((observation_transform(obs), keyframe))
-    print('Keyframes/timesteps num:', carry.total_kframes, '/', len(demo))
+    logging.info(f'Keyframes/timesteps num: {carry.total_kframes} / {len(demo)}')
     return pairs[::-1]

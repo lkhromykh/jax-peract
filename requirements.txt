@@ -1,4 +1,5 @@
-cffi
+cffi==1.14.2
+cloudpickle
 chex
 dm-env
 flax
@@ -6,8 +7,9 @@ ml_dtypes==0.2.0
 numpy
 open3d
 optax
+scipy
 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-jax[cuda12_local]==0.4.13
+jax[cuda12_local]==0.4.13  # replace with a relevant CUDA version.
 tensorflow==2.13
 tensorflow_probability==0.21
 transformers[flax]
