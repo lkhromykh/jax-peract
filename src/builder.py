@@ -3,27 +3,30 @@ import logging
 
 import jax
 import optax
+import numpy as np
 import cloudpickle
-from flax import traverse_util
 import tensorflow as tf
+from flax import traverse_util
+from jax.tree_util import tree_map, tree_leaves
 tf.config.set_visible_devices([], 'GPU')
 
-from src.config import Config
-from src.train_state import TrainState, Params
-from src.networks.peract import PerAct
-from src.environment import RLBenchEnv
-from src.peract_env_wrapper import PerActEncoders, PerActEnvWrapper
-from src.behavior_cloning import bc
-from src.dataset.dataset import DemosDataset
-from src.dataset.keyframes_extraction import extract_keyframes
+from src import utils
 import src.types_ as types
+from src.config import Config
+from src.behavior_cloning import bc
+from src.environment import RLBenchEnv
+from src.networks.peract import PerAct
+from src.dataset.dataset import DemosDataset
+from src.train_state import TrainState, Params
+from src.peract_env_wrapper import PerActEncoders, PerActEnvWrapper
+from src.dataset.keyframes_extraction import extractor_factory
 
 
 class Builder:
+    """Construct all the required objects."""
 
     CONFIG = 'config.yaml'
     STATE = 'state.cpkl'
-    TFDATASET = 'data'
 
     def __init__(self, cfg: Config) -> None:
         self.cfg = cfg
@@ -32,6 +35,8 @@ class Builder:
             os.makedirs(path)
         if not os.path.exists(path := self.exp_path(Builder.CONFIG)):
             cfg.save(path)
+        np.random.seed(cfg.seed)
+        tf.random.set_seed(cfg.seed)
 
     def make_env(self) -> PerActEnvWrapper:
         """Create and wrap an environment."""
@@ -46,19 +51,16 @@ class Builder:
             encoders=encoders
         )
 
-    def make_networks_and_params(
-            self,
-            rng: types.RNG,
-            env_specs: types.EnvSpecs
-    ) -> tuple[PerAct, Params]:
-        obs_spec, act_spec = env_specs
+    def make_networks_and_params(self) -> tuple[PerAct, Params]:
+        encoders = PerActEncoders.from_config(self.cfg)
         nets = PerAct(
             config=self.cfg,
-            action_spec=act_spec
+            action_spec=encoders.action_spec()
         )
-        obs = jax.tree_util.tree_map(lambda x: x.generate_value(), obs_spec)
+        obs = tree_map(lambda x: x.generate_value(), encoders.observation_spec())
+        rng = jax.random.PRNGKey(self.cfg.seed + 1)
         params = nets.init(rng, obs)
-        num_params = sum(jax.tree_util.tree_map(lambda x: x.size, jax.tree_leaves(params)))
+        num_params = sum(tree_map(lambda x: x.size, tree_leaves(params)))
         logging.info(f'Number of params: {num_params}')
         return nets, params
 
@@ -84,57 +86,51 @@ class Builder:
             optax.scale(-1)
         )
 
-    def make_state(
-            self,
-            rng: types.RNG,
-            params: Params,
-    ) -> TrainState:
+    def make_state(self, params: Params) -> TrainState:
         if os.path.exists(path := self.exp_path(Builder.STATE)):
             logging.info('Loading existing state.')
-            state = self._load(path)
-            return jax.device_put(state)
+            state = self.load(path)
+            return state
         optim = self.make_optim(params)
+        rng = jax.random.PRNGKey(self.cfg.seed + 2)
         return TrainState.init(rng=rng,
                                params=params,
                                optim=optim,
                                )
 
-    def make_dataset_and_specs(
-            self,
-            rng: types.RNG,
-            env: PerActEnvWrapper
-    ) -> tuple[tf.data.Dataset, types.EnvSpecs]:
+    def make_tfdataset(self) -> tf.data.Dataset:
         c = self.cfg
-        if os.path.exists(path := self.exp_path(Builder.TFDATASET)):
-            logging.info('Loading an existing dataset and specs.')
-            ds = tf.data.Dataset.load(path)
-            specs = self._load(Builder.SPECS)
-            ds.save(path)
-            self._save(specs, Builder.SPECS)
-        else:
-            raise RuntimeError('Impossible to obtain demos.')
-        max_int = jax.numpy.iinfo(jax.numpy.int32).max
-        rng = jax.random.randint(rng, (), 1, max_int).item()
-        tf.random.set_seed(rng)
-        np_dataset = DemosDataset(c.dataset_dir)
-        ds = np_dataset.as_tfdataset()
-        def as_trajectory(demo):
-            demo = [demo[i] for i ]
-            pairs = extract_keyframes(
-                demo=demo,
-                observation_transform=env.encoders.infer_state,
-                keyframe_transform=env.encoders.infer_action
-            )
+        enc = PerActEncoders.from_config(c)
+        dds = DemosDataset(c.dataset_dir)
+        extract_fn = extractor_factory(observation_transform=enc.infer_state,
+                                       keyframe_transform=enc.infer_action)
 
+        def as_trajectory_generator():
+            for demo in dds.as_demo_generator():
+                pairs, _ = extract_fn(demo)
+                def nested_stack(ts): return tree_map(lambda *xs: np.stack(xs), *ts)
+                obs, act = map(nested_stack, zip(*pairs))
+                yield types.Trajectory(observations=obs, actions=act)
 
-        ds = ds.map(lambda d: extract_keyframes)
-        ds = ds.cache()\
-               .repeat()\
-               .map(lambda x: random_shift(x, c.max_shift)) \
-               .shuffle(100 * c.batch_size) \
-               .batch(c.batch_size)\
-               .prefetch(tf.data.AUTOTUNE)
-        return ds.as_numpy_iterator(), specs
+        def to_tf_specs(x):
+            return tf.TensorSpec(shape=(None,) + x.shape,
+                                 dtype=tf.as_dtype(x.dtype))
+
+        output_signature = types.Trajectory(
+            observations=tree_map(to_tf_specs, enc.observation_spec()),
+            actions=tf.TensorSpec(shape=(None, len(enc.action_spec())), dtype=tf.int32)
+        )
+        ds = tf.data.Dataset.from_generator(
+            generator=as_trajectory_generator,
+            output_signature=output_signature
+        )
+        ds = ds.cache() \
+             .repeat() \
+             .map(utils.augmentations.select_random_transition) \
+             .map(lambda item: utils.augmentations.voxel_grid_random_shift(item, c.max_shift)) \
+             .batch(c.batch_size) \
+             .prefetch(tf.data.AUTOTUNE)
+        return ds
 
     def make_step_fn(self, nets: PerAct) -> types.StepFn:
         fn = bc(self.cfg, nets)
@@ -147,10 +143,10 @@ class Builder:
         path = os.path.join(logdir, path)
         return os.path.abspath(path)
 
-    def _save(self, obj, path):
+    def save(self, obj, path):
         with open(self.exp_path(path), 'wb') as f:
             cloudpickle.dump(obj, f)
 
-    def _load(self, path):
+    def load(self, path):
         with open(self.exp_path(path), 'rb') as f:
             return cloudpickle.load(f)

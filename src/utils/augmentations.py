@@ -4,11 +4,18 @@ import tensorflow as tf
 import src.types_ as types
 
 
+def select_random_transition(item: types.Trajectory) -> types.Trajectory:
+    act = item['actions']
+    tf.debugging.assert_rank(act, 2, message='Leading dim should be time dimension.')
+    idx = tf.random.uniform((), minval=0, maxval=tf.shape(act)[0], dtype=tf.int32)
+    return tf.nest.map_structure(lambda x: x[idx], item)
+
+
 def voxel_grid_random_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
     """To impose translation invariance."""
     obs = item['observations']
     act = item['actions']
-    assert act.ndim == 1, 'Batching is not supported.'
+    tf.debugging.assert_rank(act, 1, message='Batching is not supported.')
     vgrid = obs.voxels
     *size, channels = vgrid.shape
     pos, low_dim = tf.split(act, [l := len(size), tf.size(act) - l])
@@ -26,5 +33,3 @@ def voxel_grid_random_shift(item: types.Trajectory, max_shift: int) -> types.Tra
     pos += shift
     return types.Trajectory(observations=obs._replace(voxels=vgrid),
                             actions=tf.concat([pos, low_dim], 0))
-
-# TODO: SE(3) rotation.

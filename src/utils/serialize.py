@@ -11,9 +11,9 @@ def serialize(obj: PyTree, path: str) -> None:
     np.savez_compressed(path, tree, *leaves)
 
 
-def deserialize(path: str) -> PyTree:
+def deserialize(path: str, strip_obj_kind: str = 'O') -> PyTree:
     data = np.load(path, allow_pickle=True)
     tree, *data = list(data.values())
-    def strip_obj(t): return t.item() if t.dtype.kind in 'OSU' else t
+    def strip_obj(t): return t.item() if t.dtype.kind in strip_obj_kind else t
     data = tree_util.tree_map(strip_obj, data)
     return tree.item().unflatten(data)

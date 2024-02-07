@@ -57,50 +57,50 @@ class PerAct(nn.Module):
         dtype = _dtype_fromstr(c.compute_dtype)
         voxels, low_dim, task = map(lambda x: x.astype(dtype), obs)
         voxels = voxels / 128. - 1
-        voxels, skip_connections = self.voxels_proc.encode(voxels)
-        *vgrid_size, channels = voxels.shape
-        vgrid_size = tuple(vgrid_size)
-        pos3d_enc = utils.fourier_features(vgrid_size, c.ff_num_bands)
+        patches, skip_connections = self.voxels_proc.encode(voxels)
+        patches_shape, channels = patches.shape[:3], patches.shape[-1]
+        pos3d_enc = utils.fourier_features(patches_shape, c.ff_num_bands)
         if c.use_trainable_pos_encoding:  # Hide 3D structure of the voxels.
             pos3d_enc = self.param(
                 'input_pos3d_encoding',
-                nn.initializers.normal(c.prior_initial_scale, voxels.dtype),
+                nn.initializers.normal(c.prior_initial_scale, patches.dtype),
                 pos3d_enc.shape  # Make further capacity equivalent.
             )
-        voxels = jnp.concatenate([voxels, pos3d_enc], -1)
-        voxels = voxels.reshape(-1, voxels.shape[-1])
+        patches = jnp.concatenate([patches, pos3d_enc], -1)
+        patches = patches.reshape(-1, patches.shape[-1])
         low_dim = nn.Dense(channels, dtype=dtype)(low_dim).reshape(1, -1)
         task = nn.Dense(channels, dtype=dtype)(task)
         pos1d_enc = utils.fourier_features(task.shape[:1], c.ff_num_bands)
         task = jnp.concatenate([task, pos1d_enc], -1)
 
         inputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
-            voxels, low_dim, task
+            patches, low_dim, task
         )
+        # TODO: try different options for decoder query
         if c.use_trainable_pos_encoding:
-            voxels = self.param(
+            patches = self.param(
                 'output_pos3d_encoding',
-                nn.initializers.normal(c.prior_initial_scale, voxels.dtype),
-                voxels.shape
+                nn.initializers.normal(c.prior_initial_scale, patches.dtype),
+                patches.shape
             )
         low_dim = self.param(
             'low_dim_output_query',
             nn.initializers.normal(c.prior_initial_scale, dtype),
-            (1, voxels.shape[-1])
+            (1, patches.shape[-1])
         )
         outputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
-            voxels, low_dim
+            patches, low_dim
         )
         outputs_val = self.perceiver(inputs_q, outputs_q)
-        voxels, low_dim = io_processors.InputsMultiplexer.inverse(
-            outputs_val, shapes=[vgrid_size, ()]
+        patches, low_dim = io_processors.InputsMultiplexer.inverse(
+            outputs_val, shapes=[patches_shape, ()]
         )
-        voxels = self.voxels_proc.decode(voxels, skip_connections)
+        voxels = self.voxels_proc.decode(patches, skip_connections)
         chex.assert_type([inputs_q, outputs_q, voxels], dtype)
         return self.action_decoder(voxels, low_dim)
 
 
+# TODO: check if dtype is do something useful.
 def _dtype_fromstr(dtype_str: str) -> types.DType:
-    # somewhere f32 still lowered to bf16 via jax.lax.Precision.DEFAULT.
     valid_dtypes = dict(bf16=jnp.bfloat16, f32=jnp.float32)
     return valid_dtypes[dtype_str]

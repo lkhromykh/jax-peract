@@ -1,4 +1,5 @@
 import numpy as np
+from dm_env import specs
 
 from src.environment import gcenv
 import src.types_ as types
@@ -9,7 +10,7 @@ Discrete = gcenv.Array
 class DiscreteActionTransform:
     """Converts robot actions to a uniformly discretized action.
 
-    Encoded action has the form: [*xyz, *euler_rot, grip, terminate] (size=8).
+    Encoded action has the form: [x, y, z, yaw, pitch, roll, grip, terminate].
     """
 
     def __init__(self,
@@ -22,7 +23,7 @@ class DiscreteActionTransform:
         lb = np.r_[scene_bounds[:3], -rot_lim, 0, 0]
         ub = np.r_[scene_bounds[3:], rot_lim, 1, 1]
         nbins = 3 * [scene_bins] + 3 * [rot_bins] + [grip_bins, 2]
-        self._specs = [Discrete(n) for n in nbins]
+        self._act_specs = [specs.DiscreteArray(n) for n in nbins]
         self._action_bounds = (lb, ub)
         self._range = ub - lb
         self._nbins = np.int32(nbins) - 1  # indexing starts from 0.
@@ -43,7 +44,7 @@ class DiscreteActionTransform:
         return action
 
     def action_spec(self) -> types.ActionSpec:
-        return self._specs.copy()
+        return self._act_specs.copy()
 
     def _assert_valid_action(self, action: gcenv.Action) -> None:
         assert action.shape == np.shape(self._nbins) \

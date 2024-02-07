@@ -24,7 +24,7 @@ _OBS_CONFIG.set_all(True)
 class RLBenchEnv(gcenv.GoalConditionedEnv):
 
     CAMERAS = ('front', 'left_shoulder', 'right_shoulder', 'overhead', 'wrist')
-    TASKS = ('OpenDrawer',)
+    TASKS = ('ReachTarget',)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -50,7 +50,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
     def step(self, action: gcenv.Action) -> dm_env.TimeStep:
         assert not self._in_demo_state
         pos, euler, grip, termsig = np.split(action, [3, 6, 7])
-        quat = Rotation.from_euler('xyz', euler).as_quat(canonical=True)
+        quat = Rotation.from_euler('ZYX', euler).as_quat(canonical=True)
         action = np.concatenate([pos, quat, grip])
         try:
             # Here termsig applied after step, since the simulator itself can detect success.
@@ -93,7 +93,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
         def gpos_fn(joints): return np.clip(1. - joints.sum(keepdims=True) / 0.08, 0, 1)
         def gforces_fn(forces): return not np.allclose(forces, 0, atol=0.1)
         pos, quat = np.split(obs.gripper_pose, [3])
-        euler = Rotation.from_quat(quat).as_euler('xyz')
+        euler = Rotation.from_quat(quat).as_euler('ZYX')
         tcp_pose = np.concatenate([pos, euler])
         return gcenv.Observation(
             images=np.stack(images),

@@ -25,7 +25,7 @@ def bc(cfg: Config, nets: PerAct) -> types.StepFn:
         metrics = dict(loss=cross_ent)
         # everything else is devoted to metrics computation.
         idx = 0
-        dists_names = ['pos'] + [f'euler{ax}' for ax in 'XYZ'] + ['grasp']
+        dists_names = ['pos', 'yaw', 'pitch', 'roll', 'grasp', 'termsig']
         for name, dist in zip(dists_names, policy.distributions):
             act_pred = jnp.atleast_1d(dist.mode())
             next_idx = idx + act_pred.size

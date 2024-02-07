@@ -1,6 +1,6 @@
 import abc
 import collections.abc
-from typing import TypeAlias, TypedDict
+from typing import TypeAlias, TypedDict, final
 
 import tree
 import numpy as np
@@ -12,20 +12,19 @@ SceneBounds: TypeAlias = tuple[float, float, float, float, float, float]
 NLGoalKey = 'description'
 
 
-class Observation(TypedDict, total=False):
-    """Complete sensory perception of an environment."""
+class Observation(TypedDict):
+    """Complete action-centric environment state representation."""
 
-    images: Array  # N x (H, W, 3)
+    images: Array  # N x (H, W, 3), N -- number of cam views.
     depth_maps: Array  # N x (H, W)
-    tcp_pose: Array  # [xyz, eulerXYZ]
-    gripper_pos: float  # [opened=0, 1]
-    gripper_is_obj_detected: bool
-    is_terminal: bool
-    goal: Goal
-
     point_clouds: Array  # N x (H, W, 3)
     joint_velocities: Array
     joint_positions: Array
+    tcp_pose: Array  # [x, y, z, yaw, pitch, roll]
+    gripper_pos: float  # [open=0, close=1]
+    gripper_is_obj_detected: bool
+    is_terminal: bool
+    goal: Goal
 
 
 Action: TypeAlias = Array
@@ -51,12 +50,13 @@ class GoalConditionedEnv(dm_env.Environment):
     def get_demo(self) -> Demo:
         """Provide a demonstration for a current task."""
 
+    @final
     def action_spec(self) -> dm_env.specs.BoundedArray:
         xyz_min, xyz_max = np.split(np.asarray(self.scene_bounds), 2)
-        euler_lim = np.array([np.pi, np.pi / 2, np.pi])
+        rot_lim = np.array([np.pi, np.pi / 2, np.pi])
         termsig_min, termsig_max = grip_min, grip_max = 0, 1
-        low = np.r_[xyz_min, -euler_lim, grip_min, termsig_min]
-        high = np.r_[xyz_max, euler_lim, grip_max, termsig_max]
+        low = np.r_[xyz_min, -rot_lim, grip_min, termsig_min]
+        high = np.r_[xyz_max, rot_lim, grip_max, termsig_max]
         return dm_env.specs.BoundedArray(
             minimum=low,
             maximum=high,

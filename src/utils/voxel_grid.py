@@ -20,14 +20,12 @@ class VoxelGrid:
             np.zeros_like(lb), np.ones_like(ub))
 
     def encode(self, obs: gcenv.Observation) -> gcenv.Array:
-        points, colors = map(lambda x: np.reshape(-1, 3), (obs['point_clouds'], obs['images']))
-        points = self._scale(points)
-        colors = colors.astype(np.float32) / 255.
+        points = self._scale(obs['point_clouds']).reshape(-1, 3)
+        colors = obs['images'].reshape(-1, 3).astype(np.float32) / 255.
         pcd = o3d.geometry.PointCloud()
         pcd.points, pcd.colors = map(o3d.utility.Vector3dVector, (points, colors))
         pcd = pcd.crop(self._bbox)
         grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, self._voxel_size)
-        o3d.visualization.draw_geometries([grid])
         scene = np.zeros(self._shape, dtype=np.uint8)
         for voxel in grid.get_voxels():
             idx = voxel.grid_index

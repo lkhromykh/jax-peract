@@ -12,12 +12,12 @@ class Config(_Config):
     conv_stem_strides: Layers = (4,)
     conv_stem_use_skip_connections: bool = True
     # Perceiver
-    latent_dim: int = 64
-    latent_channels: int = 64
+    latent_dim: int = 128
+    latent_channels: int = 128
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
-    num_self_attend_heads: int = 8
+    num_self_attend_heads: int = 4
     cross_attend_widening_factor: float = 1.
     self_attend_widening_factor: float = 1.
     use_layernorm: bool = True
@@ -25,18 +25,19 @@ class Config(_Config):
     use_trainable_pos_encoding: bool = False
     prior_initial_scale: float = 0.02
     ff_num_bands: int = 16
-    text_emb_len: int = -1  # 20 (max 77)
+    text_context_length: int = 77  # max. 77
     # Action decoder
-    act_decoder_mlp_layers: Layers = (64,)
+    act_decoder_mlp_layers: Layers = (128,)
     act_decoder_conv_kernel: int = 3
     # Training
     max_grad_norm: float = 1.
-    warmup_steps: int = 6000
+    warmup_steps: int = 3000
     peak_learning_rate: float = 1e-4
     training_steps: int = 100_000
     batch_size: int = 16
     weight_decay: float = 1e-4
-    eval_every: int = 500
+    log_every: int = 10
+    save_every: int = 500
     jit: bool = True
     compute_dtype: str = 'f32'
     max_shift: int = 4
@@ -46,12 +47,12 @@ class Config(_Config):
     rot_bins: int = 36
     grip_bins: int = 2
     time_limit: int = 16
-    num_demos: int = 10
+    num_demos: int = 40
 
     seed: int = 1
     launch_env: bool = True
     dataset_dir: str = 'dataset/'
-    logdir: str = 'logdir/pick_and_lift'
+    logdir: str = 'logdir/reach_target'
 
 
 peract_config = Config(
@@ -68,7 +69,7 @@ peract_config = Config(
     cross_attend_widening_factor=4.,
     self_attend_widening_factor=4.,
     use_trainable_pos_encoding=True,
-    text_emb_len=77,
+    text_context_length=77,
     act_decoder_mlp_layers=(256,),
     act_decoder_conv_kernel=3,
     training_steps=600_000,

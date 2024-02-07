@@ -104,7 +104,7 @@ class InputsMultiplexer(nn.Module):
             output = output.reshape(shape + (channels,))
             outputs.append(output)
             index += size
-        assert index == seq_len
+        assert index == seq_len, "Requested shapes don't match input size."
         return outputs
 
 
