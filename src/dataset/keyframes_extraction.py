@@ -19,7 +19,6 @@ KeyframesExtractor: TypeAlias = Callable[[gcenv.Demo], KeyframesExtractorOutput]
 def default_scan_factory(
         joint_velocities_thresh: float = 0.1,
         skip_every: int = 4,
-        skip_first: int = 2,
 ) -> ScanFn:
     """An ARM-like (2105.14829) keyframe heuristic."""
     def keyframe_scan(carry: Carry,
@@ -28,9 +27,10 @@ def default_scan_factory(
         # skip_first added in order to ignore initial acceleration.
         next_obs, timestep, time_to_next, total_kframes = carry
         is_grasp = obs['gripper_is_obj_detected'] != next_obs['gripper_is_obj_detected']
+        is_decelerating = np.all(np.fabs(obs['joint_velocities']) < np.fabs(next_obs['joint_velocities']))
         is_waypoint = not is_grasp
+        is_waypoint &= is_decelerating
         is_waypoint &= np.allclose(next_obs['joint_velocities'], 0, atol=joint_velocities_thresh)
-        is_waypoint &= timestep > skip_first
         is_waypoint &= time_to_next > skip_every
         is_keyframe = is_grasp | is_waypoint
         carry = Carry(next_obs=obs,

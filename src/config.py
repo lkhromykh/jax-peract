@@ -24,18 +24,18 @@ class Config(_Config):
     use_decoder_query_residual: bool = False
     use_trainable_pos_encoding: bool = False
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 16
+    ff_num_bands: int = 8
     text_context_length: int = 77  # max. 77
     # Action decoder
     act_decoder_mlp_layers: Layers = (256,)
     act_decoder_conv_kernel: int = 3
     # Training
     max_grad_norm: float = 1.
-    warmup_steps: int = 3000
-    peak_learning_rate: float = 1e-4
+    warmup_steps: int = -1
+    peak_learning_rate: float = 5e-4
     training_steps: int = 100_000
-    batch_size: int = 8
-    weight_decay: float = 1e-4
+    batch_size: int = 16
+    weight_decay: float = 1e-5
     log_every: int = 10
     save_every: int = 500
     jit: bool = True
@@ -43,8 +43,8 @@ class Config(_Config):
     max_shift: int = 4
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
-    scene_bins: int = 64
-    rot_bins: int = 72
+    scene_bins: int = 32
+    rot_bins: int = 13
     grip_bins: int = 2
     time_limit: int = 20
     num_demos: int = 50

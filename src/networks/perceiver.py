@@ -20,7 +20,7 @@ class _Module(nn.Module):
     def dense(self, x: Array, **kwargs) -> Array:
         return nn.DenseGeneral(dtype=self.dtype,
                                kernel_init=self.kernel_init,
-                               use_bias=False,
+                               use_bias=True,
                                **kwargs
                                )(x)
 
@@ -46,7 +46,6 @@ class MLP(_Module):
     def __call__(self, x: Array) -> Array:
         dim = x.shape[-1]
         x = self.dense(x, features=2 * int(self.widening_factor * dim))
-        # x = self.norm(x)
         x = geglu(x)
         return self.dense(x, features=dim)
 
@@ -104,11 +103,11 @@ class CrossAttention(_Module):
                  inputs_q: Array,
                  inputs_kv: Array | None = None,
                  ) -> Array:
-        inputs_q = self.norm(inputs_q)
+        ln_inputs_q = self.norm(inputs_q)
         if inputs_kv is not None:
             inputs_kv = self.norm(inputs_kv)  # cross-attention
         else:
-            inputs_kv = inputs_q  # self-attention
+            inputs_kv = ln_inputs_q  # self-attention
         x = MultiHeadAttention(
             num_heads=self.num_heads,
             qk_channels=inputs_kv.shape[-1],
@@ -116,7 +115,7 @@ class CrossAttention(_Module):
             dtype=self.dtype,
             kernel_init=self.kernel_init,
             use_layernorm=self.use_layernorm
-        )(inputs_q, inputs_kv)
+        )(ln_inputs_q, inputs_kv)
         if self.use_query_residual:
             x += inputs_q
         mlp = MLP(

@@ -66,12 +66,15 @@ class Builder:
 
     def make_optim(self, params: Params) -> optax.GradientTransformation:
         c = self.cfg
-        schedule = optax.warmup_cosine_decay_schedule(
-            init_value=0.,
-            peak_value=c.peak_learning_rate,
-            warmup_steps=c.warmup_steps,
-            decay_steps=c.training_steps
-        )
+        if c.warmup_steps > 0:
+            schedule = optax.warmup_cosine_decay_schedule(
+                init_value=0.,
+                peak_value=c.peak_learning_rate,
+                warmup_steps=c.warmup_steps,
+                decay_steps=c.training_steps
+            )
+        else:
+            schedule = optax.constant_schedule(c.peak_learning_rate)
         mask = traverse_util.path_aware_map(
             lambda path, _: path[-1] not in ('bias', 'scale'),
             params
