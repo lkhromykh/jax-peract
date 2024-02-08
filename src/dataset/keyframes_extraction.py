@@ -15,6 +15,7 @@ KeyframesExtractorOutput: TypeAlias = tuple[list[tuple[FromObservation, FromKeyf
 KeyframesExtractor: TypeAlias = Callable[[gcenv.Demo], KeyframesExtractorOutput]
 
 
+# TODO: check keyframes extraction.
 def default_scan_factory(
         joint_velocities_thresh: float = 0.1,
         skip_every: int = 4,

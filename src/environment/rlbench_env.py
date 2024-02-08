@@ -24,7 +24,7 @@ _OBS_CONFIG.set_all(True)
 class RLBenchEnv(gcenv.GoalConditionedEnv):
 
     CAMERAS = ('front', 'left_shoulder', 'right_shoulder', 'overhead', 'wrist')
-    TASKS = ('ReachTarget',)
+    TASKS = ('OpenDrawer',)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -51,7 +51,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
         assert not self._in_demo_state
         pos, euler, grip, termsig = np.split(action, [3, 6, 7])
         quat = Rotation.from_euler('ZYX', euler).as_quat(canonical=True)
-        action = np.concatenate([pos, quat, grip])
+        action = np.concatenate([pos, quat, 1. - grip])
         try:
             # Here termsig applied after step, since the simulator itself can detect success.
             obs, reward, terminate = self.task.step(action)

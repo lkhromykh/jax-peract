@@ -18,8 +18,8 @@ class Observation(TypedDict):
     images: Array  # N x (H, W, 3), N -- number of cam views.
     depth_maps: Array  # N x (H, W)
     point_clouds: Array  # N x (H, W, 3)
-    joint_velocities: Array
     joint_positions: Array
+    joint_velocities: Array
     tcp_pose: Array  # [x, y, z, yaw, pitch, roll]
     gripper_pos: float  # [open=0, close=1]
     gripper_is_obj_detected: bool
@@ -34,7 +34,7 @@ Demo = collections.abc.Sequence[Observation]
 
 
 class GoalConditionedEnv(dm_env.Environment):
-    """At the moment rather Natural Language conditioned env."""
+    """Goal-conditioned with an ability to produce expert demonstrations."""
 
     def __init__(self,
                  scene_bounds: SceneBounds,

@@ -12,12 +12,12 @@ class Config(_Config):
     conv_stem_strides: Layers = (4,)
     conv_stem_use_skip_connections: bool = True
     # Perceiver
-    latent_dim: int = 128
-    latent_channels: int = 128
+    latent_dim: int = 256
+    latent_channels: int = 256
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
-    num_self_attend_heads: int = 4
+    num_self_attend_heads: int = 8
     cross_attend_widening_factor: float = 1.
     self_attend_widening_factor: float = 1.
     use_layernorm: bool = True
@@ -27,14 +27,14 @@ class Config(_Config):
     ff_num_bands: int = 16
     text_context_length: int = 77  # max. 77
     # Action decoder
-    act_decoder_mlp_layers: Layers = (128,)
+    act_decoder_mlp_layers: Layers = (256,)
     act_decoder_conv_kernel: int = 3
     # Training
     max_grad_norm: float = 1.
     warmup_steps: int = 3000
     peak_learning_rate: float = 1e-4
     training_steps: int = 100_000
-    batch_size: int = 16
+    batch_size: int = 8
     weight_decay: float = 1e-4
     log_every: int = 10
     save_every: int = 500
@@ -43,16 +43,16 @@ class Config(_Config):
     max_shift: int = 4
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
-    scene_bins: int = 32
-    rot_bins: int = 36
+    scene_bins: int = 64
+    rot_bins: int = 72
     grip_bins: int = 2
-    time_limit: int = 16
-    num_demos: int = 40
+    time_limit: int = 20
+    num_demos: int = 50
 
     seed: int = 1
     launch_env: bool = True
     dataset_dir: str = 'dataset/'
-    logdir: str = 'logdir/reach_target'
+    logdir: str = 'logdir/open_drawer'
 
 
 peract_config = Config(

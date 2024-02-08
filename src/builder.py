@@ -34,7 +34,7 @@ class Builder:
             logging.info('Init experiment dir.')
             os.makedirs(path)
         if not os.path.exists(path := self.exp_path(Builder.CONFIG)):
-            cfg.save(path)
+            cfg.save(path)  # TODO: fix config
         np.random.seed(cfg.seed)
         tf.random.set_seed(cfg.seed)
 

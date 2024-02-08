@@ -2,8 +2,10 @@ import jax
 import numpy as np
 from dm_env import specs
 
+import transformers
 from transformers import CLIPTokenizer, FlaxCLIPTextModel
 from transformers.tokenization_utils_base import BatchEncoding
+transformers.logging.set_verbosity_error()
 
 Array = np.ndarray
 Tokens = BatchEncoding[str, Array]

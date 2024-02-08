@@ -41,13 +41,13 @@ def train(cfg: Config):
     state = jax.device_put(state)
     logger = TFSummaryLogger(logdir=cfg.logdir, label='bc', step_key='step')
 
-    start = time.time()
     t = state.step.item()
     while t < cfg.training_steps:
+        _batch_start = time.time()
         batch = jax.device_put(next(ds))
         state, metrics = step(state, batch)
         if t % cfg.log_every == 0:
-            fps = float(cfg.batch_size) * t / (time.time() - start)
+            fps = float(cfg.batch_size) / (time.time() - _batch_start)
             metrics.update(step=t, fps=fps)
             logger.write(metrics)
         if t % cfg.save_every == 0:
@@ -67,18 +67,19 @@ def evaluate(cfg: Config):
         reward = 0
         while not ts.last():
             action = act(ts.observation)
+            print(action)
             ts = env.step(action)
             reward += ts.reward
+        print(reward)
         return reward
-    res = [env_loop() for _ in range(10)]
+    res = [env_loop() for _ in range(20)]
     env.close()
     logging.info(str(res))
-    print(res)
 
 
 if __name__ == '__main__':
     # _debug()
     _cfg = Config()
-    collect_dataset(_cfg)
-    train(_cfg)
+    # collect_dataset(_cfg)
+    # train(_cfg)
     evaluate(_cfg)
