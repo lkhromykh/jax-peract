@@ -15,7 +15,6 @@ KeyframesExtractorOutput: TypeAlias = tuple[list[tuple[FromObservation, FromKeyf
 KeyframesExtractor: TypeAlias = Callable[[gcenv.Demo], KeyframesExtractorOutput]
 
 
-# TODO: check keyframes extraction.
 def default_scan_factory(
         joint_velocities_thresh: float = 0.1,
         skip_every: int = 4,
@@ -27,7 +26,7 @@ def default_scan_factory(
         # skip_first added in order to ignore initial acceleration.
         next_obs, timestep, time_to_next, total_kframes = carry
         is_grasp = obs['gripper_is_obj_detected'] != next_obs['gripper_is_obj_detected']
-        is_decelerating = np.all(np.fabs(obs['joint_velocities']) < np.fabs(next_obs['joint_velocities']))
+        is_decelerating = np.all(np.fabs(obs['joint_velocities']) > np.fabs(next_obs['joint_velocities']))
         is_waypoint = not is_grasp
         is_waypoint &= is_decelerating
         is_waypoint &= np.allclose(next_obs['joint_velocities'], 0, atol=joint_velocities_thresh)

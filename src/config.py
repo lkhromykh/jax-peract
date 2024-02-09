@@ -51,7 +51,7 @@ class Config(_Config):
 
     seed: int = 1
     launch_env: bool = True
-    dataset_dir: str = 'dataset/'
+    dataset_dir: str = '/dataset'
     logdir: str = 'logdir/open_drawer'
 
 

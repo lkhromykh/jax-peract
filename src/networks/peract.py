@@ -12,6 +12,7 @@ from src.networks.perceiver import PerceiverIO
 
 
 # TODO: properly name all encodings/priors to apply weight decay.
+#  name dense modules to distinguish them.
 class PerAct(nn.Module):
 
     config: Config

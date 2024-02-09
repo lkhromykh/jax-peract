@@ -139,7 +139,12 @@ class ActionDecoder(nn.Module):
         low_dim_logits = low_dim_logits.astype(jnp.float32)
         *low_dim_logits, _ = jnp.split(low_dim_logits, np.cumsum(low_dim_bins))
         low_dim_dists = [tfd.Categorical(logits) for logits in low_dim_logits]
-        return ActionDecoder.Blockwise([grid_dist] + low_dim_dists)
+        dist = ActionDecoder.Blockwise([grid_dist] + low_dim_dists)
+        if self.is_initializing():
+            # Small hack for nn.tabulate -- tfd.Distribution is interfering jax.eval_shape.
+            # It is advised not to return a distribution itself but to construct it from output params.
+            return dist.mode()
+        return dist
 
     class Blockwise(tfd.Blockwise):
 

@@ -1,6 +1,7 @@
 import time
 import logging
 logging.basicConfig(level=logging.INFO)
+# TODO: logging into file.
 
 import jax
 import chex
@@ -14,6 +15,7 @@ from rltools.loggers import TFSummaryLogger
 
 def _debug():
     import flax
+    logging.basicConfig(level=logging.DEBUG)
     jax.config.update('jax_disable_jit', True)
     # jax.config.update('jax_platform_name', 'cpu')
     chex.enable_asserts()
@@ -47,6 +49,7 @@ def train(cfg: Config):
         batch = jax.device_put(next(ds))
         state, metrics = step(state, batch)
         if t % cfg.log_every == 0:
+            state, metrics = jax.block_until_ready((state, metrics))
             fps = float(cfg.batch_size) / (time.time() - _batch_start)
             metrics.update(step=t, fps=fps)
             logger.write(metrics)
@@ -81,5 +84,5 @@ if __name__ == '__main__':
     # _debug()
     _cfg = Config()
     # collect_dataset(_cfg)
-    # train(_cfg)
+    train(_cfg)
     evaluate(_cfg)

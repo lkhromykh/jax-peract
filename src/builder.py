@@ -6,6 +6,7 @@ import optax
 import numpy as np
 import cloudpickle
 import tensorflow as tf
+import flax.linen as nn
 from flax import traverse_util
 from jax.tree_util import tree_map, tree_leaves
 tf.config.set_visible_devices([], 'GPU')
@@ -58,10 +59,9 @@ class Builder:
             action_spec=encoders.action_spec()
         )
         obs = tree_map(lambda x: x.generate_value(), encoders.observation_spec())
-        rng = jax.random.PRNGKey(self.cfg.seed + 1)
-        params = nets.init(rng, obs)
-        num_params = sum(tree_map(lambda x: x.size, tree_leaves(params)))
-        logging.info(f'Number of params: {num_params}')
+        rng1, rng2 = jax.random.split(jax.random.PRNGKey(self.cfg.seed + 1))
+        params = nets.init(rng1, obs)
+        logging.info(nn.tabulate(nets, rng2)(obs))
         return nets, params
 
     def make_optim(self, params: Params) -> optax.GradientTransformation:
@@ -101,6 +101,7 @@ class Builder:
                                optim=optim,
                                )
 
+    # TODO: tune pipeline
     def make_tfdataset(self) -> tf.data.Dataset:
         c = self.cfg
         enc = PerActEncoders.from_config(c)
