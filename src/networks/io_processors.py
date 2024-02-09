@@ -114,7 +114,7 @@ class InputsMultiplexer(nn.Module):
 
 # try conditioned low-dim decoding via tfp.JointDistributionSequential?
 class ActionDecoder(nn.Module):
-    """Infer action."""
+    """Policy decoder."""
 
     action_spec: list[specs.DiscreteArray]
     mlp_layers: types.Layers
@@ -123,10 +123,12 @@ class ActionDecoder(nn.Module):
 
     @nn.compact
     def __call__(self, voxels: Array, low_dim: Array) -> tfd.Distribution:
+        """Infer position from voxels and everything else from low_dim features."""
         chex.assert_rank([voxels, low_dim], [4, 1])
         nbins = tuple(map(lambda sp: sp.num_values, self.action_spec))
         grid_size, low_dim_bins = nbins[:3], nbins[3:]
-        voxels = nn.Conv(1, 3 * (self.conv_kernel,), dtype=self.dtype)(voxels)
+        conv = nn.Conv(1, 3 * (self.conv_kernel,), dtype=self.dtype, name='vgrid_logits')
+        voxels = conv(voxels)
         voxels = voxels.astype(jnp.float32)
         grid_dist = tfd.TransformedDistribution(
             distribution=tfd.Categorical(voxels.flatten()),
@@ -135,14 +137,15 @@ class ActionDecoder(nn.Module):
         for layer in self.mlp_layers:
             low_dim = nn.Dense(layer, dtype=self.dtype)(low_dim)
             low_dim = activation(low_dim)
-        low_dim_logits = nn.Dense(sum(low_dim_bins), dtype=self.dtype)(low_dim)
+        low_dim_proj = nn.Dense(sum(low_dim_bins), dtype=self.dtype, name='low_dim_logits')
+        low_dim_logits = low_dim_proj(low_dim)
         low_dim_logits = low_dim_logits.astype(jnp.float32)
         *low_dim_logits, _ = jnp.split(low_dim_logits, np.cumsum(low_dim_bins))
         low_dim_dists = [tfd.Categorical(logits) for logits in low_dim_logits]
         dist = ActionDecoder.Blockwise([grid_dist] + low_dim_dists)
         if self.is_initializing():
-            # Small hack for nn.tabulate -- tfd.Distribution is interfering jax.eval_shape.
-            # It is advised not to return a distribution itself but to construct it from output params.
+            # Small hack for nn.tabulate -- tfd.Distribution is interfering with jax.eval_shape.
+            # It is advised not to return a distribution itself but to construct it from an output params.
             return dist.mode()
         return dist
 

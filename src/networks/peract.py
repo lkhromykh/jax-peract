@@ -69,8 +69,8 @@ class PerAct(nn.Module):
             )
         patches = jnp.concatenate([patches, pos3d_enc], -1)
         patches = patches.reshape(-1, patches.shape[-1])
-        low_dim = nn.Dense(channels, dtype=dtype)(low_dim).reshape(1, -1)
-        task = nn.Dense(channels, dtype=dtype)(task)
+        low_dim = nn.Dense(channels, dtype=dtype, name='low_dim_preproc')(low_dim).reshape(1, -1)
+        task = nn.Dense(channels, dtype=dtype, name='task_preproc')(task)
         pos1d_enc = utils.fourier_features(task.shape[:1], c.ff_num_bands)
         task = jnp.concatenate([task, pos1d_enc], -1)
 

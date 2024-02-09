@@ -12,6 +12,7 @@ SceneBounds: TypeAlias = tuple[float, float, float, float, float, float]
 NLGoalKey = 'description'
 
 
+# TODO: consider adding timestep to an observation
 class Observation(TypedDict):
     """Complete action-centric environment state representation."""
 

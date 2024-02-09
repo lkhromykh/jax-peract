@@ -18,8 +18,8 @@ class Config(_Config):
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
     num_self_attend_heads: int = 8
-    cross_attend_widening_factor: float = 1.
-    self_attend_widening_factor: float = 1.
+    cross_attend_widening_factor: float = 4.
+    self_attend_widening_factor: float = 4.
     use_layernorm: bool = True
     use_decoder_query_residual: bool = False
     use_trainable_pos_encoding: bool = False
@@ -51,8 +51,8 @@ class Config(_Config):
 
     seed: int = 1
     launch_env: bool = True
-    dataset_dir: str = '/dataset'
-    logdir: str = 'logdir/open_drawer'
+    dataset_dir: str = 'dataset/'
+    logdir: str = 'logdir/'
 
 
 peract_config = Config(

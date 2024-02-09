@@ -90,8 +90,8 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
             maybe_append(depths, cam, 'depth')
             maybe_append(point_cloud, cam, 'point_cloud')
         # should properly transform an observation.
-        def gpos_fn(joints): return np.clip(1. - joints.sum(keepdims=True) / 0.08, 0, 1)
-        def gforces_fn(forces): return not np.allclose(forces, 0, atol=0.1)
+        def gpos_fn(joints): return 1. - np.clip(joints.sum(keepdims=True) / 0.08, 0, 1)
+        def gforces_fn(forces): return not np.allclose(forces, 0, atol=0.15)
         pos, quat = np.split(obs.gripper_pose, [3])
         euler = Rotation.from_quat(quat).as_euler('ZYX')
         tcp_pose = np.concatenate([pos, euler])

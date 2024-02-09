@@ -19,13 +19,18 @@ class VoxelGrid:
         self._bbox = o3d.geometry.AxisAlignedBoundingBox(
             np.zeros_like(lb), np.ones_like(ub))
 
-    def encode(self, obs: gcenv.Observation) -> gcenv.Array:
+    def encode(self,
+               obs: gcenv.Observation,
+               return_o3d_geoms: bool = False
+               ) -> gcenv.Array | tuple[o3d.geometry.PointCloud, o3d.geometry.VoxelGrid]:
         points = self._scale(obs['point_clouds']).reshape(-1, 3)
         colors = obs['images'].reshape(-1, 3).astype(np.float32) / 255.
         pcd = o3d.geometry.PointCloud()
         pcd.points, pcd.colors = map(o3d.utility.Vector3dVector, (points, colors))
         pcd = pcd.crop(self._bbox)
         grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, self._voxel_size)
+        if return_o3d_geoms:  # for visualization.
+            return pcd, grid
         scene = np.zeros(self._shape, dtype=np.uint8)
         for voxel in grid.get_voxels():
             idx = voxel.grid_index
@@ -37,11 +42,13 @@ class VoxelGrid:
         grid = o3d.geometry.VoxelGrid()
         grid.voxel_size = self._voxel_size
         voxels = voxels.reshape(-1, 4)
-        for idx, color in enumerate(voxels):
+        for idx, value in enumerate(voxels):
             voxel = o3d.geometry.Voxel()
-            voxel.grid_index = np.unravel_index(idx, self._shape[:-1])
-            voxel.color = color[:3].astype(np.float32) / 255.
-            grid.add_voxel(voxel)
+            rgb, occupied = np.split(value, [3])
+            if occupied:
+                voxel.grid_index = np.unravel_index(idx, self._shape[:-1])
+                voxel.color = rgb.astype(np.float32) / 255.
+                grid.add_voxel(voxel)
         return grid
 
     def observation_spec(self) -> specs.Array:

@@ -8,7 +8,6 @@ from src.environment import gcenv
 from src.utils import serialize, deserialize
 
 
-# TODO: maybe supply with a keyframes_extractor and make visualisation/summary.
 class DemosDataset:
     """
     Manage demos.
@@ -41,7 +40,7 @@ class DemosDataset:
 
     def append(self, demo: gcenv.Demo) -> None:
         idx = len(self) + 1
-        demo = tree.map_structure(np.asanyarray, demo)
+        demo = tree.map_structure(np.asarray, demo)
         if self.cast_to_f16:
             def to_f16(x): return x.astype(np.float16) if x.dtype.kind == 'f' else x
             demo = tree.map_structure(to_f16, demo)

@@ -17,7 +17,8 @@ class PerActEncoders(NamedTuple):
     text_encoder: utils.CLIP
 
     def infer_state(self, obs: gcenv.Observation) -> types.State:
-        low_dim = np.atleast_1d(obs['gripper_is_obj_detected'])
+        low_dim = np.atleast_1d(obs['gripper_pos'], obs['gripper_is_obj_detected'])
+        low_dim = np.concatenate(low_dim)
         return types.State(
             voxels=self.scene_encoder.encode(obs),
             low_dim=low_dim,
@@ -31,7 +32,7 @@ class PerActEncoders(NamedTuple):
     def observation_spec(self) -> types.State:
         return types.State(
             voxels=self.scene_encoder.observation_spec(),
-            low_dim=dm_env.specs.Array((1,), np.float32),
+            low_dim=dm_env.specs.Array((2,), np.float32),
             goal=self.text_encoder.observation_spec(),
         )
 
