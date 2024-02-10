@@ -4,7 +4,7 @@ from dm_env import specs
 from src.environment import gcenv
 import src.types_ as types
 
-Discrete = gcenv.Array
+Discrete = np.ndarray
 
 
 class DiscreteActionTransform:

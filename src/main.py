@@ -24,20 +24,22 @@ def _debug():
 
 def collect_dataset(cfg: Config):
     builder = Builder(cfg)
-    env = builder.make_env().env
+    enc = builder.make_encoders()
+    env = builder.make_env(enc).env
     ds = DemosDataset(cfg.dataset_dir)
     while len(ds) < cfg.num_demos:
-        logging.info(f'Demo {len(ds)}')
         env.reset()
         demo = env.get_demo()
         ds.append(demo)
+        logging.info('Demo %d length %d', len(ds), len(demo))
     env.close()
 
 
 def train(cfg: Config):
     builder = Builder(cfg)
-    ds = builder.make_tfdataset().as_numpy_iterator()
-    nets, params = builder.make_networks_and_params()
+    enc = builder.make_encoders()
+    ds = builder.make_tfdataset(enc).as_numpy_iterator()
+    nets, params = builder.make_networks_and_params(enc)
     step = builder.make_step_fn(nets)
     state = builder.make_state(params)
     state = jax.device_put(state)
@@ -60,9 +62,10 @@ def train(cfg: Config):
 
 def evaluate(cfg: Config):
     builder = Builder(cfg)
-    nets, _ = builder.make_networks_and_params()
+    enc = builder.make_encoders()
+    nets, _ = builder.make_networks_and_params(enc)
     params = builder.load(Builder.STATE).params
-    env = builder.make_env()
+    env = builder.make_env(enc)
     def act(obs): return jax.jit(nets.apply)(params, obs).mode()
 
     def env_loop():
@@ -77,7 +80,7 @@ def evaluate(cfg: Config):
         return reward
     res = [env_loop() for _ in range(20)]
     env.close()
-    logging.info(str(res))
+    logging.info(res)
 
 
 if __name__ == '__main__':

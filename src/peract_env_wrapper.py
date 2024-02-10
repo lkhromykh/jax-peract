@@ -4,7 +4,6 @@ import numpy as np
 import dm_env.specs
 
 from src import utils
-from src.config import Config
 from src.environment import gcenv
 import src.types_ as types
 
@@ -38,24 +37,6 @@ class PerActEncoders(NamedTuple):
 
     def action_spec(self) -> types.ActionSpec:
         return self.action_encoder.action_spec()
-
-    @classmethod
-    def from_config(cls, config: Config) -> 'PerActEncoders':
-        c = config
-        scene_encoder = utils.VoxelGrid(
-            scene_bounds=c.scene_bounds,
-            nbins=c.scene_bins
-        )
-        action_encoder = utils.DiscreteActionTransform(
-            scene_bounds=c.scene_bounds,
-            scene_bins=c.scene_bins,
-            rot_bins=c.rot_bins,
-            grip_bins=c.grip_bins
-        )
-        text_encoder = utils.CLIP(max_length=c.text_context_length)
-        return cls(scene_encoder=scene_encoder,
-                   action_encoder=action_encoder,
-                   text_encoder=text_encoder)
 
 
 class PerActEnvWrapper(dm_env.Environment):

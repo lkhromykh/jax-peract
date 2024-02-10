@@ -75,16 +75,15 @@ class MultiHeadAttention(_Module):
         def mh_dense(x, dim, name):
             dim, res = np.divmod(dim, self.num_heads)
             assert res == 0, f'Not divisible by the number of heads: {dim}.'
-            return self.dense(x,
-                              features=(self.num_heads, dim),
-                              name=name)
+            return self.dense(x, features=(self.num_heads, dim), name=name)
+
         qk_channels = self.qk_channels or inputs_q.shape[-1]
         v_channels = self.v_channels or qk_channels
         output_channels = self.output_channels or v_channels
 
         query = mh_dense(inputs_q, qk_channels, 'query')
-        key = mh_dense(inputs_kv, qk_channels, 'key')
-        value = mh_dense(inputs_kv, v_channels, 'value')
+        key_value = mh_dense(inputs_kv, qk_channels + v_channels, 'key_value')
+        key, value = jnp.split(key_value, [qk_channels], -1)
         value = scaled_dot_product(query, key, value)
         return self.dense(value,
                           features=output_channels,

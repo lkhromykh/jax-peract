@@ -55,19 +55,15 @@ class VoxelsProcessor(nn.Module):
         arch = list(zip(self.features, self.kernels, self.strides))
         for i, (f, k, s) in enumerate(arch):
             no_layernorm = i == len(arch) - 1 and conv_cls == nn.Conv
-            # authors of 2106.14881 don't apply activation on the pre-transformer conv.
+            # The authors of 2106.14881 don't apply activation on the pre-transformer conv.
             conv = conv_cls(features=f,
                             kernel_size=3 * (k,),
                             strides=3 * (s,),
                             dtype=self.dtype,
                             use_bias=no_layernorm,
                             padding='VALID')
-            block = [conv]
-            if not no_layernorm:
-                norm = nn.LayerNorm(dtype=self.dtype)
-                block.extend([norm, activation])
-            block = nn.Sequential(block)
-            blocks.append(block)
+            block = [conv] if no_layernorm else [conv, nn.LayerNorm(dtype=self.dtype), activation]
+            blocks.append(nn.Sequential(block))
         return blocks
 
 
@@ -128,8 +124,7 @@ class ActionDecoder(nn.Module):
         nbins = tuple(map(lambda sp: sp.num_values, self.action_spec))
         grid_size, low_dim_bins = nbins[:3], nbins[3:]
         conv = nn.Conv(1, 3 * (self.conv_kernel,), dtype=self.dtype, name='vgrid_logits')
-        voxels = conv(voxels)
-        voxels = voxels.astype(jnp.float32)
+        voxels = conv(voxels).astype(jnp.float32)
         grid_dist = tfd.TransformedDistribution(
             distribution=tfd.Categorical(voxels.flatten()),
             bijector=ActionDecoder.Idx2Grid(grid_size)
@@ -138,8 +133,7 @@ class ActionDecoder(nn.Module):
             low_dim = nn.Dense(layer, dtype=self.dtype)(low_dim)
             low_dim = activation(low_dim)
         low_dim_proj = nn.Dense(sum(low_dim_bins), dtype=self.dtype, name='low_dim_logits')
-        low_dim_logits = low_dim_proj(low_dim)
-        low_dim_logits = low_dim_logits.astype(jnp.float32)
+        low_dim_logits = low_dim_proj(low_dim).astype(jnp.float32)
         *low_dim_logits, _ = jnp.split(low_dim_logits, np.cumsum(low_dim_bins))
         low_dim_dists = [tfd.Categorical(logits) for logits in low_dim_logits]
         dist = ActionDecoder.Blockwise([grid_dist] + low_dim_dists)

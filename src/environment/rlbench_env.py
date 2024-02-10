@@ -53,10 +53,9 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
         quat = Rotation.from_euler('ZYX', euler).as_quat(canonical=True)
         action = np.concatenate([pos, quat, 1. - grip])
         try:
-            # Here termsig applied after step, since the simulator itself can detect success.
             obs, reward, terminate = self.task.step(action)
         except (IKError, InvalidActionError, ConfigurationPathError) as exc:
-            logging.info(f'Action {action} led to the exception: {exc}.')
+            logging.info('Action %s led to exception: %s.', action, exc)
             obs, reward, terminate = self._prev_obs, -1., True
         else:
             obs = self.transform_observation(obs)
@@ -89,7 +88,6 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
             maybe_append(images, cam, 'rgb')
             maybe_append(depths, cam, 'depth')
             maybe_append(point_cloud, cam, 'point_cloud')
-        # should properly transform an observation.
         def gpos_fn(joints): return 1. - np.clip(joints.sum(keepdims=True) / 0.08, 0, 1)
         def gforces_fn(forces): return not np.allclose(forces, 0, atol=0.15)
         pos, quat = np.split(obs.gripper_pose, [3])

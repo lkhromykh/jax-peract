@@ -1,11 +1,11 @@
 import dataclasses
-from rltools.config import Config as _Config
+from ruamel.yaml import YAML
 
 Layers = tuple[int, ...]
 
 
 @dataclasses.dataclass
-class Config(_Config):
+class Config:
     # Conv stem
     conv_stem_features: Layers = (64,)
     conv_stem_kernels: Layers = (4,)
@@ -53,6 +53,25 @@ class Config(_Config):
     launch_env: bool = True
     dataset_dir: str = 'dataset/'
     logdir: str = 'logdir/'
+
+    def save(self, file_path: str) -> None:
+        """Save as YAML in a specified path."""
+        yaml = YAML(typ="safe", pure=True)
+        with open(file_path, "w", encoding="utf-8") as config_file:
+            yaml.dump(dataclasses.asdict(self), config_file)
+
+    @classmethod
+    def load(cls, file_path: str, **kwargs) -> "Config":
+        """Load config from a YAML. Then values are updated by kwargs."""
+        yaml = YAML(typ="safe", pure=True)
+        with open(file_path, "r", encoding="utf-8") as config_file:
+            config_dict = yaml.load(config_file)
+        known_fields = map(lambda f: f.name, dataclasses.fields(cls))
+        config_dict.update(
+            {k: v for k, v in kwargs.items() if
+             k in known_fields}
+        )
+        return cls(**config_dict)
 
 
 peract_config = Config(

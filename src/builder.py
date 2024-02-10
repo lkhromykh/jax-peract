@@ -35,14 +35,33 @@ class Builder:
             logging.info('Init experiment dir.')
             os.makedirs(path)
         if not os.path.exists(path := self.exp_path(Builder.CONFIG)):
-            cfg.save(path)  # TODO: fix config
+            cfg.save(path)
         np.random.seed(cfg.seed)
         tf.random.set_seed(cfg.seed)
 
-    def make_env(self) -> PerActEnvWrapper:
+    def make_encoders(self) -> PerActEncoders:
+        """Create transformations required to infer state and action from an observation."""
+        c = self.cfg
+        scene_encoder = utils.VoxelGrid(
+            scene_bounds=c.scene_bounds,
+            nbins=c.scene_bins
+        )
+        action_encoder = utils.DiscreteActionTransform(
+            scene_bounds=c.scene_bounds,
+            scene_bins=c.scene_bins,
+            rot_bins=c.rot_bins,
+            grip_bins=c.grip_bins
+        )
+        text_encoder = utils.CLIP(max_length=c.text_context_length)
+        return PerActEncoders(
+            scene_encoder=scene_encoder,
+            action_encoder=action_encoder,
+            text_encoder=text_encoder
+        )
+
+    def make_env(self, encoders: PerActEncoders) -> PerActEnvWrapper:
         """Create and wrap an environment."""
         c = self.cfg
-        encoders = PerActEncoders.from_config(c)
         env = RLBenchEnv(
             scene_bounds=c.scene_bounds,
             time_limit=c.time_limit,
@@ -52,8 +71,7 @@ class Builder:
             encoders=encoders
         )
 
-    def make_networks_and_params(self) -> tuple[PerAct, Params]:
-        encoders = PerActEncoders.from_config(self.cfg)
+    def make_networks_and_params(self, encoders: PerActEncoders) -> tuple[PerAct, Params]:
         nets = PerAct(
             config=self.cfg,
             action_spec=encoders.action_spec()
@@ -102,9 +120,9 @@ class Builder:
                                )
 
     # TODO: tune pipeline
-    def make_tfdataset(self) -> tf.data.Dataset:
+    def make_tfdataset(self, encoders: PerActEncoders) -> tf.data.Dataset:
         c = self.cfg
-        enc = PerActEncoders.from_config(c)
+        enc = encoders
         dds = DemosDataset(c.dataset_dir)
         extract_fn = extractor_factory(observation_transform=enc.infer_state,
                                        keyframe_transform=enc.infer_action)
@@ -130,6 +148,7 @@ class Builder:
         )
         ds = ds.cache() \
              .repeat() \
+             .shuffle(c.batch_size) \
              .map(utils.augmentations.select_random_transition) \
              .map(lambda item: utils.augmentations.voxel_grid_random_shift(item, c.max_shift)) \
              .batch(c.batch_size) \
