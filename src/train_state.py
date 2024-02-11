@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import NamedTuple, Self
 
 import jax
 import jax.numpy as jnp
@@ -18,7 +18,7 @@ class TrainState(NamedTuple):
 
     tx: optax.TransformUpdateFn
 
-    def update(self, *, grad: Params) -> 'TrainState':
+    def update(self, *, grad: Params) -> Self:
         params = self.params
         opt_state = self.opt_state
         step = self.step
@@ -36,7 +36,7 @@ class TrainState(NamedTuple):
              rng: jax.Array,
              params: Params,
              optim: optax.GradientTransformation,
-             ) -> 'TrainState':
+             ) -> Self:
         return cls(
             rng=rng,
             params=params,
@@ -45,7 +45,7 @@ class TrainState(NamedTuple):
             tx=optim.update,
         )
 
-    def replace(self, **kwargs) -> 'TrainState':
+    def replace(self, **kwargs) -> Self:
         return self._replace(**kwargs)
 
     def tree_flatten(self):

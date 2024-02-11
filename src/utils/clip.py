@@ -30,8 +30,8 @@ class CLIP:
             return_tensors='np'
         )
 
-    def detokenize(self, goal: Tokens) -> str:
-        return self._tokenizer.batch_decode(goal['input_ids'], skip_special_tokens=True)
+    def detokenize(self, tokens: Tokens) -> str:
+        return self._tokenizer.batch_decode(tokens['input_ids'], skip_special_tokens=True)
 
     def encode(self, input_: str | np.ndarray) -> Array:
         if isinstance(input_, np.ndarray):

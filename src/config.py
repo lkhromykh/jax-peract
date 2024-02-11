@@ -1,4 +1,6 @@
 import dataclasses
+from typing import Self
+
 from ruamel.yaml import YAML
 
 Layers = tuple[int, ...]
@@ -50,8 +52,8 @@ class Config:
 
     seed: int = 1
     launch_env: bool = True
-    dataset_dir: str = 'dataset/'
-    logdir: str = 'logdir/'
+    dataset_dir: str = 'datasets/reach_target'
+    logdir: str = 'logdir/reach_target'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
@@ -60,7 +62,7 @@ class Config:
             yaml.dump(dataclasses.asdict(self), config_file)
 
     @classmethod
-    def load(cls, file_path: str, **kwargs) -> "Config":
+    def load(cls, file_path: str, **kwargs) -> Self:
         """Load config from a YAML. Then values are updated by kwargs."""
         yaml = YAML(typ="safe", pure=True)
         with open(file_path, "r", encoding="utf-8") as config_file:

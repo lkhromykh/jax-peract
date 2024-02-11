@@ -25,7 +25,7 @@ class DemosDataset:
                  cast_to_f16: bool = True,
                  ) -> None:
         path = pathlib.Path(dataset_dir).absolute()
-        assert path.exists(), f'Dataset is not found: {path}'
+        path.mkdir(parents=True, exist_ok=True)
         self.dataset_dir = path
         self.cast_to_f16 = cast_to_f16
 

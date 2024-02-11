@@ -16,7 +16,7 @@ activation = nn.gelu
 
 
 class VoxelsProcessor(nn.Module):
-    """Process voxel_grid with 3D convolutions."""
+    """Process voxel grid with 3D convolutions."""
 
     features: types.Layers
     kernels: types.Layers

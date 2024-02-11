@@ -1,21 +1,23 @@
 import abc
 import collections.abc
-from typing import TypeAlias, TypedDict, final
+from typing import final, NamedTuple, TypeAlias, Self
 
 import tree
 import numpy as np
 import dm_env.specs
 
 Array: TypeAlias = np.ndarray
-Goal: TypeAlias = dict[str, Array]
+Action: TypeAlias = np.ndarray
 SceneBounds: TypeAlias = tuple[float, float, float, float, float, float]
-NLGoalKey = 'description'
+Goal: TypeAlias = str | np.ndarray
 
 
 # TODO: consider adding timestep to an observation
-# TODO: consider converting to NamedTuple
-class Observation(TypedDict):
+class Observation(NamedTuple):
     """Complete action-centric environment state representation."""
+
+    JOINTS_VEL_LOW_THRESHOLD = 0.1
+    GRIPPER_OPEN_THRESHOLD = 0.05
 
     images: Array  # N x (H, W, 3), N -- number of cam views.
     depth_maps: Array  # N x (H, W)
@@ -28,10 +30,24 @@ class Observation(TypedDict):
     is_terminal: bool
     goal: Goal
 
+    @property
+    def gripper_is_open(self) -> bool:
+        return self.gripper_pos < Observation.GRIPPER_OPEN_THRESHOLD
 
-Action: TypeAlias = Array
+    @property
+    def joints_velocity_is_low(self) -> bool:
+        return np.allclose(self.joint_velocities, 0, atol=Observation.JOINTS_VEL_LOW_THRESHOLD)
+
+    def infer_action(self) -> Action:
+        """Extract action from an observation."""
+        return np.r_[self.tcp_pose, 1. - self.gripper_is_open, self.is_terminal].astype(np.float32)
+
+    def replace(self, **kwargs) -> Self:
+        return self._replace(**kwargs)
+
+
 ActionSpec: TypeAlias = dm_env.specs.BoundedArray
-ObservationSpec: TypeAlias = dict[str, dm_env.specs.Array]
+ObservationSpec: TypeAlias = 'Observation[dm_env.specs.Array]'
 Demo = collections.abc.Sequence[Observation]
 
 
@@ -80,11 +96,11 @@ class GoalConditionedEnv(dm_env.Environment):
         """Update episode goal."""
         dt = np.dtype('U77')  # CLIP limit.
         description = np.array(text_description, dtype=dt)
-        self._episode_goal = {NLGoalKey: description}
+        self._episode_goal = description
 
     def get_goal(self) -> Goal:
         """Episode goal accessor."""
-        return self._episode_goal.copy()
+        return self._episode_goal
 
     def _as_time_step(self,
                       obs: Observation,
@@ -93,7 +109,7 @@ class GoalConditionedEnv(dm_env.Environment):
                       ) -> dm_env.TimeStep:
         """Wrap variables."""
         if terminate:
-            obs['is_terminal'] = True
+            obs = obs.replace(is_terminal=True)
             return dm_env.termination(reward, obs)
         if self._step >= self.time_limit:
             return dm_env.truncation(reward, obs)

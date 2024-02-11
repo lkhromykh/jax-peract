@@ -16,16 +16,15 @@ class PerActEncoders(NamedTuple):
     text_encoder: utils.CLIP
 
     def infer_state(self, obs: gcenv.Observation) -> types.State:
-        low_dim = np.atleast_1d(obs['gripper_pos'], obs['gripper_is_obj_detected'])
-        low_dim = np.concatenate(low_dim)
+        low_dim = np.r_[obs.gripper_pos, obs.gripper_is_obj_detected]
         return types.State(
             voxels=self.scene_encoder.encode(obs),
             low_dim=low_dim,
-            goal=self.text_encoder.encode(obs['goal'][gcenv.NLGoalKey])
+            goal=self.text_encoder.encode(obs.goal)
         )
 
     def infer_action(self, obs: gcenv.Observation) -> types.Action:
-        action = np.r_[obs['tcp_pose'], obs['gripper_pos'] > 0.05, obs['is_terminal']]
+        action = obs.infer_action()
         return self.action_encoder.encode(action)
 
     def observation_spec(self) -> types.State:

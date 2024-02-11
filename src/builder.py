@@ -8,7 +8,7 @@ import cloudpickle
 import tensorflow as tf
 import flax.linen as nn
 from flax import traverse_util
-from jax.tree_util import tree_map, tree_leaves
+from jax.tree_util import tree_map
 tf.config.set_visible_devices([], 'GPU')
 
 from src import utils

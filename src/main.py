@@ -1,6 +1,6 @@
 import time
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 import jax
 import chex
@@ -72,7 +72,7 @@ def evaluate(cfg: Config):
 
     def env_loop():
         ts = env.reset()
-        logging.debug('Goal: %s', env.get_goal()['description'])
+        logging.debug('Goal: %s', env.env.get_goal())
         reward = 0
         while not ts.last():
             action = act(ts.observation)

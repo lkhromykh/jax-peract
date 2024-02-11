@@ -53,19 +53,19 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
         pos, euler, grasp, termsig = np.split(action, [3, 6, 7])
         if termsig > 0.5:
             sim_success, sim_terminate = self.task._task.success()
-            logging.debug('Is correct terminate - %s', sim_terminate)
+            logging.debug('Is terminating correctly: %s', sim_terminate)
             return self._as_time_step(self._prev_obs, float(sim_success), True)
         quat = Rotation.from_euler('ZYX', euler).as_quat(canonical=True)
         action = np.concatenate([pos, quat, 1. - grasp])
         try:
-            obs, reward, terminate = self.task.step(action)
-            reward, terminate = 0, False  # ground truth sim state is hidden from an agent.
+            obs, _, _ = self.task.step(action)
+            reward, terminate = 0, False  # ground truth sim state is hidden from an agent until termsig.
         except (IKError, InvalidActionError, ConfigurationPathError) as exc:
             logging.debug('Action %s led to exception: %s.', action, exc)
             obs, reward, terminate = self._prev_obs, -1., True
         else:
             obs = self.transform_observation(obs)
-            self._prev_obs = obs.copy()
+            self._prev_obs = obs
         return self._as_time_step(obs, reward, terminate)
 
     def get_demo(self) -> gcenv.Demo:
@@ -76,7 +76,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
         descriptions, _ = self.task.reset_to_demo(demo)
         self.set_goal(descriptions[0])
         demo = list(map(self.transform_observation, demo))
-        demo[-1]['is_terminal'] = True
+        demo[-1] = demo[-1].replace(is_terminal=True)
         return demo
 
     def close(self) -> None:
@@ -92,7 +92,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
             maybe_append(images, cam, 'rgb')
             maybe_append(depths, cam, 'depth')
             maybe_append(point_cloud, cam, 'point_cloud')
-        def gpos_fn(joints): return 1. - np.clip(joints.sum(keepdims=True) / 0.08, 0, 1)
+        def gpos_fn(joints): return 1. - np.clip(joints.sum(keepdims=True) / 0.08, 0, 1)  # Franka Panda.
         def gforces_fn(forces): return not np.allclose(forces, 0, atol=0.1)
         pos, quat = np.split(obs.gripper_pose, [3])
         euler = Rotation.from_quat(quat).as_euler('ZYX')
