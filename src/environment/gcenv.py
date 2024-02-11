@@ -13,6 +13,7 @@ NLGoalKey = 'description'
 
 
 # TODO: consider adding timestep to an observation
+# TODO: consider converting to NamedTuple
 class Observation(TypedDict):
     """Complete action-centric environment state representation."""
 
@@ -55,15 +56,15 @@ class GoalConditionedEnv(dm_env.Environment):
     def action_spec(self) -> dm_env.specs.BoundedArray:
         xyz_min, xyz_max = np.split(np.asarray(self.scene_bounds), 2)
         rot_lim = np.array([np.pi, np.pi / 2, np.pi])
-        termsig_min, termsig_max = grip_min, grip_max = 0, 1
-        low = np.r_[xyz_min, -rot_lim, grip_min, termsig_min]
-        high = np.r_[xyz_max, rot_lim, grip_max, termsig_max]
+        termsig_min, termsig_max = grasp_min, grasp_max = 0, 1
+        low = np.r_[xyz_min, -rot_lim, grasp_min, termsig_min]
+        high = np.r_[xyz_max, rot_lim, grasp_max, termsig_max]
         return dm_env.specs.BoundedArray(
             minimum=low,
             maximum=high,
             shape=low.shape,
             dtype=np.float32,
-            name='[x, y, z, yaw, pitch, roll, grip, termsig]'
+            name='[x, y, z, yaw, pitch, roll, grasp, termsig]'
         )
 
     def observation_spec(self) -> ObservationSpec:
@@ -75,17 +76,21 @@ class GoalConditionedEnv(dm_env.Environment):
             return dm_env.specs.Array(x.shape, x.dtype)
         return tree.map_structure(np_to_spec, self._prev_obs)
 
-    def _set_goal(self, text_description: str) -> None:
+    def set_goal(self, text_description: str) -> None:
         """Update episode goal."""
         dt = np.dtype('U77')  # CLIP limit.
         description = np.array(text_description, dtype=dt)
         self._episode_goal = {NLGoalKey: description}
 
-    def _as_timestep(self,
-                     obs: Observation,
-                     reward: float,
-                     terminate: bool
-                     ) -> dm_env.TimeStep:
+    def get_goal(self) -> Goal:
+        """Episode goal accessor."""
+        return self._episode_goal.copy()
+
+    def _as_time_step(self,
+                      obs: Observation,
+                      reward: float,
+                      terminate: bool
+                      ) -> dm_env.TimeStep:
         """Wrap variables."""
         if terminate:
             obs['is_terminal'] = True

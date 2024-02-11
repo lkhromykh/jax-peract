@@ -101,7 +101,6 @@ class PerAct(nn.Module):
         return self.action_decoder(voxels, low_dim)
 
 
-# TODO: check if dtype is do something useful.
 def _dtype_fromstr(dtype_str: str) -> types.DType:
     valid_dtypes = dict(bf16=jnp.bfloat16, f32=jnp.float32)
     return valid_dtypes[dtype_str]

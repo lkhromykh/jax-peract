@@ -10,19 +10,18 @@ Discrete = np.ndarray
 class DiscreteActionTransform:
     """Converts robot actions to a uniformly discretized action.
 
-    Encoded action has the form: [x, y, z, yaw, pitch, roll, grip, terminate].
+    Encoded action has the form: [x, y, z, yaw, pitch, roll, grasp, terminate].
     """
 
     def __init__(self,
                  scene_bounds: gcenv.SceneBounds,
                  scene_bins: int,
                  rot_bins: int,
-                 grip_bins: int
                  ) -> None:
         rot_lim = np.array([np.pi, np.pi / 2, np.pi])
         lb = np.r_[scene_bounds[:3], -rot_lim, 0, 0]
         ub = np.r_[scene_bounds[3:], rot_lim, 1, 1]
-        nbins = 3 * [scene_bins] + 3 * [rot_bins] + [grip_bins, 2]
+        nbins = 3 * [scene_bins] + 3 * [rot_bins] + [2, 2]
         self._act_specs = [specs.DiscreteArray(n) for n in nbins]
         self._action_bounds = (lb, ub)
         self._range = ub - lb

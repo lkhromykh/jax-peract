@@ -41,7 +41,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
         self.task = self.env.get_task(task)
         self.task.sample_variation()
         descriptions, obs = self.task.reset()
-        self._set_goal(descriptions[0])
+        self.set_goal(descriptions[0])
         self._prev_obs = self.transform_observation(obs)
         self._step = 0
         self._in_demo_state = False
@@ -49,20 +49,24 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
 
     def step(self, action: gcenv.Action) -> dm_env.TimeStep:
         assert not self._in_demo_state
-        pos, euler, grip, termsig = np.split(action, [3, 6, 7])
+        self._step += 1
+        pos, euler, grasp, termsig = np.split(action, [3, 6, 7])
+        if termsig > 0.5:
+            sim_success, sim_terminate = self.task._task.success()
+            logging.debug('Is correct terminate - %s', sim_terminate)
+            return self._as_time_step(self._prev_obs, float(sim_success), True)
         quat = Rotation.from_euler('ZYX', euler).as_quat(canonical=True)
-        action = np.concatenate([pos, quat, 1. - grip])
+        action = np.concatenate([pos, quat, 1. - grasp])
         try:
             obs, reward, terminate = self.task.step(action)
+            reward, terminate = 0, False  # ground truth sim state is hidden from an agent.
         except (IKError, InvalidActionError, ConfigurationPathError) as exc:
-            logging.info('Action %s led to exception: %s.', action, exc)
+            logging.debug('Action %s led to exception: %s.', action, exc)
             obs, reward, terminate = self._prev_obs, -1., True
         else:
             obs = self.transform_observation(obs)
-            terminate |= termsig.item() > 0.5
             self._prev_obs = obs.copy()
-        self._step += 1
-        return self._as_timestep(obs, reward, terminate)
+        return self._as_time_step(obs, reward, terminate)
 
     def get_demo(self) -> gcenv.Demo:
         assert self.task is not None
@@ -70,7 +74,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
         self.task.sample_variation()
         demo = self.task.get_demos(amount=1, live_demos=True)[0]
         descriptions, _ = self.task.reset_to_demo(demo)
-        self._set_goal(descriptions[0])
+        self.set_goal(descriptions[0])
         demo = list(map(self.transform_observation, demo))
         demo[-1]['is_terminal'] = True
         return demo
@@ -89,7 +93,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
             maybe_append(depths, cam, 'depth')
             maybe_append(point_cloud, cam, 'point_cloud')
         def gpos_fn(joints): return 1. - np.clip(joints.sum(keepdims=True) / 0.08, 0, 1)
-        def gforces_fn(forces): return not np.allclose(forces, 0, atol=0.15)
+        def gforces_fn(forces): return not np.allclose(forces, 0, atol=0.1)
         pos, quat = np.split(obs.gripper_pose, [3])
         euler = Rotation.from_quat(quat).as_euler('ZYX')
         tcp_pose = np.concatenate([pos, euler])

@@ -83,7 +83,7 @@ class MultiHeadAttention(_Module):
 
         query = mh_dense(inputs_q, qk_channels, 'query')
         key_value = mh_dense(inputs_kv, qk_channels + v_channels, 'key_value')
-        key, value = jnp.split(key_value, [qk_channels], -1)
+        key, value = jnp.split(key_value, [qk_channels // self.num_heads], -1)
         value = scaled_dot_product(query, key, value)
         return self.dense(value,
                           features=output_channels,

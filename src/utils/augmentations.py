@@ -33,3 +33,5 @@ def voxel_grid_random_shift(item: types.Trajectory, max_shift: int) -> types.Tra
     pos += shift
     return types.Trajectory(observations=obs._replace(voxels=vgrid),
                             actions=tf.concat([pos, low_dim], 0))
+
+# TODO: mirroring, rotations augmentations

@@ -12,8 +12,8 @@ class Config:
     conv_stem_strides: Layers = (4,)
     conv_stem_use_skip_connections: bool = True
     # Perceiver
-    latent_dim: int = 256
-    latent_channels: int = 256
+    latent_dim: int = 512
+    latent_channels: int = 512
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
@@ -39,13 +39,12 @@ class Config:
     log_every: int = 10
     save_every: int = 500
     jit: bool = True
-    compute_dtype: str = 'f32'
+    compute_dtype: str = 'bf16'
     max_shift: int = 4
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
-    scene_bins: int = 32
-    rot_bins: int = 13
-    grip_bins: int = 2
+    scene_bins: int = 64
+    rot_bins: int = 72
     time_limit: int = 20
     num_demos: int = 50
 
@@ -93,8 +92,9 @@ peract_config = Config(
     act_decoder_conv_kernel=3,
     training_steps=600_000,
     batch_size=16,
-    warmup_steps=3000,
+    warmup_steps=-1,
     weight_decay=1e-6,
+    peak_learning_rate=5e-4,
     rot_bins=72,
     scene_bins=100,
 )

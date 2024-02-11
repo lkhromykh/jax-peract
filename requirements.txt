@@ -15,4 +15,4 @@ tensorflow_probability==0.21
 transformers[flax]
 git+https://github.com/stepjam/PyRep.git
 git+https://github.com/stepjam/RLBench.git
-rltools[all] @ git+https://github.com/lkhromykh/rltools.git
+rltools[loggers] @ git+https://github.com/lkhromykh/rltools.git

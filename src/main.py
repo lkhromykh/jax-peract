@@ -1,7 +1,6 @@
 import time
 import logging
 logging.basicConfig(level=logging.INFO)
-# TODO: logging into file.
 
 import jax
 import chex
@@ -50,6 +49,7 @@ def train(cfg: Config):
         _batch_start = time.time()
         batch = jax.device_put(next(ds))
         state, metrics = step(state, batch)
+        t = state.step.item()
         if t % cfg.log_every == 0:
             state, metrics = jax.block_until_ready((state, metrics))
             fps = float(cfg.batch_size) / (time.time() - _batch_start)
@@ -57,7 +57,6 @@ def train(cfg: Config):
             logger.write(metrics)
         if t % cfg.save_every == 0:
             builder.save(jax.device_get(state), Builder.STATE)
-        t = state.step.item()
 
 
 def evaluate(cfg: Config):
@@ -66,26 +65,31 @@ def evaluate(cfg: Config):
     nets, _ = builder.make_networks_and_params(enc)
     params = builder.load(Builder.STATE).params
     env = builder.make_env(enc)
-    def act(obs): return jax.jit(nets.apply)(params, obs).mode()
+
+    def act(obs):
+        policy = jax.jit(nets.apply)(params, obs)
+        return jax.device_get(policy.mode())
 
     def env_loop():
         ts = env.reset()
+        logging.debug('Goal: %s', env.get_goal()['description'])
         reward = 0
         while not ts.last():
             action = act(ts.observation)
-            print(action)
+            logging.debug('Action %s / %s', enc.action_encoder.decode(action), action)
             ts = env.step(action)
             reward += ts.reward
-        print(reward)
+        logging.debug('Reward: %f', reward)
         return reward
-    res = [env_loop() for _ in range(20)]
+    res = [env_loop() for _ in range(50)]
+    logging.debug(res)
+    logging.debug('Mean reward: %.3f', float(sum(res)) / len(res))
     env.close()
-    logging.info(res)
 
 
 if __name__ == '__main__':
     # _debug()
     _cfg = Config()
     # collect_dataset(_cfg)
-    # train(_cfg)
+    train(_cfg)
     evaluate(_cfg)

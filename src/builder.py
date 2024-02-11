@@ -50,7 +50,6 @@ class Builder:
             scene_bounds=c.scene_bounds,
             scene_bins=c.scene_bins,
             rot_bins=c.rot_bins,
-            grip_bins=c.grip_bins
         )
         text_encoder = utils.CLIP(max_length=c.text_context_length)
         return PerActEncoders(
