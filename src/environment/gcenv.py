@@ -1,6 +1,6 @@
 import abc
 import collections.abc
-from typing import final, NamedTuple, TypeAlias, Self
+from typing import final, NamedTuple, TypeAlias
 
 import tree
 import numpy as np
@@ -42,7 +42,7 @@ class Observation(NamedTuple):
         """Extract action from an observation."""
         return np.r_[self.tcp_pose, 1. - self.gripper_is_open, self.is_terminal].astype(np.float32)
 
-    def replace(self, **kwargs) -> Self:
+    def replace(self, **kwargs) -> 'Observation':
         return self._replace(**kwargs)
 
 

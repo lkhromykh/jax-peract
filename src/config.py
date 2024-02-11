@@ -1,5 +1,4 @@
 import dataclasses
-from typing import Self
 
 from ruamel.yaml import YAML
 
@@ -62,7 +61,7 @@ class Config:
             yaml.dump(dataclasses.asdict(self), config_file)
 
     @classmethod
-    def load(cls, file_path: str, **kwargs) -> Self:
+    def load(cls, file_path: str, **kwargs) -> 'Config':
         """Load config from a YAML. Then values are updated by kwargs."""
         yaml = YAML(typ="safe", pure=True)
         with open(file_path, "r", encoding="utf-8") as config_file:
