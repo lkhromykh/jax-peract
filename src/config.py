@@ -52,7 +52,7 @@ class Config:
     seed: int = 1
     launch_env: bool = True
     dataset_dir: str = 'datasets/reach_target'
-    logdir: str = 'logdir/reach_target_auto-regressive'
+    logdir: str = 'logdir/reach_target2'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

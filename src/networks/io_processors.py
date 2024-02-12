@@ -1,4 +1,4 @@
-from typing import Type, Literal
+from typing import Type
 
 import numpy as np
 import jax
@@ -116,97 +116,28 @@ class ActionDecoder(nn.Module):
     mlp_dim: types.Layers
     conv_kernel: int
     dtype: types.DType
-    mode: Literal['old', 'independent', 'auto_regressive'] = 'autoregressive'
-
-    def __call__(self, voxels: Array, low_dim: Array) -> tfd.Distribution:
-        vgrid_logits, low_dim_logits = self._nn_process(voxels, low_dim)
-        match self.mode:
-            case 'old': dist_fn = self._old_policy
-            case 'independent': dist_fn = self._independent_policy
-            case 'autoregressive': dist_fn = self._autoregressive_policy
-            case _: raise ValueError(self.mode)
-        return dist_fn(vgrid_logits, low_dim_logits)
 
     @nn.compact
-    def _nn_process(self, voxels: Array, low_dim: Array) -> tuple[Array, Array]:
+    def __call__(self, voxels: Array, low_dim: Array) -> tfd.Distribution:
         chex.assert_rank([voxels, low_dim], [4, 1])
-        _, _, _, vgrid_channels, low_dim_dof = self._infer_shapes()
-        conv = nn.Conv(vgrid_channels, 3 * (self.conv_kernel,), dtype=self.dtype, name='vgrid_logits')
-        vgrid_logits = conv(voxels).astype(jnp.float32)
+        nbins = tuple(map(lambda sp: sp.num_values, self.action_spec))
+        grid_size, low_dim_dof = nbins[:3], nbins[3:]
 
+        conv = nn.Conv(1, 3 * (self.conv_kernel,), dtype=self.dtype, name='vgrid_logits')
+        vgrid_logits = conv(voxels).astype(jnp.float32)
         low_dim = nn.Dense(self.mlp_dim, dtype=self.dtype, name='low_dim_hidden')(low_dim)
         low_dim = activation(low_dim)
-        low_dim_logits = nn.Dense(low_dim_dof, dtype=self.dtype, name='low_dim_logits')(low_dim)
-        return vgrid_logits, low_dim_logits
+        low_dim_logits = nn.Dense(sum(low_dim_dof), dtype=self.dtype, name='low_dim_logits')(low_dim)
 
-    def _old_policy(self, vgrid_logits: Array, low_dim_logits: Array) -> tfd.Distribution:
-        grid_size, gripper_dof, low_dim_dof, _, _ = self._infer_shapes()
         grid_dist = tfd.TransformedDistribution(
             distribution=tfd.Categorical(vgrid_logits.flatten()),
             bijector=distributions.Idx2Grid(grid_size),
             name='grid_distribution'
         )
-        low_dim_dof = gripper_dof + low_dim_dof
         *low_dim_logits, _ = jnp.split(low_dim_logits, np.cumsum(low_dim_dof))
         low_dim_dists = [tfd.Categorical(logits) for logits in low_dim_logits]
-        return distributions.Blockwise([grid_dist] + low_dim_dists)
-
-    def _independent_policy(self, vgrid_logits: Array, low_dim_logits: Array) -> tfd.Distribution:
-        grid_size, gripper_dof, low_dim_dof, _, _ = self._infer_shapes()
-        grid_dist = tfd.TransformedDistribution(
-            distribution=tfd.Categorical(vgrid_logits.flatten()),
-            bijector=distributions.Idx2Grid(grid_size),
-            name='grid_distribution'
-        )
-        low_dim_dof = gripper_dof + low_dim_dof
-        *low_dim_logits, _ = jnp.split(low_dim_logits, np.cumsum(low_dim_dof))
-        low_dim_dists = [tfd.Categorical(logits) for logits in low_dim_logits]
-        return distributions.JointDistributionSequential(
-            [grid_dist] + low_dim_dists,
-            batch_ndims=0, validate_args=True
-        )
-
-    def _autoregressive_policy(self, vgrid_logits: Array, low_dim_logits: Array) -> tfd.Distribution:
-        grid_size, gripper_dof, low_dim_dof, _, _ = self._infer_shapes()
-        vgrid_logits, vgrid_gripper_logits = jnp.split(vgrid_logits, [1], -1)
-        grid_dist = tfd.TransformedDistribution(
-            distribution=tfd.Categorical(vgrid_logits.flatten()),
-            bijector=distributions.Idx2Grid(grid_size),
-            name='grid_distribution'
-        )
-
-        # def gripper_dist_fn(grid_distribution):
-        #     *gripper_logits, _ = jnp.split(vgrid_gripper_logits[tuple(grid_distribution)], np.cumsum(gripper_dof), -1)
-        #     dists = [tfd.Categorical(logits) for logits in gripper_logits]
-        #     return distributions.Blockwise(dists)
-
-        def gripper_dist_fn(dist_idx):
-            def dist_fn(*args):
-                import pdb; pdb.set_trace()
-                grid_idx = tuple(args[-1])
-                *gripper_logits, _ = jnp.split(vgrid_gripper_logits[grid_idx], np.cumsum(gripper_dof), -1)
-                return tfd.Categorical(gripper_logits[dist_idx])
-            return dist_fn
-
-        gripper_dist_fns = [gripper_dist_fn(i) for i, _ in enumerate(gripper_dof)]
-
-        *low_dim_logits, _ = jnp.split(low_dim_logits, np.cumsum(low_dim_dof))
-        low_dim_dists = [tfd.Categorical(logits) for logits in low_dim_logits]
-        return distributions.JointDistributionSequential(
-            [grid_dist] + gripper_dist_fns + low_dim_dists,
-            batch_ndims=0, validate_args=True
-        )
-
-    def _infer_shapes(self) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int,...], int, int]:
-        nbins = tuple(map(lambda sp: sp.num_values, self.action_spec))
-        grid_size, gripper_dof, global_dof = nbins[:3], nbins[3:7], nbins[7:]
-        match self.mode:
-            case 'old' | 'independent':
-                vgrid_channels = 1
-                low_dim_channels = sum(gripper_dof + global_dof)
-            case 'autoregressive':
-                vgrid_channels = 1 + sum(gripper_dof)
-                low_dim_channels = sum(global_dof)
-            case _:
-                raise ValueError(self.mode)
-        return grid_size, gripper_dof, global_dof, vgrid_channels, low_dim_channels
+        dist = distributions.Blockwise([grid_dist] + low_dim_dists)
+        if self.is_initializing():
+            # Specifically for nn.tabulate since tfd.Distribution interferes with jax.eval_shape.
+            return dist.mode()
+        return dist

@@ -26,8 +26,7 @@ def bc(cfg: Config, nets: PerAct) -> types.StepFn:
         # everything else is devoted to metrics computation.
         idx = 0
         dists_names = ['pos', 'yaw', 'pitch', 'roll', 'grasp', 'termsig']
-        distributions, _ = policy.mode_distributions()
-        for name, dist in zip(dists_names, distributions):
+        for name, dist in zip(dists_names, policy.distributions):
             act_pred = jnp.atleast_1d(dist.mode())
             next_idx = idx + act_pred.size
             act_truth = action[idx:next_idx]
