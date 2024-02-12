@@ -138,6 +138,6 @@ class ActionDecoder(nn.Module):
         low_dim_dists = [tfd.Categorical(logits) for logits in low_dim_logits]
         dist = distributions.Blockwise([grid_dist] + low_dim_dists)
         if self.is_initializing():
-            # Specifically for nn.tabulate since tfd.Distribution interferes with jax.eval_shape.
+            # Specifically for nn.tabulate since tfd.Distribution is interfering with jax.eval_shape.
             return dist.mode()
         return dist

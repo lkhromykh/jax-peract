@@ -7,45 +7,10 @@ tfd = tfp.distributions
 class Blockwise(tfd.Blockwise):
 
     def mode(self, *args, **kwargs):
+        # assuming all distributions are independent.
         modes = map(lambda x: x.mode(*args, **kwargs), self.distributions)
         modes = jnp.atleast_1d(*modes)
         return jnp.concatenate(modes, -1)
-
-    def mode_distributions(self, *args, **kwargs):
-        values = [dist.mode(*args, **kwargs) for dist in self.distributions]
-        return self.distributions, values
-
-
-class JointDistributionSequential(tfd.JointDistributionSequential):
-    """Restricted set of joint distributions: every dist event shape should be at most 1-dim.
-
-    `Mode` methods are not proper distribution mode -- they are required only for deterministic policy evaluation.
-    """
-
-    def log_prob_parts(self, value, *args, **kwargs):
-        """Split array into parts before using tfd API."""
-        shapes = self.event_shape
-        sections = np.cumsum([np.prod(shape, dtype=int) for shape in shapes])
-        value_shape = zip(jnp.split(value, sections, -1), shapes)
-        values = [value.reshape(shape) for value, shape in value_shape]
-        return super().log_prob_parts(*values, *args, **kwargs)
-
-    def log_prob(self, *args, **kwargs):
-        return sum(self.log_prob_parts(*args, **kwargs))
-
-    def mode_distributions(self, *args, **kwargs):
-        """Alike .sample_distributions."""
-        distributions, values = [], []
-        for fn in self._dist_fn_wrapped:
-            dist = fn(*values)
-            distributions.append(dist)
-            values.append(dist.mode(*args, **kwargs))
-        return distributions, values
-
-    def mode(self, *args, **kwargs):
-        _, values = self.mode_distributions(*args, **kwargs)
-        values = jnp.atleast_1d(*values)
-        return jnp.concatenate(values)
 
 
 class Idx2Grid(tfp.bijectors.AutoCompositeTensorBijector):
