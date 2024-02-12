@@ -27,6 +27,7 @@ def default_scan_factory(skip_every: int = 4) -> ScanFn:
     def keyframe_scan(carry: Carry, obs: gcenv.Observation) -> tuple[Carry, bool]:
         # skip_first added in order to ignore initial acceleration.
         next_obs, time_step, time_to_next_kf = (c := carry).next_obs, c.time_step, c.time_to_next_kf
+        assert not next_obs.is_terminal
         is_grasp = obs.gripper_is_open ^ next_obs.gripper_is_open
         is_waypoint = next_obs.joints_velocity_is_low
         is_waypoint &= np.all(abs(next_obs.joint_velocities) < abs(obs.joint_velocities))
@@ -53,14 +54,14 @@ def extractor_factory(
         rdemo = reversed(demo)
         last_obs = next(rdemo)
         assert last_obs.is_terminal, 'Demo is probably truncated or unsuccessful.'
+        terminal_pair = (observation_transform(last_obs), keyframe_transform(last_obs))
+        last_obs = last_obs.replace(is_terminal=False)
         keyframe = keyframe_transform(last_obs)
-        pairs = [(observation_transform(last_obs), keyframe)]  # predict termsig from the state.
-        carry = Carry(next_obs=last_obs.replace(is_terminal=False),
+        carry = Carry(next_obs=last_obs,
                       time_step=len(demo) - 1,
                       time_to_next_kf=0)
-        kf_time_steps = [carry.time_step]
+        pairs, kf_time_steps = [terminal_pair], [carry.time_step]
         for obs in rdemo:
-            assert not obs.is_terminal
             next_obs = carry.next_obs
             carry, is_keyframe = scan_fn(carry, obs)
             if is_keyframe:
@@ -68,7 +69,6 @@ def extractor_factory(
                 keyframe = keyframe_transform(next_obs)
             pairs.append((observation_transform(obs), keyframe))
         kf_time_steps = kf_time_steps[::-1]
-        breakpoint()
         logging.info('Keyframes time steps: %s',  kf_time_steps)
         return pairs[::-1], kf_time_steps
 

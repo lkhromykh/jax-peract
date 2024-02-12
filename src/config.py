@@ -13,8 +13,8 @@ class Config:
     conv_stem_strides: Layers = (4,)
     conv_stem_use_skip_connections: bool = True
     # Perceiver
-    latent_dim: int = 512
-    latent_channels: int = 512
+    latent_dim: int = 256
+    latent_channels: int = 256
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
@@ -24,11 +24,11 @@ class Config:
     use_layernorm: bool = True
     use_decoder_query_residual: bool = False
     use_trainable_pos_encoding: bool = False
-    prior_initial_scale: float = 0.02
+    prior_initial_scale: float = 0.04
     ff_num_bands: int = 8
     text_context_length: int = 77  # max. 77
     # Action decoder
-    act_decoder_mlp_layers: Layers = (256,)
+    act_decoder_mlp_dim: int = 256
     act_decoder_conv_kernel: int = 3
     # Training
     max_grad_norm: float = 1.
@@ -36,7 +36,7 @@ class Config:
     peak_learning_rate: float = 5e-4
     training_steps: int = 100_000
     batch_size: int = 16
-    weight_decay: float = 1e-5
+    weight_decay: float = 1e-6
     log_every: int = 10
     save_every: int = 500
     jit: bool = True
@@ -44,15 +44,15 @@ class Config:
     max_shift: int = 4
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
-    scene_bins: int = 64
-    rot_bins: int = 72
+    scene_bins: int = 32
+    rot_bins: int = 13
     time_limit: int = 20
     num_demos: int = 50
 
     seed: int = 1
     launch_env: bool = True
     dataset_dir: str = 'datasets/reach_target'
-    logdir: str = 'logdir/reach_target'
+    logdir: str = 'logdir/reach_target_auto-regressive'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
@@ -89,7 +89,7 @@ peract_config = Config(
     self_attend_widening_factor=4.,
     use_trainable_pos_encoding=True,
     text_context_length=77,
-    act_decoder_mlp_layers=(256,),
+    act_decoder_mlp_dim=256,
     act_decoder_conv_kernel=3,
     training_steps=600_000,
     batch_size=16,

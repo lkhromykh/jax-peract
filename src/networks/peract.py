@@ -45,7 +45,7 @@ class PerAct(nn.Module):
         )
         self.action_decoder = io_processors.ActionDecoder(
             action_spec=self.action_spec,
-            mlp_layers=c.act_decoder_mlp_layers,
+            mlp_dim=c.act_decoder_mlp_dim,
             conv_kernel=c.act_decoder_conv_kernel,
             dtype=dtype
         )

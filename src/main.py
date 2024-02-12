@@ -1,6 +1,6 @@
 import time
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 import jax
 import chex
@@ -72,18 +72,18 @@ def evaluate(cfg: Config):
 
     def env_loop():
         ts = env.reset()
-        logging.debug('Goal: %s', env.env.get_goal())
+        logging.info('Goal: %s', env.env.get_goal())
         reward = 0
         while not ts.last():
             action = act(ts.observation)
-            logging.debug('Action %s / %s', enc.action_encoder.decode(action), action)
+            logging.info('Action %s / %s', enc.action_encoder.decode(action), action)
             ts = env.step(action)
             reward += ts.reward
-        logging.debug('Reward: %f', reward)
+        logging.info('Reward: %f', reward)
         return reward
     res = [env_loop() for _ in range(50)]
-    logging.debug(res)
-    logging.debug('Mean reward: %.3f', float(sum(res)) / len(res))
+    logging.info(res)
+    logging.info('Mean reward: %.3f', float(sum(res)) / len(res))
     env.close()
 
 

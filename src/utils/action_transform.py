@@ -22,7 +22,7 @@ class DiscreteActionTransform:
         lb = np.r_[scene_bounds[:3], -rot_lim, 0, 0]
         ub = np.r_[scene_bounds[3:], rot_lim, 1, 1]
         nbins = 3 * [scene_bins] + 3 * [rot_bins] + [2, 2]
-        self._act_specs = [specs.DiscreteArray(n) for n in nbins]
+        self._act_specs = tuple(specs.DiscreteArray(n) for n in nbins)
         self._action_bounds = (lb, ub)
         self._range = ub - lb
         self._nbins = np.int32(nbins) - 1  # indexing starts from 0.
@@ -43,7 +43,7 @@ class DiscreteActionTransform:
         return action
 
     def action_spec(self) -> types.ActionSpec:
-        return self._act_specs.copy()
+        return self._act_specs
 
     def _assert_valid_action(self, action: gcenv.Action) -> None:
         assert action.shape == np.shape(self._nbins) \

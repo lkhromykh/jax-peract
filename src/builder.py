@@ -147,7 +147,7 @@ class Builder:
         )
         ds = ds.cache() \
              .repeat() \
-             .shuffle(c.batch_size) \
+             .shuffle(10 * c.batch_size) \
              .map(utils.augmentations.select_random_transition) \
              .map(lambda item: utils.augmentations.voxel_grid_random_shift(item, c.max_shift)) \
              .batch(c.batch_size) \

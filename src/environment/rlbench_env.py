@@ -24,7 +24,7 @@ _OBS_CONFIG.set_all(True)
 class RLBenchEnv(gcenv.GoalConditionedEnv):
 
     CAMERAS = ('front', 'left_shoulder', 'right_shoulder', 'overhead', 'wrist')
-    TASKS = ('OpenDrawer',)
+    TASKS = ('ReachTarget',)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -53,7 +53,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
         pos, euler, grasp, termsig = np.split(action, [3, 6, 7])
         if termsig > 0.5:
             sim_success, sim_terminate = self.task._task.success()
-            logging.debug('Is terminating correctly: %s', sim_terminate)
+            logging.info('Is terminating correctly: %s', sim_terminate)
             return self._as_time_step(self._prev_obs, float(sim_success), True)
         quat = Rotation.from_euler('ZYX', euler).as_quat(canonical=True)
         action = np.concatenate([pos, quat, 1. - grasp])
@@ -61,7 +61,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
             obs, _, _ = self.task.step(action)
             reward, terminate = 0, False  # ground truth sim state is hidden from an agent until termsig.
         except (IKError, InvalidActionError, ConfigurationPathError) as exc:
-            logging.debug('Action %s led to exception: %s.', action, exc)
+            logging.info('Action %s led to exception: %s.', action, exc)
             obs, reward, terminate = self._prev_obs, -1., True
         else:
             obs = self.transform_observation(obs)

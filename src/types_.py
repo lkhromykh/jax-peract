@@ -7,7 +7,7 @@ from dm_env import specs
 Array: TypeAlias = jax.Array
 DType: TypeAlias = Any
 Action: TypeAlias = jax.Array
-ActionSpec: TypeAlias = list[specs.DiscreteArray]
+ActionSpec: TypeAlias = tuple[specs.DiscreteArray, ...]
 EnvSpecs = tuple['State[specs.Array]', ActionSpec]
 
 
