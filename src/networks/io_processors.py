@@ -132,7 +132,7 @@ class ActionDecoder(nn.Module):
         grid_dist = tfd.TransformedDistribution(
             distribution=tfd.Categorical(vgrid_logits.flatten()),
             bijector=distributions.Idx2Grid(grid_size),
-            name='grid_distribution'
+            name='voxel_grid_logits'
         )
         *low_dim_logits, _ = jnp.split(low_dim_logits, np.cumsum(low_dim_dof))
         low_dim_dists = [tfd.Categorical(logits) for logits in low_dim_logits]

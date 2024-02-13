@@ -1,3 +1,5 @@
+from typing import Literal
+
 import numpy as np
 import open3d as o3d
 from dm_env import specs
@@ -21,23 +23,25 @@ class VoxelGrid:
 
     def encode(self,
                obs: gcenv.Observation,
-               return_o3d_geoms: bool = False  # for visualization
-               ) -> gcenv.Array | tuple[o3d.geometry.TriangleMesh, o3d.geometry.PointCloud, o3d.geometry.VoxelGrid]:
+               return_type: Literal['np', 'o3d'] = 'np'
+               ) -> gcenv.Array | o3d.geometry.VoxelGrid:
         points = self._scale(obs.point_clouds).reshape(-1, 3)
         colors = obs.images.reshape(-1, 3).astype(np.float32) / 255.
         pcd = o3d.geometry.PointCloud()
         pcd.points, pcd.colors = map(o3d.utility.Vector3dVector, (points, colors))
         pcd = pcd.crop(self._bbox)
         grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, self._voxel_size)
-        if return_o3d_geoms:
-            frame = o3d.geometry.TriangleMesh.create_coordinate_frame()
-            return frame, pcd, grid
-        scene = np.zeros(self._shape, dtype=np.uint8)
-        for voxel in grid.get_voxels():
-            idx = voxel.grid_index
-            rgb = np.round(255 * voxel.color)
-            scene[tuple(idx)] = np.r_[rgb, 255]
-        return scene
+        match return_type:
+            case 'o3d':
+                return grid
+            case 'np':
+                scene = np.zeros(self._shape, dtype=np.uint8)
+                for voxel in grid.get_voxels():
+                    idx = voxel.grid_index
+                    rgb = np.round(255 * voxel.color)
+                    scene[tuple(idx)] = np.r_[rgb, 255]
+                return scene
+        raise ValueError(return_type)
 
     def decode(self, voxels: gcenv.Array) -> o3d.geometry.VoxelGrid:
         grid = o3d.geometry.VoxelGrid()

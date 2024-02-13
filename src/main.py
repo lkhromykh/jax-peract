@@ -90,6 +90,6 @@ def evaluate(cfg: Config):
 if __name__ == '__main__':
     # _debug()
     _cfg = Config()
-    # collect_dataset(_cfg)
-    train(_cfg)
-    evaluate(_cfg)
+    collect_dataset(_cfg)
+    # train(_cfg)
+    # evaluate(_cfg)

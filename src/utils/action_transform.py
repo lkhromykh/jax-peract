@@ -40,7 +40,7 @@ class DiscreteActionTransform:
         self._assert_valid_action(action)
         lb, _ = self._action_bounds
         action = lb + self._range * action / self._nbins
-        return action
+        return action.astype(np.float32)
 
     def action_spec(self) -> types.ActionSpec:
         return self._act_specs

@@ -50,9 +50,8 @@ class Config:
     num_demos: int = 50
 
     seed: int = 1
-    launch_env: bool = True
     dataset_dir: str = 'datasets/reach_target'
-    logdir: str = 'logdir/reach_target2'
+    logdir: str = 'logdir/reach_target'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
