@@ -1,5 +1,5 @@
 import collections.abc
-from typing import Any, Callable, NamedTuple, TypeAlias, TypedDict
+from typing import Any, Callable, NamedTuple, TypeAlias
 
 import jax
 from dm_env import specs

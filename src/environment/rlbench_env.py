@@ -58,8 +58,8 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
         quat = Rotation.from_euler('ZYX', euler).as_quat(canonical=True)
         action = np.concatenate([pos, quat, 1. - grasp])
         try:
-            obs, _, _ = self.task.step(action)
-            reward, terminate = 0, False  # ground truth sim state is hidden from an agent until termsig.
+            obs, reward, terminate = self.task.step(action)
+            # reward, terminate = 0, False  # ground truth sim state is hidden from an agent until termsig.
         except (IKError, InvalidActionError, ConfigurationPathError) as exc:
             logging.info('Action %s led to exception: %s.', action, exc)
             obs, reward, terminate = self._prev_obs, -1., True

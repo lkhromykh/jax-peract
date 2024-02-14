@@ -1,6 +1,4 @@
 """Diversify training samples via augmentations."""
-from typing import Callable
-
 import numpy as np
 import tensorflow as tf
 from scipy.spatial.transform import Rotation as R
@@ -14,18 +12,6 @@ def select_random_transition(item: types.Trajectory) -> types.Trajectory:
     tf.debugging.assert_rank(act, 2, message='Leading dim should be time dimension.')
     idx = tf.random.uniform((), minval=0, maxval=tf.shape(act)[0], dtype=tf.int32)
     return tf.nest.map_structure(lambda x: x[idx], item)
-
-
-def scene_rigid_transform_factory(
-        action_transform: DiscreteActionTransform,
-        max_shift: int
-) -> Callable[[types.Trajectory], types.Trajectory]:
-
-    def fn(item: types.Trajectory) -> types.Trajectory:
-        item = scene_rotation(item, action_transform)
-        item = scene_shift(item, max_shift)
-        return item
-    return fn
 
 
 def scene_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
@@ -51,30 +37,36 @@ def scene_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
 
 
 def scene_rotation(item: types.Trajectory,
-                   act_transform: DiscreteActionTransform
+                   act_transform: DiscreteActionTransform,
                    ) -> types.Trajectory:
-    obs, act = _unpack_trajectory(item)
-    def cast(x): return tf.cast(x, act.dtype)
-    k = tf.random.uniform((), minval=0, maxval=4, dtype=tf.int32)
-    voxels = tf.transpose(obs.voxels, [2, 0, 1, 3])
-    new_voxels = tf.image.rot90(voxels, k)
-    new_voxels = tf.transpose(new_voxels, [1, 2, 0, 3])
-    rot = R.from_rotvec([0, 0, - np.pi * tf.cast(k, tf.float32) / 2])
+    observation, action = _unpack_trajectory(item)
+    vgrid_shape, act_shape = observation.voxels.shape, action.shape
 
-    act = act_transform.decode(act)
-    center = cast(act_transform.get_scene_center())
-    pos, tcp_orient, other = tf.split(act, [3, 3, 2])
-    rmat = cast(rot.as_matrix())
+    def np_rot(voxels, act):
+        k = np.random.randint(0, 4)
+        new_voxels = np.rot90(voxels, k, axes=(0, 1))
+        rot = R.from_rotvec([0, 0, np.pi * k / 2])
+        act = act_transform.decode(act)
+        center = act_transform.get_scene_center()
+        pos, tcp_orient, other = np.split(act, [3, 6])
+        rmat = rot.as_matrix()
+        new_pos = rmat @ (pos - center) + center
+        new_orient = rot * R.from_euler('ZYX', tcp_orient)
+        new_orient = new_orient.as_euler('ZYX')
+        new_act = np.concatenate([new_pos, new_orient, other])
+        new_act = act_transform.encode(new_act)
+        return new_voxels, new_act
 
-    new_pos = tf.linalg.matvec(rmat, pos - center) + center
-    new_orient = rot.inv() * R.from_euler('ZYX', tcp_orient)
-    new_orient = new_orient.as_euler('ZYX')
-    new_act = tf.concat([new_pos, new_orient, other], 0)
-    new_act = act_transform.encode(new_act)
-    return types.Trajectory(
-        observations=obs._replace(voxels=new_voxels),
-        actions=new_act
+    voxels, act = tf.numpy_function(
+        func=np_rot,
+        inp=[observation.voxels, action],
+        Tout=[tf.uint8, tf.int32],
+        stateful=False
     )
+    voxels = tf.ensure_shape(voxels, vgrid_shape)
+    act = tf.ensure_shape(act, act_shape)
+    traj = types.Trajectory(observations=observation._replace(voxels=voxels), actions=act)
+    return tf.nest.map_structure(tf.convert_to_tensor, traj)
 
 
 def _unpack_trajectory(item: types.Trajectory) -> tuple[types.State, types.Action]:

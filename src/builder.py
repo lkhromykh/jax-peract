@@ -145,15 +145,14 @@ class Builder:
             generator=as_trajectory_generator,
             output_signature=output_signature
         )
-        scene_augmentation = utils.augmentations.scene_rigid_transform_factory(
-            enc.action_encoder, c.max_shift)
         ds = ds.cache() \
-             .repeat() \
-             .shuffle(10 * c.batch_size) \
-             .map(utils.augmentations.select_random_transition) \
-             .map(scene_augmentation) \
-             .batch(c.batch_size) \
-             .prefetch(tf.data.AUTOTUNE)
+               .repeat() \
+               .shuffle(10 * c.batch_size) \
+               .map(utils.augmentations.select_random_transition) \
+               .map(lambda item: utils.augmentations.scene_rotation(item, enc.action_encoder)) \
+               .map(lambda item: utils.augmentations.scene_shift(item, c.max_shift)) \
+               .batch(c.batch_size) \
+               .prefetch(tf.data.AUTOTUNE)
         return ds
 
     def make_step_fn(self, nets: PerAct) -> types.StepFn:

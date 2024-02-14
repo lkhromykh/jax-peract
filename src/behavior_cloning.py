@@ -44,7 +44,7 @@ def bc(cfg: Config, nets: PerAct) -> types.StepFn:
         params = state.params
         grad_fn = jax.grad(loss_fn, has_aux=True)
         grad_fn = jax.vmap(grad_fn, in_axes=(None, 0, 0))
-        out = grad_fn(params, batch['observations'], batch['actions'])
+        out = grad_fn(params, batch.observations, batch.actions)
         grad, metrics = jax.tree_util.tree_map(
             lambda x: jnp.mean(x, axis=0), out)
         state = state.update(grad=grad)
