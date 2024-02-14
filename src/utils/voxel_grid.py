@@ -25,8 +25,13 @@ class VoxelGrid:
                obs: gcenv.Observation,
                return_type: Literal['np', 'o3d'] = 'np'
                ) -> gcenv.Array | o3d.geometry.VoxelGrid:
-        points = self._scale(obs.point_clouds).reshape(-1, 3)
-        colors = obs.images.reshape(-1, 3).astype(np.float32) / 255.
+        points, colors = [], []
+        for pcd, rgb in zip(obs.point_clouds, obs.images):
+            points.append(pcd.reshape(-1, 3))
+            colors.append(rgb.reshape(-1, 3))
+        points, colors = map(np.concatenate, (points, colors))
+        points = self._scale(points)
+        colors = colors.astype(np.float32) / 255.
         pcd = o3d.geometry.PointCloud()
         pcd.points, pcd.colors = map(o3d.utility.Vector3dVector, (points, colors))
         pcd = pcd.crop(self._bbox)

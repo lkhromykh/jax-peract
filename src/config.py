@@ -25,17 +25,17 @@ class Config:
     use_decoder_query_residual: bool = False
     use_trainable_pos_encoding: bool = False
     prior_initial_scale: float = 0.04
-    ff_num_bands: int = 24
+    ff_num_bands: int = 32
     text_context_length: int = 77  # max. 77
     # Action decoder
     act_decoder_mlp_dim: int = 256
     act_decoder_conv_kernel: int = 3
     # Training
     max_grad_norm: float = 1.
-    warmup_steps: int = -1
+    warmup_steps: int = 3000
     peak_learning_rate: float = 5e-4
     training_steps: int = 100_000
-    batch_size: int = 8
+    batch_size: int = 16
     weight_decay: float = 1e-6
     log_every: int = 10
     save_every: int = 500
@@ -45,13 +45,13 @@ class Config:
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     scene_bins: int = 32
-    rot_bins: int = 13
+    rot_bins: int = 72
     time_limit: int = 20
     num_demos: int = 50
 
     seed: int = 1
-    dataset_dir: str = 'datasets/reach_target'
-    logdir: str = 'logdir/reach_target_aug2'
+    dataset_dir: str = 'datasets/open_drawer'
+    logdir: str = 'logdir/open_drawer'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

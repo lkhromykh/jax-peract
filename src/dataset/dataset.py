@@ -8,6 +8,7 @@ from src.environment import gcenv
 from src.utils import serialize, deserialize
 
 
+# TODO: maybe save cams params
 class DemosDataset:
     """
     Manage demos.

@@ -19,9 +19,9 @@ class Observation(NamedTuple):
     JOINTS_VEL_LOW_THRESHOLD = 0.1
     GRIPPER_OPEN_THRESHOLD = 0.05
 
-    images: Array  # N x (H, W, 3), N -- number of cam views.
-    depth_maps: Array  # N x (H, W)
-    point_clouds: Array  # N x (H, W, 3)
+    images: tuple[Array]  # N x (H_i, W_i, 3), N -- number of cam views.
+    depth_maps: tuple[Array]  # N x (H, W)
+    point_clouds: tuple[Array]  # N x (H, W, 3)
     joint_positions: Array
     joint_velocities: Array
     tcp_pose: Array  # [x, y, z, yaw, pitch, roll]

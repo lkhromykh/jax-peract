@@ -50,6 +50,7 @@ class MLP(_Module):
         return self.dense(x, features=dim)
 
 
+# TODO: try slots attention.
 def scaled_dot_product(query: Array,
                        key: Array,
                        value: Array,
@@ -127,6 +128,7 @@ class CrossAttention(_Module):
 
 
 # TODO: propagate attention all through.
+# TODO: maybe check GRU?
 class PerceiverIO(nn.Module):
 
     latent_dim: int

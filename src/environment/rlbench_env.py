@@ -24,7 +24,7 @@ _OBS_CONFIG.set_all(True)
 class RLBenchEnv(gcenv.GoalConditionedEnv):
 
     CAMERAS = ('front', 'left_shoulder', 'right_shoulder', 'overhead', 'wrist')
-    TASKS = ('ReachTarget',)
+    TASKS = ('OpenDrawer',)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -51,10 +51,10 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
         assert not self._in_demo_state
         self._step += 1
         pos, euler, grasp, termsig = np.split(action, [3, 6, 7])
-        if termsig > 0.5:
-            sim_success, sim_terminate = self.task._task.success()
-            logging.info('Is terminating correctly: %s', sim_terminate)
-            return self._as_time_step(self._prev_obs, float(sim_success), True)
+        # if termsig > 0.5:
+        #     sim_success, sim_terminate = self.task._task.success()
+        #     logging.info('Is terminating correctly: %s', sim_terminate)
+        #     return self._as_time_step(self._prev_obs, float(sim_success), True)
         quat = Rotation.from_euler('ZYX', euler).as_quat(canonical=True)
         action = np.concatenate([pos, quat, 1. - grasp])
         try:
@@ -87,20 +87,20 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
             if (data := getattr(obs, f'{cam}_{data}')) is not None:
                 list_.append(data)
 
-        images, depths, point_cloud = [], [], []
+        images, depths, point_clouds = [], [], []
         for cam in self.CAMERAS:
             maybe_append(images, cam, 'rgb')
             maybe_append(depths, cam, 'depth')
-            maybe_append(point_cloud, cam, 'point_cloud')
+            maybe_append(point_clouds, cam, 'point_cloud')
         def gpos_fn(joints): return 1. - np.clip(joints.sum(keepdims=True) / 0.08, 0, 1)  # Franka Panda.
         def gforces_fn(forces): return not np.allclose(forces, 0, atol=0.1)
         pos, quat = np.split(obs.gripper_pose, [3])
         euler = Rotation.from_quat(quat).as_euler('ZYX')
         tcp_pose = np.concatenate([pos, euler])
         return gcenv.Observation(
-            images=np.stack(images),
-            depth_maps=np.stack(depths),
-            point_clouds=np.stack(point_cloud),
+            images=tuple(images),
+            depth_maps=tuple(depths),
+            point_clouds=tuple(point_clouds),
             joint_velocities=obs.joint_velocities,
             joint_positions=obs.joint_positions,
             tcp_pose=tcp_pose,

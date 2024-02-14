@@ -65,9 +65,10 @@ def evaluate(cfg: Config):
     nets, _ = builder.make_networks_and_params(enc)
     params = builder.load(Builder.STATE).params
     env = builder.make_env(enc)
+    model = nets.bind(params)
 
     def act(obs):
-        policy = jax.jit(nets.apply)(params, obs)
+        policy = jax.jit(model)(obs)
         return jax.device_get(policy.mode())
 
     def env_loop():

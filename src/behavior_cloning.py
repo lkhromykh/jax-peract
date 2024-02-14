@@ -12,6 +12,7 @@ from src.train_state import TrainState, Params
 from src import types_ as types
 
 
+# TODO: somehow predict correct termsig
 def bc(cfg: Config, nets: PerAct) -> types.StepFn:
     chex.assert_gpu_available()
 
