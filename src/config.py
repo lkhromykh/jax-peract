@@ -46,7 +46,7 @@ class Config:
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     scene_bins: int = 32
     rot_bins: int = 72
-    time_limit: int = 20
+    time_limit: int = 10
     num_demos: int = 50
 
     seed: int = 1

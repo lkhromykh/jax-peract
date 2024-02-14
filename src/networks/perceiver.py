@@ -181,7 +181,7 @@ class PerceiverIO(nn.Module):
 
         latent = self.param(
             'latent_prior',
-            nn.initializers.normal(self.prior_initial_scale),
+            nn.initializers.normal(self.prior_initial_scale, dtype=self.dtype),
             (self.latent_dim, self.latent_channels)
         )
         latent = encode_query(latent, inputs_q)

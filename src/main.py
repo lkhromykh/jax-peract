@@ -66,10 +66,9 @@ def evaluate(cfg: Config):
     nets, _ = builder.make_networks_and_params(enc)
     params = builder.load(Builder.STATE).params
     env = builder.make_env(enc)
-    model = nets.bind(params)
 
     def act(obs):
-        policy = jax.jit(model)(obs)
+        policy = jax.jit(nets.apply)(params, obs)
         return jax.device_get(policy.mode())
 
     def env_loop():
@@ -83,7 +82,7 @@ def evaluate(cfg: Config):
             reward += ts.reward
         logging.info('Reward: %f', reward)
         return reward
-    res = [env_loop() for _ in range(50)]
+    res = [env_loop() for _ in range(100)]
     logging.info(res)
     logging.info('Mean reward: %.3f', float(sum(res)) / len(res))
     env.close()
