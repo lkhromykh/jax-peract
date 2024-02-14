@@ -13,6 +13,7 @@ from src.networks.perceiver import PerceiverIO
 
 # TODO: properly name all encodings/priors to apply weight decay.
 #  name dense modules to distinguish them.
+# TODO: check dtypes
 class PerAct(nn.Module):
 
     config: Config
@@ -60,7 +61,7 @@ class PerAct(nn.Module):
         voxels = voxels / 128. - 1
         patches, skip_connections = self.voxels_proc.encode(voxels)
         patches_shape, channels = patches.shape[:3], patches.shape[-1]
-        pos3d_enc = utils.fourier_features(patches_shape, c.ff_num_bands)
+        pos3d_enc = utils.fourier_features(patches_shape, c.ff_num_bands).astype(patches.dtype)
         if c.use_trainable_pos_encoding:  # Hide 3D structure of the voxels.
             pos3d_enc = self.param(
                 'input_pos3d_encoding',
@@ -71,7 +72,7 @@ class PerAct(nn.Module):
         patches = patches.reshape(-1, patches.shape[-1])
         low_dim = nn.Dense(channels, dtype=dtype, name='low_dim_preproc')(low_dim).reshape(1, -1)
         task = nn.Dense(channels, dtype=dtype, name='task_preproc')(task)
-        pos1d_enc = utils.fourier_features(task.shape[:1], c.ff_num_bands)
+        pos1d_enc = utils.fourier_features(task.shape[:1], c.ff_num_bands).astype(task.dtype)
         task = jnp.concatenate([task, pos1d_enc], -1)
 
         inputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(

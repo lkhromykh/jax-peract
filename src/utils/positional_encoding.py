@@ -12,4 +12,4 @@ def fourier_features(shape: tuple[int, ...],
     freqs = np.linspace(np.ones_like(nf), nf / 2., num_freqs)
     enc = np.pi * np.einsum('...d,Kd->...dK', pos, freqs)
     enc = enc.reshape(shape + (len(shape) * num_freqs,))
-    return np.concatenate([pos, np.cos(enc), np.sin(enc)], -1)
+    return np.concatenate([pos, np.cos(enc), np.sin(enc)], axis=-1)
