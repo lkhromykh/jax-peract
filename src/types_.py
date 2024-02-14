@@ -18,11 +18,9 @@ class State(NamedTuple):
     goal: Array
 
 
-class Trajectory(TypedDict, total=False):
+class Trajectory(NamedTuple):
     observations: Any
     actions: Any
-    rewards: Any
-    discounts: Any
 
 
 SceneBounds: TypeAlias = tuple[float, float, float, float, float, float]

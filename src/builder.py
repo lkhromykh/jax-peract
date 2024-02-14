@@ -145,11 +145,13 @@ class Builder:
             generator=as_trajectory_generator,
             output_signature=output_signature
         )
+        scene_augmentation = utils.augmentations.scene_rigid_transform_factory(
+            enc.action_encoder, c.max_shift)
         ds = ds.cache() \
              .repeat() \
              .shuffle(10 * c.batch_size) \
              .map(utils.augmentations.select_random_transition) \
-             .map(lambda item: utils.augmentations.voxel_grid_random_shift(item, c.max_shift)) \
+             .map(scene_augmentation) \
              .batch(c.batch_size) \
              .prefetch(tf.data.AUTOTUNE)
         return ds

@@ -45,6 +45,10 @@ class DiscreteActionTransform:
     def action_spec(self) -> types.ActionSpec:
         return self._act_specs
 
+    def get_scene_center(self) -> np.ndarray:
+        lb, ub = self._action_bounds
+        return (lb[:3] + ub[:3]) / 2
+
     def _assert_valid_action(self, action: gcenv.Action) -> None:
         assert action.shape == np.shape(self._nbins) \
            and action.dtype == np.int32 \

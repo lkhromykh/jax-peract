@@ -51,7 +51,7 @@ class Config:
 
     seed: int = 1
     dataset_dir: str = 'datasets/reach_target'
-    logdir: str = 'logdir/reach_target'
+    logdir: str = 'logdir/reach_target_aug'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
