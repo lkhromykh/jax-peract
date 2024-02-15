@@ -149,10 +149,11 @@ class Builder:
         ds = ds.cache() \
                .repeat() \
                .shuffle(10 * c.batch_size) \
-               .map(utils.augmentations.select_random_transition) \
+               .map(utils.augmentations.select_random_transition, num_parallel_calls=tf.data.AUTOTUNE) \
                .map(lambda item: utils.augmentations.scene_rotation(item, enc.action_encoder)) \
-               .map(lambda item: utils.augmentations.scene_shift(item, c.max_shift)) \
-               .batch(c.batch_size) \
+               .map(lambda item: utils.augmentations.scene_shift(item, c.max_shift),
+                    num_parallel_calls=tf.data.AUTOTUNE) \
+               .batch(c.batch_size, num_parallel_calls=tf.data.AUTOTUNE) \
                .prefetch(tf.data.AUTOTUNE)
         return ds
 

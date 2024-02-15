@@ -25,7 +25,7 @@ class Config:
     use_decoder_query_residual: bool = False
     use_trainable_pos_encoding: bool = False
     prior_initial_scale: float = 0.04
-    ff_num_bands: int = 32
+    ff_num_bands: int = 16
     text_context_length: int = 77  # max. 77
     # Action decoder
     act_decoder_mlp_dim: int = 256
@@ -46,7 +46,7 @@ class Config:
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     scene_bins: int = 64
     rot_bins: int = 72
-    time_limit: int = 10
+    time_limit: int = 16
     num_demos_per_task: int = 100
 
     seed: int = 1
