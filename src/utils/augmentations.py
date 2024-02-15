@@ -43,7 +43,7 @@ def scene_rotation(item: types.Trajectory,
     vgrid_shape, act_shape = observation.voxels.shape, action.shape
 
     def np_rot(voxels, act):
-        k = np.random.randint(0, 4)
+        k = np.random.randint(0, 5)  # preference goes to original orientation
         new_voxels = np.rot90(voxels, k, axes=(0, 1))
         rot = R.from_rotvec([0, 0, np.pi * k / 2])
         act = act_transform.decode(act)

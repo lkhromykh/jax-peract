@@ -12,7 +12,8 @@ SceneBounds: TypeAlias = tuple[float, float, float, float, float, float]
 Goal: TypeAlias = str | np.ndarray
 
 
-# TODO: consider adding timestep to an observation
+# TODO: consider swapping to quat / rotvec to avoid Gimball lock.
+# TODO: it may be handful to store extrinsic/intrinsic cam matrices.
 class Observation(NamedTuple):
     """Complete action-centric environment state representation."""
 

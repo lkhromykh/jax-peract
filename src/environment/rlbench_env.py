@@ -15,16 +15,27 @@ from rlbench.backend.exceptions import InvalidActionError
 from pyrep.errors import IKError, ConfigurationPathError
 
 from src.environment import gcenv
+from src.logger import get_logger
 
 Array = np.ndarray
 _OBS_CONFIG = ObservationConfig()
 _OBS_CONFIG.set_all(True)
 
+_CAMERAS = ('front', 'left_shoulder', 'right_shoulder', 'overhead', 'wrist')
+_TASKS = (
+    'SlideBlockToTarget', 'TurnTap', 'PutItemInDrawer',
+    'TakeItemOutOfDrawer', 'CloseJar', 'ReachAndDrag',
+    'StackBlocks', 'PutMoneyInSafe', 'StackWine',
+    'PutGroceriesInCupboard', 'PlaceShapeInShapeSorter', 'InsertOntoSquarePeg',
+    'PlaceCups', 'StackCups', 'LightBulbIn',
+    'OpenDrawer', 'PushButtons'
+)
+
 
 class RLBenchEnv(gcenv.GoalConditionedEnv):
 
-    CAMERAS = ('front', 'left_shoulder', 'right_shoulder', 'overhead', 'wrist')
-    TASKS = ('OpenDrawer',)
+    CAMERAS = _CAMERAS
+    TASKS = _TASKS
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -53,7 +64,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
         pos, euler, grasp, termsig = np.split(action, [3, 6, 7])
         # if termsig > 0.5:
         #     sim_success, sim_terminate = self.task._task.success()
-        #     logging.info('Is terminating correctly: %s', sim_terminate)
+        #     get_logger().info('Is terminating correctly: %s', sim_terminate)
         #     return self._as_time_step(self._prev_obs, float(sim_success), True)
         quat = Rotation.from_euler('ZYX', euler).as_quat(canonical=True)
         action = np.concatenate([pos, quat, 1. - grasp])
@@ -61,7 +72,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
             obs, reward, terminate = self.task.step(action)
             # reward, terminate = 0, False  # ground truth sim state is hidden from an agent until termsig.
         except (IKError, InvalidActionError, ConfigurationPathError) as exc:
-            logging.info('Action %s led to exception: %s.', action, exc)
+            get_logger().info('Action %s led to exception: %s.', action, exc)
             obs, reward, terminate = self._prev_obs, -1., True
         else:
             obs = self.transform_observation(obs)

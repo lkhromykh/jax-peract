@@ -1,5 +1,3 @@
-import logging
-
 import jax
 import jax.numpy as jnp
 import optax
@@ -7,6 +5,7 @@ import chex
 from flax import traverse_util
 
 from src.config import Config
+from src.logger import get_logger
 from src.networks.peract import PerAct
 from src.train_state import TrainState, Params
 from src import types_ as types
@@ -41,7 +40,7 @@ def bc(cfg: Config, nets: PerAct) -> types.StepFn:
     def step(state: TrainState,
              batch: types.Trajectory
              ) -> tuple[TrainState, types.Metrics]:
-        logging.info('Tracing BC step.')  # log params
+        get_logger().info('Tracing BC step.')  # log params
         params = state.params
         grad_fn = jax.grad(loss_fn, has_aux=True)
         grad_fn = jax.vmap(grad_fn, in_axes=(None, 0, 0))

@@ -1,6 +1,4 @@
 import time
-import logging
-logging.basicConfig(level=logging.INFO)
 
 import jax
 import chex
@@ -8,13 +6,15 @@ chex.disable_asserts()
 
 from src.config import Config
 from src.builder import Builder
+from src.logger import get_logger
 from src.dataset.dataset import DemosDataset
 from rltools.loggers import TFSummaryLogger
 
 
 def _debug():
     import flax
-    logging.basicConfig(level=logging.DEBUG)
+    import logging
+    get_logger().setLevel(logging.DEBUG)
     jax.config.update('jax_disable_jit', True)
     # jax.config.update('jax_platform_name', 'cpu')
     chex.enable_asserts()
@@ -22,15 +22,28 @@ def _debug():
 
 
 def collect_dataset(cfg: Config):
+    from src.environment.rlbench_env import RLBenchEnv
     builder = Builder(cfg)
     enc = builder.make_encoders()
     env = builder.make_env(enc).env
     ds = DemosDataset(cfg.dataset_dir)
-    while len(ds) < cfg.num_demos:
-        env.reset()
-        demo = env.get_demo()
-        ds.append(demo)
-        logging.info('Demo %d length %d', len(ds), len(demo))
+    logger = get_logger()
+    assert isinstance(env, RLBenchEnv)
+    tasks = RLBenchEnv.TASKS
+    for task in tasks:
+        env.TASKS = (task,)
+        for _ in range(cfg.num_demos_per_task):
+            success = False
+            while not success:
+                try:
+                    desc = env.reset().observation.goal.item()
+                    logger.info('Task: %s', desc)
+                    demo = env.get_demo()
+                    success = True
+                except Exception as exc:
+                    logger.error('Demo exception: %s', exc)
+            ds.append(demo)
+            logger.info('ep_length %d, total_eps %d', len(demo), len(ds))
     env.close()
 
 
@@ -66,6 +79,7 @@ def evaluate(cfg: Config):
     nets, _ = builder.make_networks_and_params(enc)
     params = builder.load(Builder.STATE).params
     env = builder.make_env(enc)
+    logger = get_logger()
 
     def act(obs):
         policy = jax.jit(nets.apply)(params, obs)
@@ -73,24 +87,24 @@ def evaluate(cfg: Config):
 
     def env_loop():
         ts = env.reset()
-        logging.info('Goal: %s', env.env.get_goal())
+        logger.info('Goal: %s', env.env.get_goal())
         reward = 0
         while not ts.last():
             action = act(ts.observation)
-            logging.info('Action %s / %s', enc.action_encoder.decode(action), action)
+            logger.info('Action %s / %s', enc.action_encoder.decode(action), action)
             ts = env.step(action)
             reward += ts.reward
-        logging.info('Reward: %f', reward)
+        logger.info('Reward: %f', reward)
         return reward
     res = [env_loop() for _ in range(100)]
-    logging.info(res)
-    logging.info('Mean reward: %.3f', float(sum(res)) / len(res))
+    logger.info(res)
+    logger.info('Mean reward: %.3f', float(sum(res)) / len(res))
     env.close()
 
 
 if __name__ == '__main__':
     # _debug()
     _cfg = Config()
-    #collect_dataset(_cfg)
+    collect_dataset(_cfg)
     # train(_cfg)
-    evaluate(_cfg)
+    # evaluate(_cfg)

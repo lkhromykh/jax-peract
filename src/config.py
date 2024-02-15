@@ -13,8 +13,8 @@ class Config:
     conv_stem_strides: Layers = (4,)
     conv_stem_use_skip_connections: bool = True
     # Perceiver
-    latent_dim: int = 256
-    latent_channels: int = 256
+    latent_dim: int = 512
+    latent_channels: int = 512
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
@@ -34,24 +34,24 @@ class Config:
     max_grad_norm: float = 1.
     warmup_steps: int = 3000
     peak_learning_rate: float = 5e-4
-    training_steps: int = 100_000
+    training_steps: int = 200_000
     batch_size: int = 16
     weight_decay: float = 1e-6
-    log_every: int = 10
+    log_every: int = 50
     save_every: int = 500
     jit: bool = True
     compute_dtype: str = 'bf16'
-    max_shift: int = 4
+    max_shift: int = 8
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
-    scene_bins: int = 32
+    scene_bins: int = 64
     rot_bins: int = 72
     time_limit: int = 10
-    num_demos: int = 50
+    num_demos_per_task: int = 100
 
     seed: int = 1
-    dataset_dir: str = 'datasets/open_drawer'
-    logdir: str = 'logdir/open_drawer_aug'
+    dataset_dir: str = 'datasets/rlbench'
+    logdir: str = 'logdir/rlbench'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

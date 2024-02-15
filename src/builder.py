@@ -1,5 +1,4 @@
 import os
-import logging
 
 import jax
 import optax
@@ -19,8 +18,9 @@ from src.environment import RLBenchEnv
 from src.networks.peract import PerAct
 from src.dataset.dataset import DemosDataset
 from src.train_state import TrainState, Params
-from src.peract_env_wrapper import PerActEncoders, PerActEnvWrapper
+from src.logger import get_logger, logger_add_default_handlers
 from src.dataset.keyframes_extraction import extractor_factory
+from src.peract_env_wrapper import PerActEncoders, PerActEnvWrapper
 
 
 class Builder:
@@ -28,19 +28,20 @@ class Builder:
 
     CONFIG = 'config.yaml'
     STATE = 'state.cpkl'
+    LOGS = 'logs.txt'
 
     def __init__(self, cfg: Config) -> None:
+        """Prepare an experiment space."""
         self.cfg = cfg
-        if not os.path.exists(path := self.exp_path()):
-            logging.info('Init experiment dir.')
-            os.makedirs(path)
+        os.makedirs(self.exp_path(), exist_ok=True)
         if not os.path.exists(path := self.exp_path(Builder.CONFIG)):
             cfg.save(path)
+        logger_add_default_handlers(self.exp_path(Builder.LOGS))
         np.random.seed(cfg.seed)
         tf.random.set_seed(cfg.seed)
 
     def make_encoders(self) -> PerActEncoders:
-        """Create transformations required to infer state and action from an observation."""
+        """Create transformations required to infer state and action from observation."""
         c = self.cfg
         scene_encoder = utils.VoxelGrid(
             scene_bounds=c.scene_bounds,
@@ -78,7 +79,7 @@ class Builder:
         obs = tree_map(lambda x: x.generate_value(), encoders.observation_spec())
         rng1, rng2 = jax.random.split(jax.random.PRNGKey(self.cfg.seed + 1))
         params = nets.init(rng1, obs)
-        logging.info(nn.tabulate(nets, rng2)(obs))
+        get_logger().info(nn.tabulate(nets, rng2)(obs))
         return nets, params
 
     def make_optim(self, params: Params) -> optax.GradientTransformation:
@@ -108,7 +109,7 @@ class Builder:
 
     def make_state(self, params: Params) -> TrainState:
         if os.path.exists(path := self.exp_path(Builder.STATE)):
-            logging.info('Loading existing state.')
+            get_logger().info('Loading existing state.')
             state = self.load(path)
             return state
         optim = self.make_optim(params)
