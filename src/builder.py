@@ -148,7 +148,7 @@ class Builder:
         )
         ds = ds.cache() \
                .repeat() \
-               .shuffle(10 * c.batch_size) \
+               .shuffle(10 * c.num_demos_per_task) \
                .map(utils.augmentations.select_random_transition, num_parallel_calls=tf.data.AUTOTUNE) \
                .map(lambda item: utils.augmentations.scene_rotation(item, enc.action_encoder)) \
                .map(lambda item: utils.augmentations.scene_shift(item, c.max_shift),

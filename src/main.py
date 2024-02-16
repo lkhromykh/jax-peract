@@ -21,6 +21,7 @@ def _debug():
     flax.linen.enable_named_call()
 
 
+# TODO: subproc this
 def collect_dataset(cfg: Config):
     from src.environment.rlbench_env import RLBenchEnv
     builder = Builder(cfg)

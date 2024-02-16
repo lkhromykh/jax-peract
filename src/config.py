@@ -31,6 +31,7 @@ class Config:
     act_decoder_mlp_dim: int = 256
     act_decoder_conv_kernel: int = 3
     # Training
+    termsig_penalty: float = 0.
     max_grad_norm: float = 1.
     warmup_steps: int = 3000
     peak_learning_rate: float = 5e-4

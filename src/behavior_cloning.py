@@ -22,7 +22,10 @@ def bc(cfg: Config, nets: PerAct) -> types.StepFn:
         chex.assert_rank(action, 1)
         policy = nets.apply(params, observation)
         cross_ent = -policy.log_prob(action)
-        metrics = dict(loss=cross_ent)
+        termsig = action[-1]
+        termsig_loss = termsig * policy.distributions[-1].log_prob(termsig)
+        loss = cross_ent + cfg.termsig_penalty * termsig_loss
+        metrics = dict(loss=loss)
         # everything else is devoted to metrics computation.
         idx = 0
         dists_names = ['pos', 'yaw', 'pitch', 'roll', 'grasp', 'termsig']
@@ -34,7 +37,7 @@ def bc(cfg: Config, nets: PerAct) -> types.StepFn:
             metrics |= {_join('entropy'): dist.entropy(),
                         _join('accuracy'): jnp.array_equal(act_truth, act_pred)}
             idx = next_idx
-        return cross_ent, metrics
+        return loss, metrics
 
     @chex.assert_max_traces(1)
     def step(state: TrainState,

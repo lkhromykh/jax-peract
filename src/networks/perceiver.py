@@ -50,7 +50,6 @@ class MLP(_Module):
         return self.dense(x, features=dim)
 
 
-# TODO: try slots attention.
 def scaled_dot_product(query: Array,
                        key: Array,
                        value: Array,

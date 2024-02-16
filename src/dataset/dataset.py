@@ -8,7 +8,6 @@ from src.environment import gcenv
 from src.utils import serialize, deserialize
 
 
-# TODO: maybe save cams params
 class DemosDataset:
     """
     Manage demos.
@@ -29,23 +28,28 @@ class DemosDataset:
         path.mkdir(parents=True, exist_ok=True)
         self.dataset_dir = path
         self.cast_to_f16 = cast_to_f16
+        self._len = len(list(iter(self)))
+
+    def __iter__(self) -> Generator[pathlib.Path, None, None]:
+        """Path generator."""
+        return self.dataset_dir.glob('*.npz')
 
     def as_demo_generator(self) -> Generator[gcenv.Observation, None, None]:
         """Plain demo generator."""
-        for path in self.dataset_dir.iterdir():
+        for path in iter(self):
             demo = deserialize(path)
             yield demo
 
     def __len__(self):
-        return len(list(self.dataset_dir.iterdir()))
+        return self._len
 
     def append(self, demo: gcenv.Demo) -> None:
-        idx = len(self) + 1
+        self._len += 1
         demo = tree.map_structure(np.asarray, demo)
         if self.cast_to_f16:
             def to_f16(x): return x.astype(np.float16) if x.dtype.kind == 'f' else x
             demo = tree.map_structure(to_f16, demo)
-        serialize(demo, self.dataset_dir / f'{idx:05d}')
+        serialize(demo, self.dataset_dir / f'{self._len:05d}')
 
     def extend(self, demos: Iterable[gcenv.Demo]) -> None:
         [self.append(demo) for demo in demos]
