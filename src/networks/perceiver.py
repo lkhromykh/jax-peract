@@ -15,7 +15,7 @@ class _Module(nn.Module):
 
     dtype: DType
     kernel_init: nn.initializers.Initializer
-    use_layernorm: bool
+    use_layer_norm: bool
 
     def dense(self, x: Array, **kwargs) -> Array:
         return nn.DenseGeneral(dtype=self.dtype,
@@ -25,7 +25,7 @@ class _Module(nn.Module):
                                )(x)
 
     def norm(self, x: Array, **kwargs) -> Array:
-        if self.use_layernorm:
+        if self.use_layer_norm:
             return nn.LayerNorm(use_bias=True,
                                 use_scale=True,
                                 dtype=self.dtype,
@@ -113,7 +113,7 @@ class CrossAttention(_Module):
             output_channels=inputs_q.shape[-1],
             dtype=self.dtype,
             kernel_init=self.kernel_init,
-            use_layernorm=self.use_layernorm
+            use_layer_norm=self.use_layer_norm
         )(ln_inputs_q, inputs_kv)
         if self.use_query_residual:
             x += inputs_q
@@ -121,7 +121,7 @@ class CrossAttention(_Module):
             widening_factor=self.widening_factor,
             dtype=self.dtype,
             kernel_init=self.kernel_init,
-            use_layernorm=self.use_layernorm
+            use_layer_norm=self.use_layer_norm
         )
         return x + mlp(self.norm(x))
 
@@ -142,7 +142,7 @@ class PerceiverIO(nn.Module):
     prior_initial_scale: float = 0.02
     dtype: DType = jnp.float32
     kernel_init: nn.initializers.Initializer = nn.initializers.lecun_normal()
-    use_layernorm: bool = True
+    use_layer_norm: bool = True
 
     @nn.compact
     def __call__(self,
@@ -157,7 +157,7 @@ class PerceiverIO(nn.Module):
             use_query_residual=True,
             dtype=self.dtype,
             kernel_init=self.kernel_init,
-            use_layernorm=self.use_layernorm
+            use_layer_norm=self.use_layer_norm
         )
         decode_query = CrossAttention(
             num_heads=self.num_cross_attend_heads,
@@ -165,7 +165,7 @@ class PerceiverIO(nn.Module):
             use_query_residual=self.use_decoder_query_residual,
             dtype=self.dtype,
             kernel_init=self.kernel_init,
-            use_layernorm=self.use_layernorm
+            use_layer_norm=self.use_layer_norm
         )
         latent_transformer = nn.Sequential([
             CrossAttention(
@@ -173,7 +173,7 @@ class PerceiverIO(nn.Module):
                 widening_factor=self.self_attend_widening_factor,
                 dtype=self.dtype,
                 kernel_init=self.kernel_init,
-                use_layernorm=self.use_layernorm
+                use_layer_norm=self.use_layer_norm
             )
             for _ in range(self.num_self_attend_per_block)
         ])

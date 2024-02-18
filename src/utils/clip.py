@@ -1,4 +1,7 @@
+from typing import TypeAlias
+
 import jax
+import jax.numpy as jnp
 import numpy as np
 from dm_env import specs
 
@@ -7,8 +10,8 @@ from transformers import CLIPTokenizer, FlaxCLIPTextModel
 from transformers.tokenization_utils_base import BatchEncoding
 transformers.logging.set_verbosity_error()
 
-Array = np.ndarray
-Tokens = BatchEncoding[str, Array]
+Array: TypeAlias = np.ndarray
+Tokens: TypeAlias = BatchEncoding[str, Array]
 
 
 class CLIP:
@@ -17,7 +20,7 @@ class CLIP:
 
     def __init__(self, max_length: int = 77) -> None:
         self._tokenizer = CLIPTokenizer.from_pretrained(CLIP.PRETRAINED_PATH)
-        self._model = FlaxCLIPTextModel.from_pretrained(CLIP.PRETRAINED_PATH)
+        self._model = FlaxCLIPTextModel.from_pretrained(CLIP.PRETRAINED_PATH, dtype=jnp.bfloat16)
         self.max_length = max_length
         self._cache = (0, None)
 
@@ -33,8 +36,8 @@ class CLIP:
     def detokenize(self, tokens: Tokens) -> str:
         return self._tokenizer.batch_decode(tokens['input_ids'], skip_special_tokens=True)
 
-    def encode(self, input_: str | np.ndarray) -> Array:
-        if isinstance(input_, np.ndarray):
+    def encode(self, input_: str | Array) -> Array:
+        if isinstance(input_, Array):
             input_ = input_.item()
         if not isinstance(input_, str):
             raise ValueError(f'Wrong argument type: {input_}.')
@@ -44,7 +47,7 @@ class CLIP:
             return prev_emb
         tokens = self.tokenize(input_)
         emb = jax.jit(self._model)(**tokens).last_hidden_state
-        emb = jax.device_get(emb).squeeze()
+        emb = jax.device_get(emb).squeeze().astype(jnp.bfloat16)
         self._cache = (cur_hash, emb)
         return emb
 

@@ -1,11 +1,11 @@
-import os
+import pathlib
 from typing import Any
 
 import numpy as np
 from jax import tree_util
 
 PyTree = Any
-Path = str | os.PathLike
+Path = str | pathlib.Path
 
 
 def serialize(obj: PyTree, path: Path) -> None:

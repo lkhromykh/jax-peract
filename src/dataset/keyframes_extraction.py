@@ -47,7 +47,7 @@ def extractor_factory(
         keyframe_transform: Callable[[gcenv.Observation], FromKeyframe] = lambda x: x,
 ) -> KeyframesExtractor:
     """Closure of a function that detects important observations within a demo
-    and pairs observations with next keyframes."""
+    and pairs observations with the next keyframes."""
 
     def extract_keyframes(demo: gcenv.Demo) -> KeyframesExtractorOutput:
         rdemo = reversed(demo)
@@ -68,7 +68,7 @@ def extractor_factory(
                 keyframe = keyframe_transform(next_obs)
             pairs.append((observation_transform(obs), keyframe))
         kf_time_steps = kf_time_steps[::-1]
-        get_logger().info('Keyframes time steps: %s',  kf_time_steps)
+        get_logger().info('Task %s; Keyframes time steps: %s',  last_obs.goal, kf_time_steps)
         return pairs[::-1], kf_time_steps
 
     return extract_keyframes

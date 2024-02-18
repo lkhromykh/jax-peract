@@ -1,4 +1,4 @@
-import os
+import pathlib
 
 import jax
 import optax
@@ -14,7 +14,7 @@ from src import utils
 import src.types_ as types
 from src.config import Config
 from src.behavior_cloning import bc
-from src.environment import RLBenchEnv
+from src.environment import RLBenchEnv, GoalConditionedEnv
 from src.networks.peract import PerAct
 from src.dataset.dataset import DemosDataset
 from src.train_state import TrainState, Params
@@ -28,17 +28,16 @@ class Builder:
 
     CONFIG = 'config.yaml'
     STATE = 'state.cpkl'
-    LOGS = 'logs.txt'
+    LOGS = 'logs'
+    DATASETS_DIR = 'processed_demos/'
 
     def __init__(self, cfg: Config) -> None:
         """Prepare an experiment space."""
         self.cfg = cfg
-        os.makedirs(self.exp_path(), exist_ok=True)
-        if not os.path.exists(path := self.exp_path(Builder.CONFIG)):
+        self.exp_path().mkdir(parents=True, exist_ok=True)
+        if not (path := self.exp_path(Builder.CONFIG)).exists():
             cfg.save(path)
-        logger_add_default_handlers(self.exp_path(Builder.LOGS))
-        np.random.seed(cfg.seed)
-        tf.random.set_seed(cfg.seed)
+        logger_add_default_handlers(log_path=self.exp_path(Builder.LOGS))
 
     def make_encoders(self) -> PerActEncoders:
         """Create transformations required to infer state and action from observation."""
@@ -59,13 +58,15 @@ class Builder:
             text_encoder=text_encoder
         )
 
-    def make_env(self, encoders: PerActEncoders) -> PerActEnvWrapper:
+    def make_env(self, encoders: PerActEncoders | None = None) -> PerActEnvWrapper | GoalConditionedEnv:
         """Create and wrap an environment."""
         c = self.cfg
         env = RLBenchEnv(
             scene_bounds=c.scene_bounds,
             time_limit=c.time_limit,
         )
+        if encoders is None:
+            return env
         return PerActEnvWrapper(
             env=env,
             encoders=encoders
@@ -108,7 +109,7 @@ class Builder:
         )
 
     def make_state(self, params: Params) -> TrainState:
-        if os.path.exists(path := self.exp_path(Builder.STATE)):
+        if (path := self.exp_path(Builder.STATE)).exists():
             get_logger().info('Loading existing state.')
             state = self.load(path)
             return state
@@ -119,16 +120,15 @@ class Builder:
                                optim=optim,
                                )
 
-    # TODO: tune pipeline
-    def make_tfdataset(self, encoders: PerActEncoders) -> tf.data.Dataset:
-        c = self.cfg
-        enc = encoders
-        dds = DemosDataset(c.dataset_dir)
+    def parse_demos(self, dataset_dir: str | pathlib.Path, save_only: bool = True) -> tf.data.Dataset | None:
+        dataset_dir = pathlib.Path(dataset_dir).resolve()
+        dataset = DemosDataset(dataset_dir)
+        enc = self.make_encoders()
         extract_fn = extractor_factory(observation_transform=enc.infer_state,
                                        keyframe_transform=enc.infer_action)
 
         def as_trajectory_generator():
-            for demo in dds.as_demo_generator():
+            for demo in dataset.as_demo_generator():
                 pairs, _ = extract_fn(demo)
                 def nested_stack(ts): return tree_map(lambda *xs: np.stack(xs), *ts)
                 obs, act = map(nested_stack, zip(*pairs))
@@ -146,14 +146,45 @@ class Builder:
             generator=as_trajectory_generator,
             output_signature=output_signature
         )
-        ds = ds.cache() \
-               .repeat() \
-               .shuffle(10 * c.num_demos_per_task) \
-               .map(utils.augmentations.select_random_transition, num_parallel_calls=tf.data.AUTOTUNE) \
-               .map(lambda item: utils.augmentations.scene_rotation(item, enc.action_encoder)) \
+        local_ds_path = self.exp_path(Builder.DATASETS_DIR) / dataset_dir.name
+        get_logger().info('Saving to %s', local_ds_path)
+        if save_only:
+            return ds.save(str(local_ds_path), compression='GZIP')
+        return ds
+
+    def make_tfdataset(self) -> tf.data.Dataset:
+        processed_ds_path = self.exp_path(Builder.DATASETS_DIR)
+        if not processed_ds_path.exists():
+            import multiprocessing as mp
+
+            demos_path = pathlib.Path(self.cfg.datasets_dir)
+            assert demos_path.exists()
+            get_logger().info('Parsing datasets.')
+            processed_ds_path.mkdir(parents=False)
+            dataset_paths = list(demos_path.glob('[!.]*/'))
+            with mp.Pool(processes=len(dataset_paths)) as pool:
+                pool.map(self.parse_demos, dataset_paths)
+        c = self.cfg
+        tf.random.set_seed(c.seed)
+        np.random.seed(c.seed)
+        action_encoder = self.make_encoders().action_encoder
+        datasets = [tf.data.Dataset.load(str(p), compression='GZIP') for p in processed_ds_path.iterdir()]
+        ds = tf.data.Dataset.sample_from_datasets(datasets,
+                                                  stop_on_empty_dataset=False,
+                                                  rerandomize_each_iteration=True)
+        # ds = ds.interleave(utils.augmentations.select_random_transition,
+        #                    cycle_length=1,
+        #                    num_parallel_calls=tf.data.AUTOTUNE) \
+        # cache, shuffle, interleave?
+        ds = ds.repeat() \
+               .map(utils.augmentations.select_random_transition,
+                    num_parallel_calls=tf.data.AUTOTUNE) \
+               .map(lambda item: utils.augmentations.scene_rotation(item, action_encoder)) \
                .map(lambda item: utils.augmentations.scene_shift(item, c.max_shift),
                     num_parallel_calls=tf.data.AUTOTUNE) \
-               .batch(c.batch_size, num_parallel_calls=tf.data.AUTOTUNE) \
+               .batch(c.batch_size,
+                      num_parallel_calls=tf.data.AUTOTUNE,
+                      drop_remainder=True) \
                .prefetch(tf.data.AUTOTUNE)
         return ds
 
@@ -163,10 +194,9 @@ class Builder:
             fn = jax.jit(fn)
         return fn
 
-    def exp_path(self, path: str = os.path.curdir) -> str:
-        logdir = os.path.abspath(self.cfg.logdir)
-        path = os.path.join(logdir, path)
-        return os.path.abspath(path)
+    def exp_path(self, path: str | pathlib.Path = pathlib.Path()) -> pathlib.Path:
+        logdir = pathlib.Path(self.cfg.logdir)
+        return logdir.joinpath(path).resolve()
 
     def save(self, obj, path):
         with open(self.exp_path(path), 'wb') as f:

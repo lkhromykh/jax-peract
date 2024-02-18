@@ -7,10 +7,11 @@ ml_dtypes==0.2.0
 numpy
 open3d
 optax
+ruamel.yaml
 scipy
 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 jax[cuda12_local]==0.4.13  # replace with a relevant CUDA version.
-tensorflow==2.13
+tensorflow-cpu==2.13
 tensorflow_probability==0.21
 transformers[flax]
 git+https://github.com/stepjam/PyRep.git

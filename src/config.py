@@ -21,7 +21,7 @@ class Config:
     num_self_attend_heads: int = 8
     cross_attend_widening_factor: float = 4.
     self_attend_widening_factor: float = 4.
-    use_layernorm: bool = True
+    use_layer_norm: bool = True
     use_decoder_query_residual: bool = False
     use_trainable_pos_encoding: bool = False
     prior_initial_scale: float = 0.04
@@ -38,7 +38,7 @@ class Config:
     training_steps: int = 200_000
     batch_size: int = 16
     weight_decay: float = 1e-6
-    log_every: int = 50
+    log_every: int = 5
     save_every: int = 500
     jit: bool = True
     compute_dtype: str = 'bf16'
@@ -48,11 +48,11 @@ class Config:
     scene_bins: int = 64
     rot_bins: int = 72
     time_limit: int = 16
-    num_demos_per_task: int = 100
+    num_demos_per_task: int = 10
 
     seed: int = 1
-    dataset_dir: str = 'datasets/rlbench'
-    logdir: str = 'logdir/rlbench'
+    datasets_dir: str = 'datasets/rlbench1'
+    logdir: str = 'logdir/rlbench1'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

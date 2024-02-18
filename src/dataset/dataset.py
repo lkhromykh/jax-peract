@@ -21,11 +21,11 @@ class DemosDataset:
     """
 
     def __init__(self,
-                 dataset_dir: str,
+                 dataset_dir: str | pathlib.Path,
                  cast_to_f16: bool = True,
                  ) -> None:
-        path = pathlib.Path(dataset_dir).absolute()
-        path.mkdir(parents=True, exist_ok=True)
+        path = pathlib.Path(dataset_dir).resolve()
+        assert path.exists(), f'Dataset is not found: {path}'
         self.dataset_dir = path
         self.cast_to_f16 = cast_to_f16
         self._len = len(list(iter(self)))

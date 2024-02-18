@@ -1,11 +1,11 @@
-from typing import NamedTuple
+from typing import NamedTuple, TypeAlias
 
 import jax
 import jax.numpy as jnp
 import optax
 from flax import core
 
-Params = jax.Array | core.FrozenDict[str, 'Params']
+Params: TypeAlias = jax.Array | core.FrozenDict[str, 'Params']
 
 
 @jax.tree_util.register_pytree_node_class

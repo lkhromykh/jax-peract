@@ -41,7 +41,7 @@ class PerAct(nn.Module):
             prior_initial_scale=c.prior_initial_scale,
             dtype=dtype,
             kernel_init=nn.initializers.lecun_normal(),
-            use_layernorm=c.use_layernorm
+            use_layer_norm=c.use_layer_norm
         )
         self.action_decoder = io_processors.ActionDecoder(
             action_spec=self.action_spec,

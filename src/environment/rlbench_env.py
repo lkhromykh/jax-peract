@@ -1,5 +1,3 @@
-import logging
-
 import numpy as np
 import dm_env.specs
 from scipy.spatial.transform import Rotation
@@ -103,6 +101,7 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
             maybe_append(images, cam, 'rgb')
             maybe_append(depths, cam, 'depth')
             maybe_append(point_clouds, cam, 'point_cloud')
+
         def gpos_fn(joints): return 1. - np.clip(joints.sum(keepdims=True) / 0.08, 0, 1)  # Franka Panda.
         def gforces_fn(forces): return not np.allclose(forces, 0, atol=0.1)
         pos, quat = np.split(obs.gripper_pose, [3])
@@ -117,6 +116,6 @@ class RLBenchEnv(gcenv.GoalConditionedEnv):
             tcp_pose=tcp_pose,
             gripper_pos=gpos_fn(obs.gripper_joint_positions),
             gripper_is_obj_detected=gforces_fn(obs.gripper_touch_forces),
-            goal=self._episode_goal,
+            goal=self.get_goal(),
             is_terminal=False
         )
