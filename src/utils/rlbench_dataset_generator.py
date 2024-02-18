@@ -23,8 +23,7 @@ def collect_task_demos(
     while len(dds) < num_demos_per_task:
         success = False
         while not success:
-            # desc = env.reset().observation.goal
-            desc = 'aboba'
+            desc = env.reset().observation.goal
             logger.info('Task: %s', desc)
             try:
                 demo = env.get_demo()
