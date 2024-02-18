@@ -22,11 +22,11 @@ _OBS_CONFIG.set_all(True)
 _CAMERAS = ('front', 'left_shoulder', 'right_shoulder', 'overhead', 'wrist')
 _TASKS = (
     'SlideBlockToTarget', 'TurnTap', 'PutItemInDrawer',
+    'OpenDrawer', 'PushButton', 'LightBulbIn',
     'TakeItemOutOfDrawer', 'CloseJar', 'ReachAndDrag',
     'StackBlocks', 'PutMoneyInSafe', 'StackWine',
     'PutGroceriesInCupboard', 'PlaceShapeInShapeSorter', 'InsertOntoSquarePeg',
-    'PlaceCups', 'StackCups', 'LightBulbIn',
-    'OpenDrawer', 'PushButtons'
+    'StackCups'
 )
 
 
