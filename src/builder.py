@@ -18,7 +18,7 @@ from src.environment import RLBenchEnv, GoalConditionedEnv
 from src.networks.peract import PerAct
 from src.dataset.dataset import DemosDataset
 from src.train_state import TrainState, Params
-from src.logger import get_logger, logger_add_default_handlers
+from src.logger import get_logger, logger_add_file_handler
 from src.dataset.keyframes_extraction import extractor_factory
 from src.peract_env_wrapper import PerActEncoders, PerActEnvWrapper
 
@@ -37,7 +37,7 @@ class Builder:
         self.exp_path().mkdir(parents=True, exist_ok=True)
         if not (path := self.exp_path(Builder.CONFIG)).exists():
             cfg.save(path)
-        logger_add_default_handlers(log_path=self.exp_path(Builder.LOGS))
+        logger_add_file_handler(self.exp_path(Builder.LOGS))
 
     def make_encoders(self) -> PerActEncoders:
         """Create transformations required to infer state and action from observation."""

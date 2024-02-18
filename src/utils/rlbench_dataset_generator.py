@@ -13,7 +13,7 @@ def collect_task_demos(
         num_demos_per_task: int,
         dataset_dir: str,
         env_kwargs: dict[str, Any],
-) -> DemosDataset:
+) -> None:
     logger = get_logger()
     dataset_dir = pathlib.Path(dataset_dir)
     dataset_dir.mkdir(parents=True, exist_ok=False)
@@ -34,19 +34,18 @@ def collect_task_demos(
                 dds.append(demo)
                 success = True
     env.close()
-    return dds
 
 
 if __name__ == '__main__':
     cfg = Config()
 
     def collect(task):
-        return collect_task_demos(task=task,
-                                  num_demos_per_task=cfg.num_demos_per_task,
-                                  dataset_dir=pathlib.Path(cfg.datasets_dir).joinpath(task),
-                                  env_kwargs=dict(scene_bounds=cfg.scene_bounds, time_limit=cfg.time_limit)
-                                  )
-
+        return collect_task_demos(
+            task=task,
+            num_demos_per_task=cfg.num_demos_per_task,
+            dataset_dir=pathlib.Path(cfg.datasets_dir).joinpath(task),
+            env_kwargs=dict(scene_bounds=cfg.scene_bounds, time_limit=cfg.time_limit)
+        )
     tasks = RLBenchEnv.TASKS
     with mp.Pool(processes=len(tasks)) as pool:
         pool.map(collect, tasks)
