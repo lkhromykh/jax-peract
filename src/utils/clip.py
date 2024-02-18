@@ -16,12 +16,13 @@ Tokens: TypeAlias = BatchEncoding[str, Array]
 
 class CLIP:
 
-    PRETRAINED_PATH = 'openai/clip-vit-base-patch32'
-
-    def __init__(self, max_length: int = 77) -> None:
-        self._tokenizer = CLIPTokenizer.from_pretrained(CLIP.PRETRAINED_PATH)
-        self._model = FlaxCLIPTextModel.from_pretrained(CLIP.PRETRAINED_PATH, dtype=jnp.bfloat16)
-        self.max_length = max_length
+    def __init__(self,
+                 max_length: int = 77,
+                 pretrained_model_name_or_path: str = 'openai/clip-vit-base-patch32'  # 'openai/clip-vit-large-patch14'
+                 ) -> None:
+        self._tokenizer = CLIPTokenizer.from_pretrained(pretrained_model_name_or_path)
+        self._model = FlaxCLIPTextModel.from_pretrained(pretrained_model_name_or_path, dtype=jnp.bfloat16)
+        self.max_length = min(max_length, self._model.config.max_position_embeddings)
         self._cache = (0, None)
 
     def tokenize(self, text_: str) -> Tokens:
@@ -46,10 +47,11 @@ class CLIP:
         if cur_hash == prev_hash:
             return prev_emb
         tokens = self.tokenize(input_)
-        emb = jax.jit(self._model)(**tokens).last_hidden_state
-        emb = jax.device_get(emb).squeeze().astype(jnp.bfloat16)
+        emb = jax.jit(self._model)(**tokens).last_hidden_state.astype(jnp.bfloat16)
+        emb = jax.device_get(emb).squeeze()
         self._cache = (cur_hash, emb)
         return emb
 
     def observation_spec(self) -> specs.Array:
-        return specs.Array((self.max_length, 512), dtype=np.float32, name='text_emb')
+        hidden_size = self._model.config.hidden_size
+        return specs.Array((self.max_length, hidden_size), dtype=np.float32, name='text_emb')

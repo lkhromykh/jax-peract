@@ -2,7 +2,6 @@ import jax
 import jax.numpy as jnp
 import optax
 import chex
-from flax import traverse_util
 
 from src.config import Config
 from src.logger import get_logger
@@ -11,7 +10,6 @@ from src.train_state import TrainState, Params
 from src import types_ as types
 
 
-# TODO: somehow predict correct termsig
 def bc(cfg: Config, nets: PerAct) -> types.StepFn:
     chex.assert_gpu_available()
 

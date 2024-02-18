@@ -1,7 +1,11 @@
+import os
+import sys
 import time
+sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 import jax
 import chex
+import psutil
 chex.disable_asserts()
 
 from src.config import Config
@@ -20,7 +24,6 @@ def _debug():
     flax.linen.enable_named_call()
 
 
-# TODO: profile execution
 def train(cfg: Config):
     builder = Builder(cfg)
     enc = builder.make_encoders()
@@ -40,43 +43,17 @@ def train(cfg: Config):
         if t % cfg.log_every == 0:
             state, metrics = jax.block_until_ready((state, metrics))
             fps = float(cfg.batch_size) / (time.time() - _batch_start)
-            metrics.update(step=t, fps=fps)
+            metrics.update(step=t,
+                           fps=fps,
+                           cpu_percent=psutil.cpu_percent(),
+                           mem_precent=psutil.virtual_memory().percent
+                           )
             logger.write(metrics)
         if t % cfg.save_every == 0:
             builder.save(jax.device_get(state), Builder.STATE)
-
-
-def evaluate(cfg: Config):
-    builder = Builder(cfg)
-    enc = builder.make_encoders()
-    nets, _ = builder.make_networks_and_params(enc)
-    params = builder.load(Builder.STATE).params
-    env = builder.make_env(enc)
-    logger = get_logger()
-
-    def act(obs):
-        policy = jax.jit(nets.apply)(params, obs)
-        return jax.device_get(policy.mode())
-
-    def env_loop():
-        ts = env.reset()
-        logger.info('Goal: %s', env.env.get_goal())
-        reward = 0
-        while not ts.last():
-            action = act(ts.observation)
-            logger.info('Action %s / %s', enc.action_encoder.decode(action), action)
-            ts = env.step(action)
-            reward += ts.reward
-        logger.info('Reward: %f', reward)
-        return reward
-    res = [env_loop() for _ in range(100)]
-    logger.info(res)
-    logger.info('Mean reward: %.3f', float(sum(res)) / len(res))
-    env.close()
 
 
 if __name__ == '__main__':
     # _debug()
     _cfg = Config()
     train(_cfg)
-    # evaluate(_cfg)

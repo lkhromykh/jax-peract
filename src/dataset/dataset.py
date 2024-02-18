@@ -3,9 +3,12 @@ from collections.abc import Iterable, Generator
 
 import tree
 import numpy as np
+import tensorflow as tf
 
+import src.types_ as types
 from src.environment import gcenv
 from src.utils import serialize, deserialize
+from src.dataset.keyframes_extraction import KeyframesExtractor, extractor_factory
 
 
 class DemosDataset:
@@ -39,6 +42,23 @@ class DemosDataset:
         for path in iter(self):
             demo = deserialize(path)
             yield demo
+
+    def as_tf_dataset(self, extract_fn: KeyframesExtractor = extractor_factory()) -> tf.data.Dataset:
+        def as_trajectory_generator():
+            for demo in self.as_demo_generator():
+                pairs, _ = extract_fn(demo)
+                def nested_stack(ts): return tree.map_structure(lambda *xs: np.stack(xs), *ts)
+                obs, act = map(nested_stack, zip(*pairs))
+                yield types.Trajectory(observations=obs, actions=act)
+
+        def to_tf_specs(x):
+            return tf.TensorSpec(shape=(None,) + x.shape[1:], dtype=tf.as_dtype(x.dtype))
+        sample = next(as_trajectory_generator())
+        output_signature = tree.map_structure(to_tf_specs, sample)
+        return tf.data.Dataset.from_generator(
+            generator=as_trajectory_generator,
+            output_signature=output_signature
+        )
 
     def __len__(self):
         return self._len

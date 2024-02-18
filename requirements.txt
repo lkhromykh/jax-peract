@@ -2,18 +2,19 @@ cffi==1.14.2
 cloudpickle
 chex
 dm-env
-flax
+flax==0.7.0
 ml_dtypes==0.2.0
-numpy
-open3d
-optax
+numpy==1.24.3
+open3d==0.18.0
+optax==0.1.4
+psutil
 ruamel.yaml
 scipy
 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 jax[cuda12_local]==0.4.13  # replace with a relevant CUDA version.
-tensorflow-cpu==2.13
-tensorflow_probability==0.21
-transformers[flax]
+tensorflow==2.13.0
+tensorflow_probability==0.21.0
+transformers[flax]==4.37.2
 git+https://github.com/stepjam/PyRep.git
 git+https://github.com/stepjam/RLBench.git
 rltools[loggers] @ git+https://github.com/lkhromykh/rltools.git

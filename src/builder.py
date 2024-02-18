@@ -16,10 +16,8 @@ from src.config import Config
 from src.behavior_cloning import bc
 from src.environment import RLBenchEnv, GoalConditionedEnv
 from src.networks.peract import PerAct
-from src.dataset.dataset import DemosDataset
 from src.train_state import TrainState, Params
 from src.logger import get_logger, logger_add_file_handler
-from src.dataset.keyframes_extraction import extractor_factory
 from src.peract_env_wrapper import PerActEncoders, PerActEnvWrapper
 
 
@@ -93,7 +91,10 @@ class Builder:
                 decay_steps=c.training_steps
             )
         else:
-            schedule = optax.constant_schedule(c.peak_learning_rate)
+            schedule = optax.cosine_decay_schedule(
+                init_value=c.peak_learning_rate,
+                decay_steps=c.training_steps
+            )
         mask = traverse_util.path_aware_map(
             lambda path, _: path[-1] not in ('bias', 'scale'),
             params
@@ -120,62 +121,18 @@ class Builder:
                                optim=optim,
                                )
 
-    def parse_demos(self, dataset_dir: str | pathlib.Path, save_only: bool = True) -> tf.data.Dataset | None:
-        dataset_dir = pathlib.Path(dataset_dir).resolve()
-        dataset = DemosDataset(dataset_dir)
-        enc = self.make_encoders()
-        extract_fn = extractor_factory(observation_transform=enc.infer_state,
-                                       keyframe_transform=enc.infer_action)
-
-        def as_trajectory_generator():
-            for demo in dataset.as_demo_generator():
-                pairs, _ = extract_fn(demo)
-                def nested_stack(ts): return tree_map(lambda *xs: np.stack(xs), *ts)
-                obs, act = map(nested_stack, zip(*pairs))
-                yield types.Trajectory(observations=obs, actions=act)
-
-        def to_tf_specs(x):
-            return tf.TensorSpec(shape=(None,) + x.shape,
-                                 dtype=tf.as_dtype(x.dtype))
-
-        output_signature = types.Trajectory(
-            observations=tree_map(to_tf_specs, enc.observation_spec()),
-            actions=tf.TensorSpec(shape=(None, len(enc.action_spec())), dtype=tf.int32)
-        )
-        ds = tf.data.Dataset.from_generator(
-            generator=as_trajectory_generator,
-            output_signature=output_signature
-        )
-        local_ds_path = self.exp_path(Builder.DATASETS_DIR) / dataset_dir.name
-        get_logger().info('Saving to %s', local_ds_path)
-        if save_only:
-            return ds.save(str(local_ds_path), compression='GZIP')
-        return ds
-
+    # TODO: validation
     def make_tfdataset(self) -> tf.data.Dataset:
-        processed_ds_path = self.exp_path(Builder.DATASETS_DIR)
-        if not processed_ds_path.exists():
-            import multiprocessing as mp
-
-            demos_path = pathlib.Path(self.cfg.datasets_dir)
-            assert demos_path.exists()
-            get_logger().info('Parsing datasets.')
-            processed_ds_path.mkdir(parents=False)
-            dataset_paths = list(demos_path.glob('[!.]*/'))
-            with mp.Pool(processes=len(dataset_paths)) as pool:
-                pool.map(self.parse_demos, dataset_paths)
         c = self.cfg
         tf.random.set_seed(c.seed)
         np.random.seed(c.seed)
         action_encoder = self.make_encoders().action_encoder
-        datasets = [tf.data.Dataset.load(str(p), compression='GZIP') for p in processed_ds_path.iterdir()]
+        processed_ds_path = self.exp_path(Builder.DATASETS_DIR).resolve()
+        datasets = [tf.data.Dataset.load(str(path), compression='GZIP').prefetch(tf.data.AUTOTUNE)
+                    for path in processed_ds_path.iterdir()]
         ds = tf.data.Dataset.sample_from_datasets(datasets,
                                                   stop_on_empty_dataset=False,
                                                   rerandomize_each_iteration=True)
-        # ds = ds.interleave(utils.augmentations.select_random_transition,
-        #                    cycle_length=1,
-        #                    num_parallel_calls=tf.data.AUTOTUNE) \
-        # cache, shuffle, interleave?
         ds = ds.repeat() \
                .map(utils.augmentations.select_random_transition,
                     num_parallel_calls=tf.data.AUTOTUNE) \

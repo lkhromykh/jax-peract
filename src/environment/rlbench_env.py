@@ -20,20 +20,23 @@ _OBS_CONFIG = ObservationConfig()
 _OBS_CONFIG.set_all(True)
 
 _CAMERAS = ('front', 'left_shoulder', 'right_shoulder', 'overhead', 'wrist')
-_TASKS = (
-    'SlideBlockToTarget', 'TurnTap', 'PutItemInDrawer',
-    'OpenDrawer', 'PushButton', 'LightBulbIn',
-    'TakeItemOutOfDrawer', 'CloseJar', 'ReachAndDrag',
-    'StackBlocks', 'PutMoneyInSafe', 'StackWine',
-    'PutGroceriesInCupboard', 'PlaceShapeInShapeSorter', 'InsertOntoSquarePeg',
-    'StackCups'
+EASY_TASKS = (
+    'SlideBlockToTarget', 'TurnTap',
+    'OpenDrawer', 'PushButton', 'ReachAndDrag',
+)
+MEDIUM_TASKS = (
+    'CloseJar', 'LightBulbIn', 'InsertOntoSquarePeg',
+    'PutMoneyInSafe', 'StackWine', 'PutGroceriesInCupboard',
+)
+HARD_TASKS = (
+    'PutItemInDrawer', 'TakeItemOutOfDrawer', 'StackCups'
 )
 
 
 class RLBenchEnv(gcenv.GoalConditionedEnv):
 
     CAMERAS = _CAMERAS
-    TASKS = _TASKS
+    TASKS = EASY_TASKS
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
