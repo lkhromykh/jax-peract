@@ -57,15 +57,15 @@ def scene_rotation(item: types.Trajectory,
         new_act = act_transform.encode(new_act)
         return new_voxels, new_act
 
-    voxels, act = tf.numpy_function(
+    voxels_, act_ = tf.numpy_function(
         func=np_rot,
         inp=[observation.voxels, action],
         Tout=[tf.uint8, tf.int32],
         stateful=False
     )
-    voxels = tf.ensure_shape(voxels, vgrid_shape)
-    act = tf.ensure_shape(act, act_shape)
-    traj = types.Trajectory(observations=observation._replace(voxels=voxels), actions=act)
+    voxels_ = tf.ensure_shape(voxels_, vgrid_shape)
+    act_ = tf.ensure_shape(act_, act_shape)
+    traj = types.Trajectory(observations=observation._replace(voxels=voxels_), actions=act_)
     return tf.nest.map_structure(tf.convert_to_tensor, traj)
 
 

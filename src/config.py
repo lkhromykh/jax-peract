@@ -51,8 +51,8 @@ class Config:
     num_demos_per_task: int = 50
 
     seed: int = 1
-    datasets_dir: str = 'datasets/rlbench_easy/'
-    logdir: str = 'logdir/rlbench_easy'
+    datasets_dir: str = 'datasets/reach_target'
+    logdir: str = 'logdir/reach_target'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

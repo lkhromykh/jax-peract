@@ -47,6 +47,7 @@ class CLIP:
         if cur_hash == prev_hash:
             return prev_emb
         tokens = self.tokenize(input_)
+        tokens = jax.device_put(tokens)
         emb = jax.jit(self._model)(**tokens).last_hidden_state.astype(jnp.bfloat16)
         emb = jax.device_get(emb).squeeze()
         self._cache = (cur_hash, emb)

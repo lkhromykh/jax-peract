@@ -137,10 +137,10 @@ class Builder:
         ds = tf.data.Dataset.sample_from_datasets(datasets,
                                                   stop_on_empty_dataset=False,
                                                   rerandomize_each_iteration=True)
+        # .map(lambda item: utils.augmentations.scene_rotation(item, action_encoder)) \
         ds = ds.repeat() \
                .map(utils.augmentations.select_random_transition,
                     num_parallel_calls=tf.data.AUTOTUNE) \
-               .map(lambda item: utils.augmentations.scene_rotation(item, action_encoder)) \
                .map(lambda item: utils.augmentations.scene_shift(item, c.max_shift),
                     num_parallel_calls=tf.data.AUTOTUNE) \
                .batch(c.batch_size,
