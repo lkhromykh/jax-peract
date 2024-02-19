@@ -108,7 +108,6 @@ class InputsMultiplexer(nn.Module):
         return outputs
 
 
-# try conditioned low-dim decoding via tfp.JointDistributionSequential?
 class ActionDecoder(nn.Module):
     """Policy decoder."""
 

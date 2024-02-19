@@ -44,6 +44,7 @@ class DemosDataset:
             yield demo
 
     def as_tf_dataset(self, extract_fn: KeyframesExtractor = extractor_factory()) -> tf.data.Dataset:
+        """TensorFlow trajectory dataset."""
         def as_trajectory_generator():
             for demo in self.as_demo_generator():
                 pairs, _ = extract_fn(demo)

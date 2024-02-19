@@ -8,9 +8,9 @@ Layers = tuple[int, ...]
 @dataclasses.dataclass
 class Config:
     # Conv stem
-    conv_stem_features: Layers = (64,)
-    conv_stem_kernels: Layers = (4,)
-    conv_stem_strides: Layers = (4,)
+    conv_stem_features: Layers = (64, 64)
+    conv_stem_kernels: Layers = (4, 1)
+    conv_stem_strides: Layers = (4, 1)
     conv_stem_use_skip_connections: bool = True
     # Perceiver
     latent_dim: int = 512
@@ -25,7 +25,7 @@ class Config:
     use_decoder_query_residual: bool = False
     use_trainable_pos_encoding: bool = False
     prior_initial_scale: float = 0.04
-    ff_num_bands: int = 16
+    ff_num_bands: int = 32
     text_context_length: int = 77  # max. 77
     # Action decoder
     act_decoder_mlp_dim: int = 256

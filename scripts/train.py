@@ -6,6 +6,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 import jax
 import chex
 import psutil
+import GPUtil
 chex.disable_asserts()
 
 from src.config import Config
@@ -45,8 +46,9 @@ def train(cfg: Config):
             fps = float(cfg.batch_size) / (time.time() - _batch_start)
             metrics.update(step=t,
                            fps=fps,
-                           cpu_percent=psutil.cpu_percent(),
-                           mem_precent=psutil.virtual_memory().percent
+                           util_cpu_percent=psutil.cpu_percent(),
+                           util_precent=psutil.virtual_memory().percent,
+                           util_gpu_load=GPUtil.getGPUs()[0].load,
                            )
             logger.write(metrics)
         if t % cfg.save_every == 0:

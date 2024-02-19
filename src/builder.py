@@ -128,8 +128,12 @@ class Builder:
         np.random.seed(c.seed)
         action_encoder = self.make_encoders().action_encoder
         processed_ds_path = self.exp_path(Builder.DATASETS_DIR).resolve()
-        datasets = [tf.data.Dataset.load(str(path), compression='GZIP').prefetch(tf.data.AUTOTUNE)
-                    for path in processed_ds_path.iterdir()]
+
+        def load_dataset(path):
+            _ds = tf.data.Dataset.load(str(path), compression='GZIP')
+            return _ds.cache().prefetch(tf.data.AUTOTUNE)
+
+        datasets = [load_dataset(path) for path in processed_ds_path.iterdir()]
         ds = tf.data.Dataset.sample_from_datasets(datasets,
                                                   stop_on_empty_dataset=False,
                                                   rerandomize_each_iteration=True)
