@@ -47,7 +47,7 @@ def train(cfg: Config):
             metrics.update(step=t,
                            fps=fps,
                            util_cpu_percent=psutil.cpu_percent(),
-                           util_precent=psutil.virtual_memory().percent,
+                           util_mem_precent=psutil.virtual_memory().percent,
                            util_gpu_load=GPUtil.getGPUs()[0].load,
                            )
             logger.write(metrics)
