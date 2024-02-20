@@ -5,7 +5,7 @@ from ruamel.yaml import YAML
 Layers = tuple[int, ...]
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Config:
     # Conv stem
     conv_stem_features: Layers = (64, 64)

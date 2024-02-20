@@ -33,7 +33,11 @@ class Builder:
         """Prepare an experiment space."""
         self.cfg = cfg
         self.exp_path().mkdir(parents=True, exist_ok=True)
-        if not (path := self.exp_path(Builder.CONFIG)).exists():
+        if (path := self.exp_path(Builder.CONFIG)).exists():
+            saved_cfg = Config.load(path)
+            if saved_cfg != cfg:
+                get_logger().warning('Warning! Config differs from the saved one.')
+        else:
             cfg.save(path)
         logger_add_file_handler(self.exp_path(Builder.LOGS))
 

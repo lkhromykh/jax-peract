@@ -19,3 +19,4 @@ transformers[flax]==4.37.2
 git+https://github.com/stepjam/PyRep.git
 git+https://github.com/stepjam/RLBench.git
 rltools[loggers] @ git+https://github.com/lkhromykh/rltools.git
+ur_env @ git+https://github.com/RQC-Robotics/ur5-env.git@dev

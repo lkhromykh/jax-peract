@@ -35,7 +35,7 @@ class DemosDataset:
 
     def __iter__(self) -> Generator[pathlib.Path, None, None]:
         """Path generator."""
-        return self.dataset_dir.glob('*.npz')
+        return iter(sorted(self.dataset_dir.glob('*.npz')))
 
     def as_demo_generator(self) -> Generator[gcenv.Observation, None, None]:
         """Plain demo generator."""
