@@ -41,11 +41,11 @@ class UREnv(gcenv.GoalConditionedEnv):
         pos, rotvec = np.split(obs['arm/ActualTCPPose'], [3])
         euler = R.from_rotvec(rotvec).as_euler('ZYX')
         tcp_pose = np.r_[pos, euler]
-        def rot_stack(x): return np.swapaxes(x, 0, 1),
+        def rot_kinect(x): return np.fliplr(np.swapaxes(x, 0, 1)),
         return gcenv.Observation(
-            images=rot_stack(obs['kinect/image']),
-            depth_maps=rot_stack(obs['kinect/depth']),
-            point_clouds=rot_stack(obs['kinect/point_cloud']),
+            images=rot_kinect(obs['kinect/image']),
+            depth_maps=rot_kinect(obs['kinect/depth']),
+            point_clouds=rot_kinect(obs['kinect/point_cloud']),
             joint_positions=obs['arm/ActualQ'],
             joint_velocities=obs['arm/ActualQd'],
             tcp_pose=tcp_pose,

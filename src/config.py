@@ -13,8 +13,8 @@ class Config:
     conv_stem_strides: Layers = (4, 1)
     conv_stem_use_skip_connections: bool = True
     # Perceiver
-    latent_dim: int = 512
-    latent_channels: int = 512
+    latent_dim: int = 256
+    latent_channels: int = 256
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
@@ -35,7 +35,7 @@ class Config:
     max_grad_norm: float = 1.
     warmup_steps: int = -1
     peak_learning_rate: float = 5e-4
-    training_steps: int = 200_000
+    training_steps: int = 100_000
     batch_size: int = 16
     weight_decay: float = 1e-6
     log_every: int = 50
@@ -45,14 +45,14 @@ class Config:
     max_shift: int = 8
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
-    scene_bins: int = 64
-    rot_bins: int = 72
-    time_limit: int = 16
+    scene_bins: int = 32
+    rot_bins: int = 13
+    time_limit: int = 6
     num_demos_per_task: int = 50
 
     seed: int = 1
-    datasets_dir: str = 'datasets/rlbench_easy'
-    logdir: str = 'logdir/rlbench_easy1'
+    datasets_dir: str = 'logdir/push_button/demos'
+    logdir: str = 'logdir/push_button1'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
@@ -67,11 +67,10 @@ class Config:
         with open(file_path, "r", encoding="utf-8") as config_file:
             config_dict = yaml.load(config_file)
         known_fields = map(lambda f: f.name, dataclasses.fields(cls))
-        config_dict.update(
-            {k: v for k, v in kwargs.items() if
-             k in known_fields}
-        )
-        return cls(**config_dict)
+        config_dict.update({k: v for k, v in kwargs.items()
+                            if k in known_fields})
+        def maybe_convert_list(x): tuple(x) if isinstance(x, list) else x
+        return cls(**{k: maybe_convert_list(v) for k, v in config_dict.items()})
 
 
 peract_config = Config(

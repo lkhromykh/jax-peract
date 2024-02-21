@@ -36,7 +36,6 @@ def scene_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
                             actions=tf.concat([pos, low_dim], 0))
 
 
-# TODO: fix rotation implementation: k=2 => action.y == nbins - action.y
 def scene_rotation(item: types.Trajectory,
                    act_transform: DiscreteActionTransform,
                    ) -> types.Trajectory:
@@ -44,7 +43,7 @@ def scene_rotation(item: types.Trajectory,
     vgrid_shape, act_shape = observation.voxels.shape, action.shape
 
     def np_rot(voxels, act):
-        k = np.random.randint(0, 5)  # preference goes to an original orientation
+        k = np.random.randint(0, 5)  # subjective preference goes to an original orientation
         new_voxels = np.rot90(voxels, k, axes=(0, 1))
         rot = R.from_rotvec([0, 0, np.pi * k / 2])
         act = act_transform.decode(act)

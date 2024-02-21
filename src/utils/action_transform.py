@@ -5,12 +5,14 @@ from src.environment import gcenv
 import src.types_ as types
 
 Discrete = np.ndarray
+_eps = 1e-5
 
 
 class DiscreteActionTransform:
     """Converts robot actions to a uniformly discretized action.
 
-    Encoded action has the form: [x, y, z, yaw, pitch, roll, grasp, terminate].
+    Incoming action must meet the gcenv.ActionSpec format:
+    [x, y, z, yaw, pitch, roll, grasp, terminate].
     """
 
     def __init__(self,
@@ -25,21 +27,21 @@ class DiscreteActionTransform:
         self._act_specs = tuple(specs.DiscreteArray(n) for n in nbins)
         self._action_bounds = (lb, ub)
         self._range = ub - lb
-        self._nbins = np.int32(nbins) - 1  # indexing starts from 0.
+        self._nbins = np.int32(nbins)
 
     def encode(self, action: gcenv.Action) -> Discrete:
         assert action.shape == (8,)
         lb, ub = self._action_bounds
-        action = np.clip(action, a_min=lb, a_max=ub)
         action = (action - lb) / self._range
-        action = np.round(self._nbins * action).astype(np.int32)
+        action = np.clip(action, a_min=_eps, a_max=1. - _eps)
+        action = np.floor(self._nbins * action).astype(np.int32)
         self._assert_valid_action(action)
         return action
 
     def decode(self, action: Discrete) -> gcenv.Action:
         self._assert_valid_action(action)
         lb, _ = self._action_bounds
-        action = lb + self._range * action / self._nbins
+        action = lb + self._range * (action + 0.5) / self._nbins
         return action.astype(np.float32)
 
     def action_spec(self) -> types.ActionSpec:
@@ -53,5 +55,5 @@ class DiscreteActionTransform:
         assert action.shape == np.shape(self._nbins) \
            and action.dtype == np.int32 \
            and np.all(action >= 0) \
-           and np.all(action <= self._nbins), \
+           and np.all(action <= self._nbins - 1), \
                action

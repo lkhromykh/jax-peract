@@ -27,7 +27,7 @@ def evaluate(cfg: Config):
         reward = 0
         while not ts.last():
             action = act(ts.observation)
-            logger.info('Action %s', enc.action_encoder.decode(action))
+            logger.info('Action %s / %s', enc.action_encoder.decode(action), action)
             ts = env.step(action)
             reward += ts.reward
         logger.info('Reward: %f', reward)
