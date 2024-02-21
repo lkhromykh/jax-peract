@@ -36,6 +36,7 @@ def scene_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
                             actions=tf.concat([pos, low_dim], 0))
 
 
+# TODO: fix rotation implementation: k=2 => action.y == nbins - action.y
 def scene_rotation(item: types.Trajectory,
                    act_transform: DiscreteActionTransform,
                    ) -> types.Trajectory:

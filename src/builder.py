@@ -130,7 +130,6 @@ class Builder:
         c = self.cfg
         tf.random.set_seed(c.seed)
         np.random.seed(c.seed)
-        action_encoder = self.make_encoders().action_encoder
         processed_ds_path = self.exp_path(Builder.DATASETS_DIR).resolve()
 
         def load_dataset(path):
@@ -141,7 +140,6 @@ class Builder:
         ds = tf.data.Dataset.sample_from_datasets(datasets,
                                                   stop_on_empty_dataset=False,
                                                   rerandomize_each_iteration=True)
-        # .map(lambda item: utils.augmentations.scene_rotation(item, action_encoder)) \
         ds = ds.repeat() \
                .map(utils.augmentations.select_random_transition,
                     num_parallel_calls=tf.data.AUTOTUNE) \

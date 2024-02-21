@@ -38,7 +38,7 @@ class Config:
     training_steps: int = 200_000
     batch_size: int = 16
     weight_decay: float = 1e-6
-    log_every: int = 10
+    log_every: int = 50
     save_every: int = 1000
     jit: bool = True
     compute_dtype: str = 'bf16'
@@ -51,8 +51,8 @@ class Config:
     num_demos_per_task: int = 50
 
     seed: int = 1
-    datasets_dir: str = 'datasets/reach_target'
-    logdir: str = 'logdir/reach_target'
+    datasets_dir: str = 'datasets/rlbench_easy'
+    logdir: str = 'logdir/rlbench_easy1'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

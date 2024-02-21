@@ -1,5 +1,5 @@
 import pathlib
-from collections.abc import Iterable, Generator
+from collections.abc import Iterable, Iterator, Generator
 
 import tree
 import numpy as np
@@ -33,7 +33,7 @@ class DemosDataset:
         self.cast_to_f16 = cast_to_f16
         self._len = len(list(iter(self)))
 
-    def __iter__(self) -> Generator[pathlib.Path, None, None]:
+    def __iter__(self) -> Iterator[pathlib.Path]:
         """Path generator."""
         return iter(sorted(self.dataset_dir.glob('*.npz')))
 
