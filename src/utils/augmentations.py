@@ -7,13 +7,6 @@ import src.types_ as types
 from src.utils.action_transform import DiscreteActionTransform
 
 
-def select_random_transition(item: types.Trajectory) -> types.Trajectory:
-    act = item.actions
-    tf.debugging.assert_rank(act, 2, message='Leading dim should be time dimension.')
-    idx = tf.random.uniform((), minval=0, maxval=tf.shape(act)[0], dtype=tf.int32)
-    return tf.nest.map_structure(lambda x: x[idx], item)
-
-
 def scene_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
     """To impose translation invariance."""
     obs, act = _unpack_trajectory(item)
@@ -74,3 +67,6 @@ def _unpack_trajectory(item: types.Trajectory) -> tuple[types.State, types.Actio
     act = item.actions
     tf.debugging.assert_rank(act, 1, message='Batching is not supported.')
     return obs, act
+
+
+# TODO: colors distortion?

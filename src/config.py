@@ -31,18 +31,18 @@ class Config:
     act_decoder_mlp_dim: int = 256
     act_decoder_conv_kernel: int = 3
     # Training
-    termsig_penalty: float = 0.
     max_grad_norm: float = 1.
     warmup_steps: int = -1
     peak_learning_rate: float = 5e-4
     training_steps: int = 100_000
     batch_size: int = 16
     weight_decay: float = 1e-6
-    log_every: int = 50
-    save_every: int = 1000
+    log_every: int = 5
+    save_every: int = 10
     jit: bool = True
     compute_dtype: str = 'bf16'
     max_shift: int = 8
+    val_split: float = 0.1
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     scene_bins: int = 32
@@ -52,7 +52,7 @@ class Config:
 
     seed: int = 1
     datasets_dir: str = 'logdir/push_button/demos'
-    logdir: str = 'logdir/push_button1'
+    logdir: str = 'logdir/push_button2'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
@@ -69,8 +69,8 @@ class Config:
         known_fields = map(lambda f: f.name, dataclasses.fields(cls))
         config_dict.update({k: v for k, v in kwargs.items()
                             if k in known_fields})
-        def maybe_convert_list(x): tuple(x) if isinstance(x, list) else x
-        return cls(**{k: maybe_convert_list(v) for k, v in config_dict.items()})
+        def maybe_tuple(x): return tuple(x) if isinstance(x, list) else x
+        return cls(**{k: maybe_tuple(v) for k, v in config_dict.items()})
 
 
 peract_config = Config(

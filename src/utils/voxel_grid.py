@@ -43,7 +43,7 @@ class VoxelGrid:
                 scene = np.zeros(self.shape, dtype=np.uint8)
                 for voxel in grid.get_voxels():
                     idx = voxel.grid_index
-                    if max(idx) < scene.shape[0]:
+                    if max(idx) < self.shape[0]:
                         rgb = np.round(255 * voxel.color)
                         scene[tuple(idx)] = np.r_[rgb, 255]
                 return scene

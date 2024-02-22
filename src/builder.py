@@ -1,4 +1,5 @@
 import pathlib
+from typing import Literal
 
 import jax
 import optax
@@ -13,7 +14,7 @@ tf.config.set_visible_devices([], 'GPU')
 from src import utils
 import src.types_ as types
 from src.config import Config
-from src.behavior_cloning import bc
+from src import behavior_cloning
 from src.environment import RLBenchEnv, GoalConditionedEnv
 from src.networks.peract import PerAct
 from src.train_state import TrainState, Params
@@ -60,7 +61,9 @@ class Builder:
             text_encoder=text_encoder
         )
 
-    def make_env(self, encoders: PerActEncoders | None = None) -> PerActEnvWrapper | GoalConditionedEnv:
+    def make_env(self,
+                 encoders: PerActEncoders | None = None
+                 ) -> PerActEnvWrapper | GoalConditionedEnv:
         """Create and wrap an environment."""
         c = self.cfg
         env = RLBenchEnv(
@@ -126,7 +129,9 @@ class Builder:
                                )
 
     # TODO: validation
-    def make_tfdataset(self) -> tf.data.Dataset:
+    def make_tfdataset(self,
+                       split: Literal['train', 'val']
+                       ) -> tf.data.Dataset:
         c = self.cfg
         tf.random.set_seed(c.seed)
         np.random.seed(c.seed)
@@ -135,26 +140,51 @@ class Builder:
 
         def load_dataset(path):
             _ds = tf.data.Dataset.load(str(path), compression='GZIP')
-            return _ds.cache().prefetch(tf.data.AUTOTUNE)
+            val_eps = int(c.val_split * len(_ds))
+            match split:
+                case 'val': _ds = _ds.take(val_eps)
+                case 'train': _ds = _ds.skip(val_eps)
+                case _: raise ValueError(split)
+            _ds = _ds.flat_map(tf.data.Dataset.from_tensor_slices)
+            if split == 'train':
+                _ds = _ds.cache().shuffle(1000)  # assuming one episode has ~100 steps.
+            return _ds.prefetch(tf.data.AUTOTUNE)
 
         datasets = [load_dataset(path) for path in processed_ds_path.iterdir()]
-        ds = tf.data.Dataset.sample_from_datasets(datasets,
-                                                  stop_on_empty_dataset=False,
-                                                  rerandomize_each_iteration=True)
-        ds = ds.repeat() \
-               .map(utils.augmentations.select_random_transition,
-                    num_parallel_calls=tf.data.AUTOTUNE) \
-               .map(lambda item: utils.augmentations.scene_rotation(item, action_encoder)) \
-               .map(lambda item: utils.augmentations.scene_shift(item, c.max_shift),
-                    num_parallel_calls=tf.data.AUTOTUNE) \
-               .batch(c.batch_size,
-                      num_parallel_calls=tf.data.AUTOTUNE,
-                      drop_remainder=True) \
-               .prefetch(tf.data.AUTOTUNE)
+        match split:
+            case 'val':
+                ds = tf.data.Dataset.from_tensor_slices(datasets) \
+                       .interleave(lambda x: x, num_parallel_calls=tf.data.AUTOTUNE) \
+                       .batch(4 * c.batch_size,
+                              num_parallel_calls=tf.data.AUTOTUNE,
+                              drop_remainder=False
+                              ) \
+                       .cache() \
+                       .prefetch(tf.data.AUTOTUNE)
+            case 'train':
+                ds = tf.data.Dataset.sample_from_datasets(datasets,  # ~ 1 / |Tasks|
+                                                          stop_on_empty_dataset=False,
+                                                          rerandomize_each_iteration=True) \
+                       .repeat() \
+                       .map(lambda item: utils.augmentations.scene_rotation(item, action_encoder)) \
+                       .map(lambda item: utils.augmentations.scene_shift(item, c.max_shift),
+                            num_parallel_calls=tf.data.AUTOTUNE) \
+                       .batch(c.batch_size,
+                              num_parallel_calls=tf.data.AUTOTUNE,
+                              drop_remainder=True) \
+                       .prefetch(tf.data.AUTOTUNE)
+            case _:
+                raise ValueError(split)
         return ds
 
-    def make_step_fn(self, nets: PerAct) -> types.StepFn:
-        fn = bc(self.cfg, nets)
+    def make_step_fn(self, nets: PerAct,
+                     step: Literal['train', 'val']
+                     ) -> types.StepFn:
+        match step:
+            case 'val': fn = behavior_cloning.validate
+            case 'train': fn = behavior_cloning.train
+            case _: raise ValueError(step)
+        fn = fn(self.cfg, nets)
         if self.cfg.jit:
             fn = jax.jit(fn)
         return fn

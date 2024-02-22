@@ -28,18 +28,21 @@ def _debug():
 def train(cfg: Config):
     builder = Builder(cfg)
     enc = builder.make_encoders()
-    ds = builder.make_tfdataset().as_numpy_iterator()
+    train_ds = builder.make_tfdataset('train').as_numpy_iterator()
+    val_ds = builder.make_tfdataset('val')
     nets, params = builder.make_networks_and_params(enc)
-    step = builder.make_step_fn(nets)
+    train_step = builder.make_step_fn(nets, 'train')
+    val_step = builder.make_step_fn(nets, 'val')
     state = builder.make_state(params)
     state = jax.device_put(state)
-    logger = TFSummaryLogger(logdir=cfg.logdir, label='bc', step_key='step')
+    train_logger = TFSummaryLogger(logdir=cfg.logdir, label='train', step_key='step')
+    val_logger = TFSummaryLogger(logdir=cfg.logdir, label='val', step_key='step')
 
     t = state.step.item()
     while t < cfg.training_steps:
         _batch_start = time.time()
-        batch = jax.device_put(next(ds))
-        state, metrics = step(state, batch)
+        batch = jax.device_put(next(train_ds))
+        state, metrics = train_step(state, batch)
         t = state.step.item()
         if t % cfg.log_every == 0:
             state, metrics = jax.block_until_ready((state, metrics))
@@ -50,8 +53,17 @@ def train(cfg: Config):
                            util_mem_precent=psutil.virtual_memory().percent,
                            util_gpu_load=GPUtil.getGPUs()[0].load,
                            )
-            logger.write(metrics)
+            train_logger.write(metrics)
         if t % cfg.save_every == 0:
+            batch_metrics = []
+            for batch in val_ds.as_numpy_iterator():
+                batch = jax.device_put(batch)
+                _, metrics = val_step(state, batch)
+                batch_metrics.append(metrics)
+            metrics = jax.tree_util.tree_map(lambda *ts: jax.numpy.stack(ts), *batch_metrics)
+            metrics = jax.tree_util.tree_map(lambda x: x.mean(0), metrics)
+            metrics.update(step=t)
+            val_logger.write(metrics)
             builder.save(jax.device_get(state), Builder.STATE)
 
 
