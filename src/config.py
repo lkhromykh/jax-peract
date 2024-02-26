@@ -37,22 +37,22 @@ class Config:
     training_steps: int = 100_000
     batch_size: int = 16
     weight_decay: float = 1e-6
-    log_every: int = 5
-    save_every: int = 10
+    log_every: int = 500
+    save_every: int = 1000
     jit: bool = True
     compute_dtype: str = 'bf16'
     max_shift: int = 8
     val_split: float = 0.1
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
-    scene_bins: int = 32
-    rot_bins: int = 13
+    scene_bins: int = 64
+    rot_bins: int = 72
     time_limit: int = 6
     num_demos_per_task: int = 50
 
     seed: int = 1
-    datasets_dir: str = 'logdir/push_button/demos'
-    logdir: str = 'logdir/push_button2'
+    datasets_dir: str = 'datasets/rlbench_easy'
+    logdir: str = 'logdir/rlbench_easy_eval'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

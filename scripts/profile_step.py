@@ -16,9 +16,9 @@ from src.builder import Builder
 def profile(cfg: Config):
     builder = Builder(cfg)
     enc = builder.make_encoders()
-    ds = builder.make_tfdataset().as_numpy_iterator()
+    ds = builder.make_tfdataset('train').as_numpy_iterator()
     nets, params = builder.make_networks_and_params(enc)
-    step = builder.make_step_fn(nets)
+    step = builder.make_step_fn(nets, 'train')
     state = builder.make_state(params)
     state = jax.device_put(state)
     TFSummaryLogger(logdir=cfg.logdir, label='bc', step_key='step')

@@ -51,7 +51,7 @@ class PerAct(nn.Module):
     @nn.compact
     def __call__(self, obs: types.State) -> tfd.Distribution:
         chex.assert_rank([obs.voxels, obs.low_dim, obs.goal], [4, 1, 2])
-        chex.assert_type([obs.voxels, obs.low_dim, obs.goal], [jnp.uint8, float, jnp.float16])
+        chex.assert_type([obs.voxels, obs.low_dim, obs.goal], [jnp.uint8, float, jnp.bfloat16])
         c = self.config
         dtype = _dtype_fromstr(c.compute_dtype)
         voxels, low_dim, task = map(lambda x: x.astype(dtype), obs)

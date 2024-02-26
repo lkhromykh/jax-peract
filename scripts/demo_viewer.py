@@ -65,7 +65,7 @@ def viz_demo(demo):
         jvel_kf_line.set_xdata(kf_idx2)
         gpos_kf_line.set_xdata(kf_idx2)
 
-    return animation.FuncAnimation(fig, viz_slice, repeat=False, frames=len(pairs))
+    return animation.FuncAnimation(fig, viz_slice, repeat=False, frames=len(pairs), interval=300)
 
 
 if __name__ == '__main__':
@@ -77,11 +77,11 @@ if __name__ == '__main__':
     while True:
         try:
             idx, demo = next(ds)
+            anim = viz_demo(demo)
         except StopIteration:
             break
         except Exception as exc:
             print('Bad demo idx ', idx)
             raise exc
         else:
-            anim = viz_demo(demo)
             plt.show()

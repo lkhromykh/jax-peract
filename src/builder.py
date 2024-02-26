@@ -140,7 +140,7 @@ class Builder:
 
         def load_dataset(path):
             _ds = tf.data.Dataset.load(str(path), compression='GZIP')
-            val_eps = int(c.val_split * len(_ds))
+            val_eps = max(int(c.val_split * len(_ds)), 1)
             match split:
                 case 'val': _ds = _ds.take(val_eps)
                 case 'train': _ds = _ds.skip(val_eps)
@@ -177,7 +177,8 @@ class Builder:
                 raise ValueError(split)
         return ds
 
-    def make_step_fn(self, nets: PerAct,
+    def make_step_fn(self,
+                     nets: PerAct,
                      step: Literal['train', 'val']
                      ) -> types.StepFn:
         match step:
