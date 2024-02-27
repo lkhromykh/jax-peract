@@ -7,11 +7,13 @@ from ml_dtypes import bfloat16
 import tensorflow as tf
 
 import src.types_ as types
+from src.logger import get_logger
 from src.environment import gcenv
 from src.utils import serialize, deserialize
 from src.dataset.keyframes_extraction import KeyframesExtractor, extractor_factory
 
 
+# TODO: specify rw exceptions.
 class DemosDataset:
     """
     Manage demos.
@@ -27,11 +29,13 @@ class DemosDataset:
     def __init__(self,
                  dataset_dir: str | pathlib.Path,
                  cast_to_bf16: bool = True,
+                 raise_on_read_exc: bool = True
                  ) -> None:
         path = pathlib.Path(dataset_dir).resolve()
         assert path.exists(), f'Dataset is not found: {path}'
         self.dataset_dir = path
         self.cast_to_bf16 = cast_to_bf16
+        self.raise_on_read_exc = raise_on_read_exc
         self._len = len(list(iter(self)))
 
     def __iter__(self) -> Iterator[pathlib.Path]:
@@ -41,8 +45,16 @@ class DemosDataset:
     def as_demo_generator(self) -> Generator[gcenv.Observation, None, None]:
         """Plain demo generator."""
         for path in iter(self):
-            demo = deserialize(path)
-            yield demo
+            try:
+                demo = deserialize(path)
+            except Exception as exc:
+                get_logger().warning('Read demo error %s\ndemo path %s', exc, path)
+                if self.raise_on_read_exc:
+                    raise exc
+                else:
+                    continue
+            else:
+                yield demo
 
     def as_tf_dataset(self, extract_fn: KeyframesExtractor = extractor_factory()) -> tf.data.Dataset:
         """TensorFlow trajectory dataset."""
@@ -66,12 +78,12 @@ class DemosDataset:
         return self._len
 
     def append(self, demo: gcenv.Demo) -> None:
-        self._len += 1
         demo = tree.map_structure(np.asarray, demo)
         if self.cast_to_bf16:
             def to_bf16(x): return x.astype(bfloat16) if x.dtype.kind == 'f' else x
             demo = tree.map_structure(to_bf16, demo)
         serialize(demo, self.dataset_dir / f'{self._len:05d}')
+        self._len += 1
 
     def extend(self, demos: Iterable[gcenv.Demo]) -> None:
         [self.append(demo) for demo in demos]

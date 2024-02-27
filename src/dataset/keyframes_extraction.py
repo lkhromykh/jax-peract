@@ -20,28 +20,26 @@ KeyframesExtractorOutput: TypeAlias = tuple[list[tuple[FromObservation, FromKeyf
 KeyframesExtractor: TypeAlias = Callable[[gcenv.Demo], KeyframesExtractorOutput]
 
 
-def default_scan_factory(skip_every: int = 4) -> ScanFn:
-    """An ARM-like (2105.14829) keyframe heuristic.
+def default_scan(carry: Carry, obs: gcenv.Observation, skip_every: int = 4) -> tuple[Carry, bool]:
+    """
+    An ARM-like (2105.14829) keyframe heuristic.
     Skip_every param may vary depending on demo FPS.
     """
-    def keyframe_scan(carry: Carry, obs: gcenv.Observation) -> tuple[Carry, bool]:
-        next_obs, time_step, time_to_next_kf = (c := carry).next_obs, c.time_step, c.time_to_next_kf
-        is_grasp_or_release = obs.gripper_is_open ^ next_obs.gripper_is_open
-        is_waypoint = next_obs.joints_velocity_is_low
-        is_waypoint &= np.all(abs(next_obs.joint_velocities) < abs(obs.joint_velocities))
-        is_waypoint &= time_to_next_kf > skip_every
-        is_keyframe = is_grasp_or_release | is_waypoint
-        carry = Carry(next_obs=obs,
-                      time_step=time_step - 1,
-                      time_to_next_kf=0 if is_keyframe else time_to_next_kf + 1,
-                      )
-        return carry, is_keyframe
-
-    return keyframe_scan
+    next_obs, time_step, time_to_next_kf = (c := carry).next_obs, c.time_step, c.time_to_next_kf
+    is_grasp_or_release = obs.gripper_is_open ^ next_obs.gripper_is_open
+    is_waypoint = next_obs.joints_velocity_is_low
+    is_waypoint &= np.all(abs(next_obs.joint_velocities) < abs(obs.joint_velocities))
+    is_waypoint &= time_to_next_kf > skip_every
+    is_keyframe = is_grasp_or_release | is_waypoint
+    carry = Carry(next_obs=obs,
+                  time_step=time_step - 1,
+                  time_to_next_kf=0 if is_keyframe else time_to_next_kf + 1,
+                  )
+    return carry, is_keyframe
 
 
 def extractor_factory(
-        scan_fn: ScanFn = default_scan_factory(),
+        scan_fn: ScanFn = default_scan,
         observation_transform: Callable[[gcenv.Observation], FromObservation] = lambda x: x,
         keyframe_transform: Callable[[gcenv.Observation], FromKeyframe] = lambda x: x,
 ) -> KeyframesExtractor:

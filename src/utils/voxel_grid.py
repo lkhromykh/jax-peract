@@ -7,7 +7,7 @@ from dm_env import specs
 from src.environment import gcenv
 
 
-# TODO: for loops are too slow, move to C++
+# TODO: move loops to C++
 class VoxelGrid:
 
     def __init__(self,

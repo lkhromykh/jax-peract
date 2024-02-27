@@ -14,8 +14,8 @@ from src import types_ as types
 def _per_dist_metrics(policy: Blockwise, expert_action: types.Action) -> types.Metrics:
     idx = 0
     metrics = {}
-    components_name = ('pos', 'yaw', 'pitch', 'roll', 'grasp', 'termsig')
-    for name, dist in zip(components_name, policy.distributions):
+    components_names = ('pos', 'yaw', 'pitch', 'roll', 'grasp', 'termsig')
+    for name, dist in zip(components_names, policy.distributions):
         act_pred = jnp.atleast_1d(dist.mode())
         next_idx = idx + act_pred.size
         act_truth = expert_action[idx:next_idx]

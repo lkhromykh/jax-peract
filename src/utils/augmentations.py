@@ -62,11 +62,25 @@ def scene_rotation(item: types.Trajectory,
     return tf.nest.map_structure(tf.convert_to_tensor, traj)
 
 
+def color_transforms(item: types.Trajectory,
+                     max_brightness: float = 0.2,
+                     contrast: float = 0.3,
+                     saturation: float = 0.2,
+                     hue: float = 0.05,
+                     ) -> types.Trajectory:
+    obs, act = item.observations, item.actions
+    colors, occupancy = tf.split(obs.voxels, [3, 1], -1)
+    colors = tf.image.random_brightness(colors, max_brightness)
+    colors = tf.image.random_contrast(colors, 1 - contrast, 1 + contrast)
+    colors = tf.image.random_saturation(colors, 1 - saturation, 1 + saturation)
+    colors = tf.image.random_hue(colors, hue)
+
+    obs = obs._replace(voxels=tf.concat([colors, occupancy], -1))
+    return types.Trajectory(observations=obs, actions=act)
+
+
 def _unpack_trajectory(item: types.Trajectory) -> tuple[types.State, types.Action]:
     obs = item.observations
     act = item.actions
     tf.debugging.assert_rank(act, 1, message='Batching is not supported.')
     return obs, act
-
-
-# TODO: colors distortion?

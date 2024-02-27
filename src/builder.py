@@ -128,7 +128,6 @@ class Builder:
                                optim=optim,
                                )
 
-    # TODO: validation
     def make_tfdataset(self,
                        split: Literal['train', 'val']
                        ) -> tf.data.Dataset:
@@ -166,8 +165,11 @@ class Builder:
                                                           stop_on_empty_dataset=False,
                                                           rerandomize_each_iteration=True) \
                        .repeat() \
-                       .map(lambda item: utils.augmentations.scene_rotation(item, action_encoder)) \
+                       .map(lambda item: utils.augmentations.scene_rotation(item, action_encoder),
+                            num_parallel_calls=tf.data.AUTOTUNE) \
                        .map(lambda item: utils.augmentations.scene_shift(item, c.max_shift),
+                            num_parallel_calls=tf.data.AUTOTUNE) \
+                       .map(utils.augmentations.color_transforms,
                             num_parallel_calls=tf.data.AUTOTUNE) \
                        .batch(c.batch_size,
                               num_parallel_calls=tf.data.AUTOTUNE,

@@ -14,7 +14,7 @@ class Config:
     conv_stem_use_skip_connections: bool = True
     # Perceiver
     latent_dim: int = 256
-    latent_channels: int = 256
+    latent_channels: int = 512
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
@@ -25,7 +25,7 @@ class Config:
     use_decoder_query_residual: bool = False
     use_trainable_pos_encoding: bool = False
     prior_initial_scale: float = 0.04
-    ff_num_bands: int = 32
+    ff_num_bands: int = 64
     text_context_length: int = 77  # max. 77
     # Action decoder
     act_decoder_mlp_dim: int = 256
@@ -35,7 +35,7 @@ class Config:
     warmup_steps: int = -1
     peak_learning_rate: float = 5e-4
     training_steps: int = 100_000
-    batch_size: int = 16
+    batch_size: int = 32
     weight_decay: float = 1e-6
     log_every: int = 500
     save_every: int = 1000
@@ -52,7 +52,7 @@ class Config:
 
     seed: int = 1
     datasets_dir: str = 'datasets/rlbench_easy'
-    logdir: str = 'logdir/rlbench_easy_eval'
+    logdir: str = 'logdir/rlbench_easy_colors'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

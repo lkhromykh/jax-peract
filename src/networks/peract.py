@@ -75,7 +75,6 @@ class PerAct(nn.Module):
         inputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
             patches, low_dim, task
         )
-        # TODO: try different options for decoder query
         if c.use_trainable_pos_encoding:
             patches = self.param(
                 'output_pos3d_encoding',
