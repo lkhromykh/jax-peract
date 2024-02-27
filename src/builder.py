@@ -154,7 +154,7 @@ class Builder:
             case 'val':
                 ds = tf.data.Dataset.from_tensor_slices(datasets) \
                        .interleave(lambda x: x, num_parallel_calls=tf.data.AUTOTUNE) \
-                       .batch(4 * c.batch_size,
+                       .batch(3 * c.batch_size,
                               num_parallel_calls=tf.data.AUTOTUNE,
                               drop_remainder=False
                               ) \

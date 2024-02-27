@@ -33,12 +33,12 @@ class Config:
     # Training
     max_grad_norm: float = 1.
     warmup_steps: int = -1
-    peak_learning_rate: float = 5e-4
+    peak_learning_rate: float = 1e-3
     training_steps: int = 100_000
     batch_size: int = 32
     weight_decay: float = 1e-6
     log_every: int = 500
-    save_every: int = 1000
+    save_every: int = 2000
     jit: bool = True
     compute_dtype: str = 'bf16'
     max_shift: int = 8
