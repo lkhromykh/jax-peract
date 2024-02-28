@@ -3,7 +3,6 @@ from collections.abc import Iterable, Iterator, Generator
 
 import tree
 import numpy as np
-from ml_dtypes import bfloat16
 import tensorflow as tf
 
 import src.types_ as types
@@ -28,13 +27,13 @@ class DemosDataset:
 
     def __init__(self,
                  dataset_dir: str | pathlib.Path,
-                 cast_to_bf16: bool = True,
+                 cast_to_f16: bool = True,
                  raise_on_read_exc: bool = True
                  ) -> None:
         path = pathlib.Path(dataset_dir).resolve()
         assert path.exists(), f'Dataset is not found: {path}'
         self.dataset_dir = path
-        self.cast_to_bf16 = cast_to_bf16
+        self.cast_to_f16 = cast_to_f16
         self.raise_on_read_exc = raise_on_read_exc
         self._len = len(list(iter(self)))
 
@@ -79,8 +78,8 @@ class DemosDataset:
 
     def append(self, demo: gcenv.Demo) -> None:
         demo = tree.map_structure(np.asarray, demo)
-        if self.cast_to_bf16:
-            def to_bf16(x): return x.astype(bfloat16) if x.dtype.kind == 'f' else x
+        if self.cast_to_f16:
+            def to_bf16(x): return x.astype(np.float16) if x.dtype.kind == 'f' else x
             demo = tree.map_structure(to_bf16, demo)
         serialize(demo, self.dataset_dir / f'{self._len:05d}')
         self._len += 1

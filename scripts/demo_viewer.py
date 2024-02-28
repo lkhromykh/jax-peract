@@ -1,16 +1,23 @@
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-plt.rcParams['animation.embed_limit'] = 2 ** 20
-
 import os
 import sys
+import random
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
+import numpy as np
+import open3d as o3d
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from scipy.spatial.transform import Rotation as R
+plt.rcParams['animation.embed_limit'] = 2 ** 20
+
+from src.environment import gcenv
+from src.utils.voxel_grid import VoxelGrid
 from src.dataset.dataset import DemosDataset
+from src.utils.action_transform import DiscreteActionTransform
 from src.dataset.keyframes_extraction import extractor_factory
 
 
-def viz_demo(demo):
+def viz_demo(demo: gcenv.Demo) -> animation.FuncAnimation:
     fig, axes = plt.subplots(2, 2, figsize=(20, 20), squeeze=True, tight_layout=True)
     obs_ax, kf_ax, jvel_ax, gpos_ax = axes.flatten()
     pairs, kf_idxs = extractor_factory()(demo)
@@ -68,20 +75,51 @@ def viz_demo(demo):
     return animation.FuncAnimation(fig, viz_slice, repeat=False, frames=len(pairs), interval=300)
 
 
+def viz_obs(obs: gcenv.Observation,
+            scene_bounds: tuple[float, ...],
+            scene_bins: int = 64,
+            ) -> None:
+    scene_bounds = np.asarray(scene_bounds)
+    vgrid = VoxelGrid(scene_bounds=scene_bounds, nbins=scene_bins)
+    act_trans = DiscreteActionTransform(scene_bounds, scene_bins, 72)
+    breakpoint()
+    act = obs.infer_action()
+    act = act_trans.encode(act)
+    act = act_trans.decode(act)
+    voxels = vgrid.encode(obs, return_type='o3d')
+    print('center ', voxels.get_center())
+    print('max bound ', voxels.get_max_bound())
+    print('min bound ', voxels.get_min_bound())
+    print('bbox ', voxels.get_axis_aligned_bounding_box())
+    act = obs.infer_action()
+    frame_tcp = o3d.geometry.TriangleMesh.create_coordinate_frame(
+        size=0.2, origin=act[:3])# - scene_bounds[:3])
+    frame_tcp = frame_tcp.rotate(R.from_euler('ZYX', act[3:6]).as_matrix())
+    frame = o3d.geometry.TriangleMesh.create_coordinate_frame()
+    o3d.visualization.draw_geometries([voxels, frame, frame_tcp])
+
+
 if __name__ == '__main__':
     path = sys.argv[1]
     path = os.path.join(os.path.dirname(__file__), '..', path)
     path = os.path.abspath(path)
     ds = enumerate(DemosDataset(path).as_demo_generator())
     idx = 0
-    while True:
-        try:
-            idx, demo = next(ds)
-            anim = viz_demo(demo)
-        except StopIteration:
-            break
-        except Exception as exc:
-            print('Bad demo idx ', idx)
-            raise exc
-        else:
-            plt.show()
+    try:
+        while True:
+            try:
+                idx, demo = next(ds)
+                # anim = viz_demo(demo)
+            except StopIteration:
+                break
+            except Exception as exc:
+                print('Bad demo idx ', idx)
+                raise exc
+            else:
+                # plt.show()
+                # obs = random.choice(demo)
+                obs = demo[0]
+                #(-0.7, -.25, -.03, -.2, .25, 0.47)
+                viz_obs(obs, scene_bounds=(-0.7, -0.25, -0.03, -0.2, 0.25, 0.47))
+    except KeyboardInterrupt:
+        pass
