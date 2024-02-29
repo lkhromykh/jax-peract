@@ -56,7 +56,7 @@ def extractor_factory(
         pairs, kf_time_steps = [], []
         is_keyframe = last_obs.is_terminal  # == True
         for obs in rdemo:
-            assert not obs.is_terminal
+            assert not obs.is_terminal, 'Mid episode termination.'
             if is_keyframe:
                 kf_time_steps.append(carry.time_step)
                 keyframe = keyframe_transform(carry.next_obs)

@@ -57,12 +57,18 @@ class DemosDataset:
 
     def as_tf_dataset(self, extract_fn: KeyframesExtractor = extractor_factory()) -> tf.data.Dataset:
         """TensorFlow trajectory dataset."""
+        def nested_stack(ts): return tree.map_structure(lambda *xs: np.stack(xs), *ts)
+
         def as_trajectory_generator():
             for demo in self.as_demo_generator():
-                pairs, _ = extract_fn(demo)
-                def nested_stack(ts): return tree.map_structure(lambda *xs: np.stack(xs), *ts)
-                obs, act = map(nested_stack, zip(*pairs))
-                yield types.Trajectory(observations=obs, actions=act)
+                try:
+                    pairs, _ = extract_fn(demo)
+                except AssertionError as exc:
+                    get_logger().warning('Skipping demo in %s: %s', self.dataset_dir, exc)
+                    continue
+                else:
+                    observations, actions = map(nested_stack, zip(*pairs))
+                    yield types.Trajectory(observations=observations, actions=actions)
 
         def to_tf_specs(x):
             return tf.TensorSpec(shape=(None,) + x.shape[1:], dtype=tf.as_dtype(x.dtype))
@@ -79,8 +85,8 @@ class DemosDataset:
     def append(self, demo: gcenv.Demo) -> None:
         demo = tree.map_structure(np.asarray, demo)
         if self.cast_to_f16:
-            def to_bf16(x): return x.astype(np.float16) if x.dtype.kind == 'f' else x
-            demo = tree.map_structure(to_bf16, demo)
+            def to_f16(x): return x.astype(np.float16) if x.dtype.kind == 'f' else x
+            demo = tree.map_structure(to_f16, demo)
         serialize(demo, self.dataset_dir / f'{self._len:05d}')
         self._len += 1
 

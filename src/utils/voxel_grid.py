@@ -18,7 +18,7 @@ class VoxelGrid:
         self.shape = lb.size * (nbins,) + (4,)
         self.voxel_size = 1. / nbins
         self._bbox = o3d.geometry.AxisAlignedBoundingBox(
-            np.zeros_like(lb), np.ones_like(ub))
+            np.zeros_like(lb), np.ones_like(ub) - self.voxel_size)
 
     def encode(self,
                obs: gcenv.Observation,
@@ -43,9 +43,8 @@ class VoxelGrid:
                 scene = np.zeros(self.shape, dtype=np.uint8)
                 for voxel in grid.get_voxels():
                     idx = voxel.grid_index
-                    if max(idx) < self.shape[0]:
-                        rgb = np.round(255 * voxel.color)
-                        scene[tuple(idx)] = np.r_[rgb, 255]
+                    rgb = np.round(255 * voxel.color)
+                    scene[tuple(idx)] = np.r_[rgb, 255]
                 return scene
         raise ValueError(return_type)
 

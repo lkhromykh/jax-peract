@@ -3,6 +3,7 @@ from typing import TypeAlias
 import jax
 import jax.numpy as jnp
 import numpy as np
+from ml_dtypes import bfloat16
 from dm_env import specs
 
 import transformers
@@ -41,7 +42,7 @@ class CLIP:
         if isinstance(input_, Array):
             input_ = input_.item()
         if not isinstance(input_, str):
-            raise ValueError(f'Wrong argument type: {input_}.')
+            raise TypeError(f'Wrong argument type: {input_}.')
         prev_hash, prev_emb = self._cache
         cur_hash = hash(input_)
         if cur_hash == prev_hash:
@@ -55,4 +56,4 @@ class CLIP:
 
     def observation_spec(self) -> specs.Array:
         hidden_size = self._model.config.hidden_size
-        return specs.Array((self.max_length, hidden_size), dtype=np.float32, name='text_emb')
+        return specs.Array((self.max_length, hidden_size), dtype=bfloat16, name='text_emb')

@@ -13,7 +13,6 @@ plt.rcParams['animation.embed_limit'] = 2 ** 20
 from src.environment import gcenv
 from src.utils.voxel_grid import VoxelGrid
 from src.dataset.dataset import DemosDataset
-from src.utils.action_transform import DiscreteActionTransform
 from src.dataset.keyframes_extraction import extractor_factory
 
 
@@ -48,7 +47,7 @@ def viz_demo(demo: gcenv.Demo) -> animation.FuncAnimation:
     jvel_ax.axhline(obs0.JOINTS_VEL_LOW_THRESHOLD, c='r', label='low_velocity_threshold')
     jvel_obs_line = jvel_ax.axvline(0, c='k')
     jvel_kf_line = jvel_ax.axvline(kf_idxs[0], c='g')
-    jvel_ax.set_xticks(list(jvel_ax.get_xticks()) + kf_idxs)
+    jvel_ax.set_xticks(kf_idxs)
     jvel_ax.set_xlim(left=0, right=kf_idxs[-1])
     jvel_ax.legend(loc='upper left')
 
@@ -56,7 +55,7 @@ def viz_demo(demo: gcenv.Demo) -> animation.FuncAnimation:
     gpos_ax.axhline(obs0.GRIPPER_OPEN_THRESHOLD, c='r', label='open_threshold')
     gpos_obs_line = gpos_ax.axvline(0, c='k')
     gpos_kf_line = gpos_ax.axvline(kf_idxs[0], c='g')
-    gpos_ax.set_xticks(list(gpos_ax.get_xticks()) + kf_idxs)
+    gpos_ax.set_xticks(kf_idxs)
     gpos_ax.set_xlim(left=0, right=kf_idxs[-1])
     gpos_ax.set_ylim(ymin=0, ymax=1.)
     gpos_ax.legend(loc='upper left')
@@ -75,26 +74,19 @@ def viz_demo(demo: gcenv.Demo) -> animation.FuncAnimation:
     return animation.FuncAnimation(fig, viz_slice, repeat=False, frames=len(pairs), interval=300)
 
 
+# Can't be used in one thread with matplotlib.backend == TkAgg
 def viz_obs(obs: gcenv.Observation,
             scene_bounds: tuple[float, ...],
             scene_bins: int = 64,
             ) -> None:
     scene_bounds = np.asarray(scene_bounds)
     vgrid = VoxelGrid(scene_bounds=scene_bounds, nbins=scene_bins)
-    act_trans = DiscreteActionTransform(scene_bounds, scene_bins, 72)
-    breakpoint()
-    act = obs.infer_action()
-    act = act_trans.encode(act)
-    act = act_trans.decode(act)
     voxels = vgrid.encode(obs, return_type='o3d')
-    print('center ', voxels.get_center())
-    print('max bound ', voxels.get_max_bound())
-    print('min bound ', voxels.get_min_bound())
-    print('bbox ', voxels.get_axis_aligned_bounding_box())
-    act = obs.infer_action()
-    frame_tcp = o3d.geometry.TriangleMesh.create_coordinate_frame(
-        size=0.2, origin=act[:3])# - scene_bounds[:3])
-    frame_tcp = frame_tcp.rotate(R.from_euler('ZYX', act[3:6]).as_matrix())
+    lb, ub = np.split(scene_bounds, 2)
+    tcp_pos, tcp_rot, _ = np.split(obs.infer_action(), [3, 6])
+    tcp_pos = (tcp_pos - lb) / (ub - lb)
+    frame_tcp = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=tcp_pos)
+    frame_tcp = frame_tcp.rotate(R.from_euler('ZYX', tcp_rot).as_matrix())
     frame = o3d.geometry.TriangleMesh.create_coordinate_frame()
     o3d.visualization.draw_geometries([voxels, frame, frame_tcp])
 
@@ -117,9 +109,10 @@ if __name__ == '__main__':
                 raise exc
             else:
                 # plt.show()
-                # obs = random.choice(demo)
-                obs = demo[0]
-                #(-0.7, -.25, -.03, -.2, .25, 0.47)
-                viz_obs(obs, scene_bounds=(-0.7, -0.25, -0.03, -0.2, 0.25, 0.47))
+                # plt.close()
+                obs = random.choice(demo)
+                # (-0.7, -0.25, -0.03, -0.2, 0.25, 0.47)
+                # (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
+                viz_obs(obs, scene_bounds=(-0.7, -0.25, -0.03, -0.2, 0.25, 0.47), scene_bins=64)
     except KeyboardInterrupt:
         pass
