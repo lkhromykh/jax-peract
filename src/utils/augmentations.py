@@ -63,9 +63,9 @@ def scene_rotation(item: types.Trajectory,
 
 
 def color_transforms(item: types.Trajectory,
-                     max_brightness: float = 0.2,
-                     contrast: float = 0.2,
-                     saturation: float = 0.2,
+                     max_brightness: float = 0.1,
+                     contrast: float = 0.1,
+                     saturation: float = 0.1,
                      hue: float = 0.05,
                      ) -> types.Trajectory:
     obs, act = item.observations, item.actions
