@@ -52,18 +52,17 @@ class VoxelsProcessor(nn.Module):
 
     def _make_stem(self, conv_cls: Type[nn.Conv] | Type[nn.ConvTranspose]) -> list[nn.Module]:
         blocks = []
-        arch = list(zip(self.features, self.kernels, self.strides))
-        for i, (f, k, s) in enumerate(arch):
-            no_layernorm = i == len(arch) - 1 and conv_cls == nn.Conv
-            # The authors of 2106.14881 don't apply activation on the pre-transformer conv.
+        arch = zip(self.features, self.kernels, self.strides)
+        for f, k, s in arch:
             conv = conv_cls(features=f,
                             kernel_size=3 * (k,),
                             strides=3 * (s,),
                             dtype=self.dtype,
-                            use_bias=no_layernorm,
+                            use_bias=False,
                             padding='VALID')
-            block = [conv] if no_layernorm else [conv, nn.LayerNorm(dtype=self.dtype), activation]
-            blocks.append(nn.Sequential(block))
+            norm = nn.LayerNorm(dtype=self.dtype)
+            block = nn.Sequential([conv, norm, activation])
+            blocks.append(block)
         return blocks
 
 

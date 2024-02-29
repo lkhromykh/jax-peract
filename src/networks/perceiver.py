@@ -20,7 +20,7 @@ class _Module(nn.Module):
     def dense(self, x: Array, **kwargs) -> Array:
         return nn.DenseGeneral(dtype=self.dtype,
                                kernel_init=self.kernel_init,
-                               use_bias=False,
+                               use_bias=True,
                                **kwargs
                                )(x)
 

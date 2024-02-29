@@ -64,7 +64,7 @@ def scene_rotation(item: types.Trajectory,
 
 def color_transforms(item: types.Trajectory,
                      max_brightness: float = 0.2,
-                     contrast: float = 0.3,
+                     contrast: float = 0.2,
                      saturation: float = 0.2,
                      hue: float = 0.05,
                      ) -> types.Trajectory:

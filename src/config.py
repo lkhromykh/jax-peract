@@ -13,7 +13,7 @@ class Config:
     conv_stem_strides: Layers = (4, 1)
     conv_stem_use_skip_connections: bool = True
     # Perceiver
-    latent_dim: int = 256
+    latent_dim: int = 512
     latent_channels: int = 512
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
@@ -33,12 +33,12 @@ class Config:
     # Training
     max_grad_norm: float = 1.
     warmup_steps: int = -1
-    peak_learning_rate: float = 1e-3
+    peak_learning_rate: float = 5e-4
     training_steps: int = 200_000
-    batch_size: int = 32
+    batch_size: int = 16
     weight_decay: float = 1e-6
-    log_every: int = 100
-    save_every: int = 1000
+    log_every: int = 500
+    save_every: int = 5000
     jit: bool = True
     compute_dtype: str = 'bf16'
     max_shift: int = 8
@@ -52,7 +52,7 @@ class Config:
 
     seed: int = 1
     datasets_dir: str = 'datasets/parsed_teleop'
-    logdir: str = 'logdir/teleop'
+    logdir: str = 'logdir/teleop1'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
