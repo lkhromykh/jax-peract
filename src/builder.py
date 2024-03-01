@@ -15,7 +15,7 @@ from src import utils
 import src.types_ as types
 from src.config import Config
 from src import behavior_cloning
-from src.environment import RLBenchEnv, GoalConditionedEnv
+from src.environment import RLBenchEnv, GoalConditionedEnv, UREnv
 from src.networks.peract import PerAct
 from src.train_state import TrainState, Params
 from src.logger import get_logger, logger_add_file_handler
@@ -70,6 +70,10 @@ class Builder:
             scene_bounds=c.scene_bounds,
             time_limit=c.time_limit,
         )
+        # env = UREnv(
+        #     address=fillme,
+        #     scene_bounds=c.scene_bounds,
+        # )
         if encoders is None:
             return env
         return PerActEnvWrapper(

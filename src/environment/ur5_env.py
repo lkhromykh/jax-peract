@@ -54,3 +54,6 @@ class UREnv(gcenv.GoalConditionedEnv):
             is_terminal=obs['is_terminal'],
             goal=obs['description']
         )
+
+    def close(self):
+        self._env.close()

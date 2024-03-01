@@ -38,7 +38,7 @@ class PerActEncoders(NamedTuple):
         return self.action_encoder.action_spec()
 
 
-class PerActEnvWrapper(dm_env.Environment):
+class PerActEnvWrapper:
     """Preprocess generic env observations to the PerAct state."""
 
     def __init__(self,
@@ -63,3 +63,6 @@ class PerActEnvWrapper(dm_env.Environment):
 
     def observation_spec(self):
         return self.encoders.observation_spec()
+
+    def __getattr__(self, item):
+        return getattr(self.env, item)
