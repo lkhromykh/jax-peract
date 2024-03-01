@@ -27,7 +27,7 @@ def default_scan(carry: Carry, obs: gcenv.Observation, skip_every: int = 4) -> t
     """
     next_obs, time_step, time_to_next_kf = (c := carry).next_obs, c.time_step, c.time_to_next_kf
     is_grasp_or_release = obs.gripper_is_open ^ next_obs.gripper_is_open
-    is_waypoint = next_obs.joints_velocity_is_low
+    is_waypoint = next_obs.joint_velocities_are_low
     is_waypoint &= np.all(abs(next_obs.joint_velocities) < abs(obs.joint_velocities))
     is_waypoint &= time_to_next_kf > skip_every
     is_keyframe = is_grasp_or_release | is_waypoint

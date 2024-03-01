@@ -35,7 +35,7 @@ class Observation(NamedTuple):
         return self.gripper_pos < Observation.GRIPPER_OPEN_THRESHOLD
 
     @property
-    def joints_velocity_is_low(self) -> bool:
+    def joint_velocities_are_low(self) -> bool:
         return np.allclose(self.joint_velocities, 0, atol=Observation.JOINTS_VEL_LOW_THRESHOLD)
 
     def infer_action(self) -> Action:
