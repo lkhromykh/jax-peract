@@ -60,11 +60,11 @@ class DemosDataset:
         def nested_stack(ts): return tree.map_structure(lambda *xs: np.stack(xs), *ts)
 
         def as_trajectory_generator():
-            for demo in self.as_demo_generator():
+            for path, demo in zip(self, self.as_demo_generator()):
                 try:
                     pairs, _ = extract_fn(demo)
                 except AssertionError as exc:
-                    get_logger().warning('Skipping demo in %s: %s', self.dataset_dir, exc)
+                    get_logger().warning('Ill-formed demo %s: %s', path, exc)
                     continue
                 else:
                     observations, actions = map(nested_stack, zip(*pairs))

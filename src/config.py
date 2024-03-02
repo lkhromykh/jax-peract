@@ -44,7 +44,7 @@ class Config:
     max_shift: int = 8
     val_split: float = 0.1
     # Environment
-    scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.03, -0.2, 0.25, 0.47)
+    scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
     scene_bins: int = 64
     rot_bins: int = 72
     time_limit: int = 6

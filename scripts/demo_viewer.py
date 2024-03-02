@@ -101,18 +101,18 @@ if __name__ == '__main__':
         while True:
             try:
                 idx, demo = next(ds)
-                # anim = viz_demo(demo)
+                anim = viz_demo(demo)
             except StopIteration:
                 break
             except Exception as exc:
                 print('Bad demo idx ', idx)
                 raise exc
             else:
-                # plt.show()
-                # plt.close()
+                plt.show()
+                plt.close()
                 obs = random.choice(demo)
                 # (-0.7, -0.25, -0.03, -0.2, 0.25, 0.47)
                 # (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
-                viz_obs(obs, scene_bounds=(-0.7, -0.25, -0.03, -0.2, 0.25, 0.47), scene_bins=64)
+                # viz_obs(obs, scene_bounds=(-0.7, -0.25, -0.1, -0.2, 0.25, 0.4), scene_bins=64)
     except KeyboardInterrupt:
         pass
