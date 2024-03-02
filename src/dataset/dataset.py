@@ -47,7 +47,7 @@ class DemosDataset:
             try:
                 demo = deserialize(path)
             except Exception as exc:
-                get_logger().warning('Read demo error %s\ndemo path %s', exc, path)
+                get_logger().warning('Read demo error %s: %s', path, exc)
                 if self.raise_on_read_exc:
                     raise exc
                 else:

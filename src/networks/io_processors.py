@@ -52,8 +52,7 @@ class VoxelsProcessor(nn.Module):
 
     def _make_stem(self, conv_cls: Type[nn.Conv] | Type[nn.ConvTranspose]) -> list[nn.Module]:
         blocks = []
-        arch = zip(self.features, self.kernels, self.strides)
-        for f, k, s in arch:
+        for f, k, s in zip(self.features, self.kernels, self.strides):
             conv = conv_cls(features=f,
                             kernel_size=3 * (k,),
                             strides=3 * (s,),

@@ -37,22 +37,22 @@ class Config:
     training_steps: int = 200_000
     batch_size: int = 16
     weight_decay: float = 1e-6
-    log_every: int = 500
-    save_every: int = 5000
+    log_every: int = 100
+    save_every: int = 1000
     jit: bool = True
     compute_dtype: str = 'bf16'
     max_shift: int = 8
     val_split: float = 0.1
     # Environment
-    scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
+    scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     scene_bins: int = 64
     rot_bins: int = 72
-    time_limit: int = 6
-    num_demos_per_task: int = 50
+    time_limit: int = 10
+    num_demos_per_task: int = 100
 
     seed: int = 1
-    datasets_dir: str = 'datasets/parsed_teleop'
-    logdir: str = 'logdir/teleop1'
+    datasets_dir: str = 'datasets/rlbench_easy'
+    logdir: str = 'logdir/rlbench_easy_waug'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
