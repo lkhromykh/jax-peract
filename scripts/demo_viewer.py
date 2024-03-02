@@ -1,6 +1,7 @@
 import os
 import sys
 import random
+import pathlib
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 import numpy as np
@@ -92,9 +93,7 @@ def viz_obs(obs: gcenv.Observation,
 
 
 if __name__ == '__main__':
-    path = sys.argv[1]
-    path = os.path.join(os.path.dirname(__file__), '..', path)
-    path = os.path.abspath(path)
+    path = pathlib.Path(sys.argv[1]).resolve()
     ds = enumerate(DemosDataset(path).as_demo_generator())
     idx = 0
     try:

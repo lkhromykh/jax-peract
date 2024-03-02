@@ -173,11 +173,11 @@ class Builder:
                             num_parallel_calls=tf.data.AUTOTUNE) \
                        .map(lambda item: utils.augmentations.scene_shift(item, c.max_shift),
                             num_parallel_calls=tf.data.AUTOTUNE) \
-                       .map(utils.augmentations.color_transforms,
-                            num_parallel_calls=tf.data.AUTOTUNE) \
                        .batch(c.batch_size,
                               num_parallel_calls=tf.data.AUTOTUNE,
                               drop_remainder=True) \
+                       .map(utils.augmentations.color_transforms,
+                            num_parallel_calls=tf.data.AUTOTUNE) \
                        .prefetch(tf.data.AUTOTUNE)
             case _:
                 raise ValueError(split)
