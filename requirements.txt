@@ -1,5 +1,5 @@
 cffi==1.14.2
-cloudpickle
+cloudpickle==3.0.0
 chex
 dm-env
 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html

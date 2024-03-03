@@ -94,17 +94,21 @@ def viz_obs(obs: gcenv.Observation,
 
 if __name__ == '__main__':
     path = pathlib.Path(sys.argv[1]).resolve()
-    ds = enumerate(DemosDataset(path).as_demo_generator())
-    idx = 0
+    ds = DemosDataset(path)
+    gen = zip(ds, ds.as_demo_generator())
+    for _ in range(60):
+        _ = next(gen)
     try:
         while True:
             try:
-                idx, demo = next(ds)
+                path, demo = next(gen)
                 anim = viz_demo(demo)
             except StopIteration:
                 break
+            except AssertionError:
+                print('Ill-formed demo ', path)
             except Exception as exc:
-                print('Bad demo idx ', idx)
+                print('Cant load demo ', path)
                 raise exc
             else:
                 plt.show()
