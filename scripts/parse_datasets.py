@@ -20,7 +20,7 @@ def parse_dataset(builder: Builder, raw_ds_path: Path, processed_ds_path: Path) 
     ds = DemosDataset(raw_ds_path)
     tfds = ds.as_tf_dataset(extract_fn)
     get_logger().info('Saving dataset to %s', processed_ds_path)
-    tfds.save(str(processed_ds_path), compression='GZIP')
+    tfds.save(str(processed_ds_path))
     get_logger().info('Done saving %s', processed_ds_path)
 
 

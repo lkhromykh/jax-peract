@@ -142,7 +142,7 @@ class Builder:
         processed_ds_path = self.exp_path(Builder.DATASETS_DIR).resolve()
 
         def load_dataset(path):
-            _ds = tf.data.Dataset.load(str(path), compression='GZIP')
+            _ds = tf.data.Dataset.load(str(path))
             val_eps = max(int(c.val_split * len(_ds)), 1)
             match split:
                 case 'val': _ds = _ds.take(val_eps)
