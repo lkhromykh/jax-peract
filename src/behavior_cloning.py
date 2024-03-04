@@ -13,7 +13,7 @@ from src import types_ as types
 
 def _get_policy_metrics(policy: Blockwise, expert_action: types.Action) -> types.Metrics:
 
-    def _per_dist_metrics(dist_, labels, topk=(1, 5), postfix=''):
+    def per_dist_metrics(dist_, labels, topk=(1, 5), postfix=''):
         metrics_ = {}
         argsorted_logits = jnp.argsort(dist_.logits)
         for k in topk:
@@ -24,7 +24,7 @@ def _get_policy_metrics(policy: Blockwise, expert_action: types.Action) -> types
         return metrics_
 
     pos_dist, *low_dim_dists = policy.distributions
-    metrics = _per_dist_metrics(
+    metrics = per_dist_metrics(
         pos_dist.distribution,
         pos_dist.bijector.inverse(expert_action[:3]),
         topk=(1, 7),
@@ -32,7 +32,8 @@ def _get_policy_metrics(policy: Blockwise, expert_action: types.Action) -> types
     )
     components_names = ('yaw', 'pitch', 'roll', 'grasp', 'termsig')
     for name, dist, label in zip(components_names, low_dim_dists, expert_action[3:]):
-        metrics |= _per_dist_metrics(dist, label, topk=(1, 3), postfix=name)
+        topk_ = (1, 3) if name in components_names[:3] else (1,)
+        metrics |= per_dist_metrics(dist, label, topk=topk_, postfix=name)
     return metrics
 
 

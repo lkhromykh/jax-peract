@@ -34,5 +34,4 @@ def parse_datasets(cfg: Config):
 
 
 if __name__ == '__main__':
-    cfg = Config()
-    parse_datasets(cfg)
+    parse_datasets(Config())

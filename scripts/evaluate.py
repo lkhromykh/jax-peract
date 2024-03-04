@@ -39,5 +39,4 @@ def evaluate(cfg: Config):
 
 
 if __name__ == '__main__':
-    _cfg = Config()
-    evaluate(_cfg)
+    evaluate(Config())

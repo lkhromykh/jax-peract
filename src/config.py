@@ -37,7 +37,7 @@ class Config:
     training_steps: int = 100_000
     batch_size: int = 16
     weight_decay: float = 1e-6
-    log_every: int = 200
+    log_every: int = 500
     save_every: int = 5000
     jit: bool = True
     compute_dtype: str = 'bf16'
