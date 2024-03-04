@@ -11,18 +11,28 @@ from src.train_state import TrainState, Params
 from src import types_ as types
 
 
-def _per_dist_metrics(policy: Blockwise, expert_action: types.Action) -> types.Metrics:
-    idx = 0
-    metrics = {}
-    components_names = ('pos', 'yaw', 'pitch', 'roll', 'grasp', 'termsig')
-    for name, dist in zip(components_names, policy.distributions):
-        act_pred = jnp.atleast_1d(dist.mode())
-        next_idx = idx + act_pred.size
-        act_truth = expert_action[idx:next_idx]
-        def _join(metric): return f'{metric}_{name}'
-        metrics |= {_join('entropy'): dist.entropy(),
-                    _join('accuracy'): jnp.array_equal(act_truth, act_pred)}
-        idx = next_idx
+def _get_policy_metrics(policy: Blockwise, expert_action: types.Action) -> types.Metrics:
+
+    def _per_dist_metrics(dist_, labels, topk=(1, 5), postfix=''):
+        metrics_ = {}
+        argsorted_logits = jnp.argsort(dist_.logits)
+        for k in topk:
+            pred_labels = argsorted_logits[-k:]
+            correct = jnp.isin(pred_labels, labels).any().astype(jnp.float32)
+            metrics_[f'top_{k}_acc_{postfix}'] = correct
+        metrics_[f'entropy_{postfix}'] = dist_.entropy()
+        return metrics_
+
+    pos_dist, *low_dim_dists = policy.distributions
+    metrics = _per_dist_metrics(
+        pos_dist.distribution,
+        pos_dist.bijector.inverse(expert_action[:3]),
+        topk=(1, 7),
+        postfix='pos'
+    )
+    components_names = ('yaw', 'pitch', 'roll', 'grasp', 'termsig')
+    for name, dist, label in zip(components_names, low_dim_dists, expert_action[3:]):
+        metrics |= _per_dist_metrics(dist, label, topk=(1, 3), postfix=name)
     return metrics
 
 
@@ -37,7 +47,7 @@ def train(cfg: Config, nets: PerAct) -> types.StepFn:
         policy = nets.apply(params, observation)
         cross_ent = -policy.log_prob(action)
         metrics = dict(loss=cross_ent)
-        metrics.update(_per_dist_metrics(policy, action))
+        metrics.update(_get_policy_metrics(policy, action))
         return cross_ent, metrics
 
     @chex.assert_max_traces(1)
@@ -66,7 +76,7 @@ def validate(cfg: Config, nets: PerAct) -> types.StepFn:
                 ) -> types.Metrics:
         chex.assert_rank(action, 1)
         policy = nets.apply(params, observation)
-        return _per_dist_metrics(policy, action)
+        return _get_policy_metrics(policy, action)
 
     @chex.assert_max_traces(2)  # drop_remainder=False
     def step(state: TrainState,

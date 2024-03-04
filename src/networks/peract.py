@@ -35,7 +35,6 @@ class PerAct(nn.Module):
             num_self_attend_heads=c.num_self_attend_heads,
             cross_attend_widening_factor=c.cross_attend_widening_factor,
             self_attend_widening_factor=c.self_attend_widening_factor,
-            use_decoder_query_residual=c.use_decoder_query_residual,
             prior_initial_scale=c.prior_initial_scale,
             dtype=dtype,
             kernel_init=nn.initializers.lecun_normal(),
@@ -59,14 +58,14 @@ class PerAct(nn.Module):
         patches, skip_connections = self.voxels_proc.encode(voxels)
         patches_shape, channels = patches.shape[:3], patches.shape[-1]
         pos3d_enc = utils.fourier_features(patches_shape, c.ff_num_bands).astype(dtype)
+        pos3d_enc = pos3d_enc.reshape(-1, pos3d_enc.shape[-1])
         if c.use_trainable_pos_encoding:  # Hide 3D structure of the voxel grid.
             pos3d_enc = self.param(
                 'input_pos3d_encoding',
                 nn.initializers.normal(c.prior_initial_scale, patches.dtype),
                 pos3d_enc.shape  # Make further capacity equivalent.
             )
-        patches = jnp.concatenate([patches, pos3d_enc], -1)
-        patches = patches.reshape(-1, patches.shape[-1])
+        patches = jnp.concatenate([patches.reshape(-1, channels), pos3d_enc], -1)
         low_dim = nn.Dense(channels, dtype=dtype, name='low_dim_preproc')(low_dim).reshape(1, -1)
         task = nn.Dense(channels, dtype=dtype, name='task_preproc')(task)
         pos1d_enc = utils.fourier_features(task.shape[:1], c.ff_num_bands).astype(dtype)
@@ -76,18 +75,18 @@ class PerAct(nn.Module):
             patches, low_dim, task
         )
         if c.use_trainable_pos_encoding:
-            patches = self.param(
+            pos3d_enc = self.param(
                 'output_pos3d_encoding',
-                nn.initializers.normal(c.prior_initial_scale, patches.dtype),
-                patches.shape
+                nn.initializers.normal(c.prior_initial_scale, pos3d_enc.dtype),
+                pos3d_enc.shape
             )
         low_dim = self.param(
             'low_dim_output_query',
             nn.initializers.normal(c.prior_initial_scale, dtype),
-            (1, patches.shape[-1])
+            (1, pos3d_enc.shape[-1])
         )
         outputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
-            patches, low_dim
+            pos3d_enc, low_dim
         )
         outputs_val = self.perceiver(inputs_q, outputs_q)
         patches, low_dim = io_processors.InputsMultiplexer.inverse(

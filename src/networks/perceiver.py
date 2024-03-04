@@ -20,7 +20,6 @@ class _Module(nn.Module):
     def dense(self, x: Array, **kwargs) -> Array:
         return nn.DenseGeneral(dtype=self.dtype,
                                kernel_init=self.kernel_init,
-                               use_bias=True,
                                **kwargs
                                )(x)
 
@@ -75,7 +74,7 @@ class MultiHeadAttention(_Module):
         def mh_dense(x, dim, name):
             dim, res = np.divmod(dim, self.num_heads)
             assert res == 0, f'Not divisible by the number of heads: {dim}.'
-            return self.dense(x, features=(self.num_heads, dim), name=name)
+            return self.dense(x, features=(self.num_heads, dim), use_bias=False, name=name)
 
         qk_channels = self.qk_channels or inputs_q.shape[-1]
         v_channels = self.v_channels or qk_channels
@@ -138,7 +137,6 @@ class PerceiverIO(nn.Module):
     num_self_attend_heads: int
     cross_attend_widening_factor: float
     self_attend_widening_factor: float
-    use_decoder_query_residual: bool = False
     prior_initial_scale: float = 0.02
     dtype: DType = jnp.float32
     kernel_init: nn.initializers.Initializer = nn.initializers.lecun_normal()
@@ -162,7 +160,7 @@ class PerceiverIO(nn.Module):
         decode_query = CrossAttention(
             num_heads=self.num_cross_attend_heads,
             widening_factor=self.cross_attend_widening_factor,
-            use_query_residual=self.use_decoder_query_residual,
+            use_query_residual=False,
             dtype=self.dtype,
             kernel_init=self.kernel_init,
             use_layer_norm=self.use_layer_norm

@@ -28,7 +28,7 @@ class Builder:
     CONFIG = 'config.yaml'
     STATE = 'state.cpkl'
     LOGS = 'logs'
-    DATASETS_DIR = 'processed_demos/'
+    DATASETS_DIR = '../processed_demos/'
 
     def __init__(self, cfg: Config) -> None:
         """Prepare an experiment space."""
@@ -171,7 +171,7 @@ class Builder:
                        .repeat() \
                        .map(lambda item: utils.augmentations.scene_rotation(item, action_encoder),
                             num_parallel_calls=tf.data.AUTOTUNE) \
-                       .map(lambda item: utils.augmentations.scene_shift(item, c.max_shift),
+                       .map(lambda item: utils.augmentations.scene_shift(item, int(c.max_trans_aug * c.scene_bins)),
                             num_parallel_calls=tf.data.AUTOTUNE) \
                        .batch(c.batch_size,
                               num_parallel_calls=tf.data.AUTOTUNE,
