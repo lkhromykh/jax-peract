@@ -60,9 +60,10 @@ class DemosDataset:
         def nested_stack(ts): return tree.map_structure(lambda *xs: np.stack(xs), *ts)
 
         def as_trajectory_generator():
-            for path, demo in zip(self, self.as_demo_generator()):
+            for idx, (path, demo) in enumerate(zip(self, self.as_demo_generator())):
                 try:
-                    pairs, _ = extract_fn(demo)
+                    pairs, kfs = extract_fn(demo)
+                    get_logger().info('%d. Task %s; Keyframes time steps: %s', idx, demo[0].goal, kfs)
                 except AssertionError as exc:
                     get_logger().warning('Ill-formed demo %s: %s', path, exc)
                     continue

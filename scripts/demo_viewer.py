@@ -93,11 +93,12 @@ def viz_obs(obs: gcenv.Observation,
 
 
 if __name__ == '__main__':
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
     path = pathlib.Path(sys.argv[1]).resolve()
     ds = DemosDataset(path)
     gen = zip(ds, ds.as_demo_generator())
-    for _ in range(60):
-        _ = next(gen)
+    # for _ in range(60):
+    #     _ = next(gen)
     try:
         while True:
             try:
@@ -114,8 +115,8 @@ if __name__ == '__main__':
                 plt.show()
                 plt.close()
                 obs = random.choice(demo)
-                # (-0.7, -0.25, -0.03, -0.2, 0.25, 0.47)
-                # (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
-                # viz_obs(obs, scene_bounds=(-0.7, -0.25, -0.1, -0.2, 0.25, 0.4), scene_bins=64)
+                # rlbench (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
+                # ur5 (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
+                # viz_obs(obs, scene_bounds=(-0.3, -0.5, 0.6, 0.7, 0.5, 1.6), scene_bins=32)
     except KeyboardInterrupt:
         pass

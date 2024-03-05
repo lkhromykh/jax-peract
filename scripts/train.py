@@ -69,5 +69,4 @@ def train(cfg: Config):
 
 if __name__ == '__main__':
     # _debug()
-    _cfg = Config()
-    train(_cfg)
+    train(Config())

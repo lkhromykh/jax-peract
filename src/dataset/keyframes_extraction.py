@@ -3,7 +3,6 @@ from typing import Any, Callable, NamedTuple, TypeAlias
 import numpy as np
 
 from src.environment import gcenv
-from src.logger import get_logger
 
 
 class Carry(NamedTuple):
@@ -65,7 +64,6 @@ def extractor_factory(
             next_carry = carry
             carry, is_keyframe = scan_fn(carry, obs)
         kf_time_steps = kf_time_steps[::-1]
-        get_logger().info('Task %s; Keyframes time steps: %s',  last_obs.goal, kf_time_steps)
         return pairs[::-1], kf_time_steps
 
     return extract_keyframes

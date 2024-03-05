@@ -32,5 +32,4 @@ def profile(cfg: Config):
 
 
 if __name__ == '__main__':
-    _cfg = Config()
-    profile(_cfg)
+    profile(Config())
