@@ -74,6 +74,7 @@ class PerAct(nn.Module):
         inputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
             patches, low_dim, task
         )
+        # TODO: Test if stop-grad on patches as a query can work; low_dim query
         if c.use_trainable_pos_encoding:
             pos3d_enc = self.param(
                 'output_pos3d_encoding',

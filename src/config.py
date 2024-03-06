@@ -36,7 +36,7 @@ class Config:
     peak_learning_rate: float = 5e-4
     training_steps: int = 200_000
     batch_size: int = 32
-    weight_decay: float = 1e-5
+    weight_decay: float = 1e-6
     log_every: int = 500
     save_every: int = 5000
     jit: bool = True

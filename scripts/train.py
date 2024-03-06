@@ -1,6 +1,16 @@
 import os
 import sys
 import time
+# os.environ['XLA_FLAGS'] = (  # jax.readthedocs.io/en/latest/gpu_performance_tips.html
+#     '--xla_gpu_simplify_all_fp_conversions '
+#     '--xla_gpu_enable_async_all_gather=true '
+#     '--xla_gpu_enable_async_reduce_scatter=true '
+#     '--xla_gpu_enable_triton_softmax_fusion=true '
+#     '--xla_gpu_enable_triton_gemm=false '
+#     '--xla_gpu_enable_async_collectives=true '
+#     '--xla_gpu_enable_latency_hiding_scheduler=true '
+#     '--xla_gpu_enable_highest_priority_async_stream=true '
+# )
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 import jax

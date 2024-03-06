@@ -166,13 +166,14 @@ class Builder:
                        .cache() \
                        .prefetch(tf.data.AUTOTUNE)
             case 'train':
+                max_shift = int(c.max_trans_aug * c.scene_bins)
                 ds = tf.data.Dataset.sample_from_datasets(datasets,  # ~ 1 / |Tasks|
                                                           stop_on_empty_dataset=False,
                                                           rerandomize_each_iteration=True) \
                        .repeat() \
                        .map(lambda item: utils.augmentations.scene_rotation(item, action_encoder),
                             num_parallel_calls=tf.data.AUTOTUNE) \
-                       .map(lambda item: utils.augmentations.scene_shift(item, int(c.max_trans_aug * c.scene_bins)),
+                       .map(lambda item: utils.augmentations.scene_shift(item, max_shift),
                             num_parallel_calls=tf.data.AUTOTUNE) \
                        .batch(c.batch_size,
                               num_parallel_calls=tf.data.AUTOTUNE,

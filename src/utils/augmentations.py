@@ -66,14 +66,18 @@ def color_transforms(item: types.Trajectory,
                      max_brightness: float = 0.1,
                      contrast: float = 0.1,
                      saturation: float = 0.1,
-                     hue: float = 0.05,
+                     hue: float = 0.
                      ) -> types.Trajectory:
     obs, act = item.observations, item.actions
     colors, occupancy = tf.split(obs.voxels, [3, 1], -1)
-    colors = tf.image.random_brightness(colors, max_brightness)
-    colors = tf.image.random_contrast(colors, 1 - contrast, 1 + contrast)
-    colors = tf.image.random_saturation(colors, 1 - saturation, 1 + saturation)
-    colors = tf.image.random_hue(colors, hue)
+    if max_brightness > 0:
+        colors = tf.image.random_brightness(colors, max_brightness)
+    if contrast > 0:
+        colors = tf.image.random_contrast(colors, 1 - contrast, 1 + contrast)
+    if saturation > 0:
+        colors = tf.image.random_saturation(colors, 1 - saturation, 1 + saturation)
+    if hue > 0:
+        colors = tf.image.random_hue(colors, hue)
     colors *= tf.cast(occupancy == 255, tf.uint8)
 
     obs = obs._replace(voxels=tf.concat([colors, occupancy], -1))
