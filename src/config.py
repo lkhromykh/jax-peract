@@ -25,7 +25,7 @@ class Config:
     use_layer_norm: bool = True
     use_trainable_pos_encoding: bool = False
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 32
+    ff_num_bands: int = 0
     text_context_length: int = 77  # max. 77
     # Action decoder
     act_decoder_mlp_dim: int = 256
@@ -45,14 +45,14 @@ class Config:
     val_split: float = 0.1
     # Environment
     scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
-    scene_bins: int = 64
+    scene_bins: int = 32
     rot_bins: int = 72
-    time_limit: int = 10
+    time_limit: int = 4
     num_demos_per_task: int = 100
 
     seed: int = 1
-    datasets_dir: str = 'datasets/parsed_teleop'
-    logdir: str = 'logdir/teleop3'
+    datasets_dir: str = 'datasets/put_in_box'
+    logdir: str = 'logdir/put_in_box_ff0'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
