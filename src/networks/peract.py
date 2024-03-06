@@ -58,6 +58,7 @@ class PerAct(nn.Module):
         patches, skip_connections = self.voxels_proc.encode(voxels)
         patches_shape, channels = patches.shape[:3], patches.shape[-1]
         pos3d_enc = utils.fourier_features(patches_shape, c.ff_num_bands).astype(dtype)
+        # TODO: voxels are layernromed while other inputs are not.
         pos3d_enc = pos3d_enc.reshape(-1, pos3d_enc.shape[-1])
         if c.use_trainable_pos_encoding:  # Hide 3D structure of the voxel grid.
             pos3d_enc = self.param(

@@ -25,7 +25,7 @@ class Config:
     use_layer_norm: bool = True
     use_trainable_pos_encoding: bool = False
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 0
+    ff_num_bands: int = 32
     text_context_length: int = 77  # max. 77
     # Action decoder
     act_decoder_mlp_dim: int = 256
