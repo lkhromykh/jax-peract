@@ -13,8 +13,9 @@ class UREnv(gcenv.GoalConditionedEnv):
     def __init__(self,
                  address: tuple[str, int],
                  scene_bounds: gcenv.SceneBounds,
+                 time_limit: int
                  ) -> None:
-        super().__init__(scene_bounds=scene_bounds, time_limit=float('inf'))
+        super().__init__(scene_bounds=scene_bounds, time_limit=time_limit)
         self._env = RemoteEnvClient(address)
 
     def reset(self) -> dm_env.TimeStep:
@@ -31,7 +32,7 @@ class UREnv(gcenv.GoalConditionedEnv):
         ts = self._env.step(action)
         self._step += 1
         self._prev_obs = self.extract_observation(ts.observation)
-        return ts._replace(observation=self._prev_obs)
+        return self._as_time_step(self._prev_obs, ts.reward, ts.last())
 
     def get_demo(self) -> gcenv.Demo:
         raise RuntimeError('get_demo is not provided.')

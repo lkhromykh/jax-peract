@@ -1,5 +1,6 @@
 import os
 import sys
+import pathlib
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 import jax
@@ -39,4 +40,6 @@ def evaluate(cfg: Config):
 
 
 if __name__ == '__main__':
-    evaluate(Config())
+    exp_path = pathlib.Path(sys.argv[1])
+    cfg_ = Config.load(exp_path / Builder.CONFIG)
+    evaluate(cfg_)
