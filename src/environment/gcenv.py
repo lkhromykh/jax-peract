@@ -12,7 +12,6 @@ SceneBounds: TypeAlias = tuple[float, float, float, float, float, float]
 Goal: TypeAlias = str | np.ndarray
 
 
-# TODO: consider swapping to quat / rotvec to avoid gimbal lock.
 class Observation(NamedTuple):
     """Complete action-centric environment state representation."""
 

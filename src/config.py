@@ -52,7 +52,7 @@ class Config:
 
     seed: int = 1
     datasets_dir: str = 'datasets/put_in_box'
-    logdir: str = 'logdir/put_in_box_ff0'
+    logdir: str = 'logdir/put_in_box_noln'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

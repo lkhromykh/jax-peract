@@ -125,8 +125,6 @@ class CrossAttention(_Module):
         return x + mlp(self.norm(x))
 
 
-# TODO: propagate attention all through.
-# TODO: maybe check GRU?
 class PerceiverIO(nn.Module):
 
     latent_dim: int
