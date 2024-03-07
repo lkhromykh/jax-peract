@@ -8,11 +8,17 @@ Layers: TypeAlias = tuple[int, ...]
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Config:
-    # Conv stem
-    conv_stem_features: Layers = (64, 64)
-    conv_stem_kernels: Layers = (4, 1)
-    conv_stem_strides: Layers = (4, 1)
+    # IO processors
+    scene_bins: int = 32
+    rot_bins: int = 72
+    conv_stem_features: Layers = (64,)
+    conv_stem_kernels: Layers = (1,)
+    conv_stem_strides: Layers = (1,)
     conv_stem_use_skip_connections: bool = True
+    voxels_patch_size: int = 4
+    text_context_length: int = 77  # max. 77
+    act_decoder_mlp_dim: int = 256
+    act_decoder_conv_kernel: int = 3
     # Perceiver
     latent_dim: int = 256
     latent_channels: int = 512
@@ -23,13 +29,9 @@ class Config:
     cross_attend_widening_factor: float = 1.
     self_attend_widening_factor: float = 1.
     use_layer_norm: bool = True
-    use_trainable_pos_encoding: bool = False
     prior_initial_scale: float = 0.02
     ff_num_bands: int = 32
-    text_context_length: int = 77  # max. 77
-    # Action decoder
-    act_decoder_mlp_dim: int = 256
-    act_decoder_conv_kernel: int = 3
+    use_trainable_pos_encoding: bool = False
     # Training
     max_grad_norm: float = 10.
     warmup_steps: int = -1
@@ -45,11 +47,9 @@ class Config:
     val_split: float = 0.1
     # Environment
     scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
-    scene_bins: int = 32
-    rot_bins: int = 72
-    time_limit: int = 10
+    time_limit: int = 4
     num_demos_per_task: int = 100
-
+    # Experiment
     seed: int = 1
     datasets_dir: str = 'datasets/rlbench_easy'
     logdir: str = 'logdir/mini'
@@ -74,9 +74,12 @@ class Config:
 
 
 peract_config = Config(
-    conv_stem_features=(64, 64,),
-    conv_stem_kernels=(1, 5),
-    conv_stem_strides=(1, 5),
+    scene_bins=100,
+    rot_bins=72,
+    conv_stem_features=(64,),
+    conv_stem_kernels=(1,),
+    conv_stem_strides=(1,),
+    voxels_patch_size=5,
     conv_stem_use_skip_connections=True,
     latent_dim=2048,
     latent_channels=512,
@@ -86,6 +89,7 @@ peract_config = Config(
     num_self_attend_heads=8,
     cross_attend_widening_factor=4.,
     self_attend_widening_factor=4.,
+    ff_num_bands=32,  # pos_enc size 3 * (2 * 32 + 1) approx. 192 as in the paper.
     use_trainable_pos_encoding=True,
     text_context_length=77,
     act_decoder_mlp_dim=256,
@@ -95,7 +99,6 @@ peract_config = Config(
     warmup_steps=-1,
     weight_decay=1e-6,
     peak_learning_rate=5e-4,
-    rot_bins=72,
-    scene_bins=100,
+    compute_dtype='f32',
+    scene_bounds=(-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
 )
-

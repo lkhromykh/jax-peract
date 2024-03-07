@@ -23,7 +23,9 @@ class PerAct(nn.Module):
             features=c.conv_stem_features,
             kernels=c.conv_stem_kernels,
             strides=c.conv_stem_strides,
+            patch_size=c.voxels_patch_size,
             dtype=dtype,
+            kernel_init=nn.initializers.lecun_normal(),
             use_skip_connections=c.conv_stem_use_skip_connections,
         )
         self.perceiver = PerceiverIO(
@@ -44,7 +46,8 @@ class PerAct(nn.Module):
             action_spec=self.action_spec,
             mlp_dim=c.act_decoder_mlp_dim,
             conv_kernel=c.act_decoder_conv_kernel,
-            dtype=dtype
+            dtype=dtype,
+            kernel_init=nn.initializers.normal(1e-2)
         )
 
     @nn.compact
@@ -55,27 +58,32 @@ class PerAct(nn.Module):
         dtype = _dtype_fromstr(c.compute_dtype)
         voxels, low_dim, task = map(lambda x: x.astype(dtype), obs)
         voxels = voxels / 128. - 1
-        patches, skip_connections = self.voxels_proc.encode(voxels)
-        patches_shape, channels = patches.shape[:3], patches.shape[-1]
+        patches, skip_connections = self.voxels_proc.encode(voxels.astype(dtype))
+        patches_shape, channels = patches.shape[:-1], 64
+        # Input query
+        def tokens_preproc(x, name):
+            x = x.reshape(-1, x.shape[-1])
+            fc = nn.Dense(channels, use_bias=False, dtype=dtype, name=f'{name}_tokens_dense')
+            ln = nn.LayerNorm(dtype=dtype, name=f'{name}_tokens_ln') if c.use_layer_norm else lambda y: y
+            return ln(fc(x))
+        patches = tokens_preproc(patches, 'voxels')
+        low_dim = tokens_preproc(low_dim, 'low_dim')
+        task = tokens_preproc(task, 'task')
+        pos1d_enc = utils.fourier_features(task.shape[:1], c.ff_num_bands).astype(dtype)
         pos3d_enc = utils.fourier_features(patches_shape, c.ff_num_bands).astype(dtype)
-        # TODO: voxels are layernromed while other inputs are not.
         pos3d_enc = pos3d_enc.reshape(-1, pos3d_enc.shape[-1])
-        if c.use_trainable_pos_encoding:  # Hide 3D structure of the voxel grid.
+        if c.use_trainable_pos_encoding:  # Hide 3D structure of voxel grid.
             pos3d_enc = self.param(
                 'input_pos3d_encoding',
                 nn.initializers.normal(c.prior_initial_scale, patches.dtype),
                 pos3d_enc.shape  # Make further capacity equivalent.
             )
-        patches = jnp.concatenate([patches.reshape(-1, channels), pos3d_enc], -1)
-        low_dim = nn.Dense(channels, dtype=dtype, name='low_dim_preproc')(low_dim).reshape(1, -1)
-        task = nn.Dense(channels, dtype=dtype, name='task_preproc')(task)
-        pos1d_enc = utils.fourier_features(task.shape[:1], c.ff_num_bands).astype(dtype)
+        patches = jnp.concatenate([patches, pos3d_enc], -1)
         task = jnp.concatenate([task, pos1d_enc], -1)
-
         inputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
             patches, low_dim, task
         )
-        # TODO: Test if stop-grad on patches as a query can work; low_dim query
+        # Output query
         if c.use_trainable_pos_encoding:
             pos3d_enc = self.param(
                 'output_pos3d_encoding',
@@ -91,6 +99,7 @@ class PerAct(nn.Module):
             pos3d_enc, low_dim
         )
         outputs_val = self.perceiver(inputs_q, outputs_q)
+        # Decoding
         patches, low_dim = io_processors.InputsMultiplexer.inverse(
             outputs_val, shapes=[patches_shape, ()]
         )

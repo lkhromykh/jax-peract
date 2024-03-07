@@ -55,7 +55,7 @@ def scaled_dot_product(query: Array,
                        ) -> Array:
     attn = jnp.einsum('...qhd,...khd->...hqk', query, key)
     attn /= np.sqrt(query.shape[-1])
-    attn = jax.nn.softmax(attn)
+    attn = jax.nn.softmax(attn.astype(jnp.float32)).astype(value.dtype)
     return jnp.einsum('...hqk,...khd->...qhd', attn, value)
 
 
@@ -125,8 +125,6 @@ class CrossAttention(_Module):
         return x + mlp(self.norm(x))
 
 
-# TODO: propagate attention all through.
-# TODO: maybe check GRU?
 class PerceiverIO(nn.Module):
 
     latent_dim: int

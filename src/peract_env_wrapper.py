@@ -16,7 +16,6 @@ class PerActEncoders(NamedTuple):
     text_encoder: utils.CLIP
 
     def infer_state(self, obs: gcenv.Observation) -> types.State:
-        # TODO: include tcp_rot to the low-dim
         low_dim = np.r_[obs.gripper_pos, obs.gripper_is_obj_detected]
         return types.State(
             voxels=self.scene_encoder.encode(obs),
