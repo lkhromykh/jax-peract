@@ -11,9 +11,9 @@ class Config:
     # IO processors
     scene_bins: int = 32
     rot_bins: int = 72
-    conv_stem_features: Layers = (64,)
-    conv_stem_kernels: Layers = (1,)
-    conv_stem_strides: Layers = (1,)
+    conv_stem_features: Layers = ()
+    conv_stem_kernels: Layers = ()
+    conv_stem_strides: Layers = ()
     conv_stem_use_skip_connections: bool = True
     voxels_patch_size: int = 4
     text_context_length: int = 77  # max. 77
@@ -52,7 +52,7 @@ class Config:
     # Experiment
     seed: int = 1
     datasets_dir: str = 'datasets/rlbench_easy'
-    logdir: str = 'logdir/mini'
+    logdir: str = 'logdir/mini/no_convs'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

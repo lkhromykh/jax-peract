@@ -49,7 +49,8 @@ class VoxelsProcessor(nn.Module):
             filter_shape=window_strides,
             window_strides=window_strides,
             padding='VALID',
-            dimension_numbers=('NXYZC', 'XYZIO', 'NXYZC')
+            dimension_numbers=('NHWDC', 'IOHWD', 'NHWDC'),
+            precision=jax.lax.Precision.DEFAULT
         ).squeeze(0)
         return patches, skip_connections
 
