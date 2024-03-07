@@ -180,7 +180,7 @@ class Builder:
                               drop_remainder=True) \
                        .map(utils.augmentations.color_transforms,
                             num_parallel_calls=tf.data.AUTOTUNE) \
-                       .prefetch(tf.data.AUTOTUNE)
+                       .prefetch(4)
             case _:
                 raise ValueError(split)
         return ds

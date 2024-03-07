@@ -23,7 +23,9 @@ class PerAct(nn.Module):
             features=c.conv_stem_features,
             kernels=c.conv_stem_kernels,
             strides=c.conv_stem_strides,
+            patch_size=c.voxels_patch_size,
             dtype=dtype,
+            kernel_init=nn.initializers.lecun_normal(),
             use_skip_connections=c.conv_stem_use_skip_connections,
         )
         self.perceiver = PerceiverIO(
@@ -44,7 +46,8 @@ class PerAct(nn.Module):
             action_spec=self.action_spec,
             mlp_dim=c.act_decoder_mlp_dim,
             conv_kernel=c.act_decoder_conv_kernel,
-            dtype=dtype
+            dtype=dtype,
+            kernel_init=nn.initializers.normal(1e-2)
         )
 
     @nn.compact
@@ -55,12 +58,17 @@ class PerAct(nn.Module):
         dtype = _dtype_fromstr(c.compute_dtype)
         voxels, low_dim, task = map(lambda x: x.astype(dtype), obs)
         voxels = voxels / 128. - 1
-        patches, skip_connections = self.voxels_proc.encode(voxels)
-        patches_shape, channels = patches.shape[:3], patches.shape[-1]
-        patches = patches.reshape(-1, channels)
-        low_dim = nn.Dense(channels, dtype=dtype, name='low_dim_preproc')(low_dim).reshape(1, -1)
-        task = nn.Dense(channels, dtype=dtype, name='task_preproc')(task)
-        # TODO: layer_norm on tokens may help: 2302.01327.
+        patches, skip_connections = self.voxels_proc.encode(voxels.astype(dtype))
+        patches_shape, channels = patches.shape[:-1], 64
+        # Input query
+        def tokens_preproc(x, name):
+            x = x.reshape(-1, x.shape[-1])
+            fc = nn.Dense(channels, use_bias=False, dtype=dtype, name=f'{name}_tokens_dense')
+            ln = nn.LayerNorm(dtype=dtype, name=f'{name}_tokens_ln') if c.use_layer_norm else lambda y: y
+            return ln(fc(x))
+        patches = tokens_preproc(patches, 'voxels')
+        low_dim = tokens_preproc(low_dim, 'low_dim')
+        task = tokens_preproc(task, 'task')
         pos1d_enc = utils.fourier_features(task.shape[:1], c.ff_num_bands).astype(dtype)
         pos3d_enc = utils.fourier_features(patches_shape, c.ff_num_bands).astype(dtype)
         pos3d_enc = pos3d_enc.reshape(-1, pos3d_enc.shape[-1])
@@ -75,6 +83,7 @@ class PerAct(nn.Module):
         inputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
             patches, low_dim, task
         )
+        # Output query
         if c.use_trainable_pos_encoding:
             pos3d_enc = self.param(
                 'output_pos3d_encoding',
@@ -90,6 +99,7 @@ class PerAct(nn.Module):
             pos3d_enc, low_dim
         )
         outputs_val = self.perceiver(inputs_q, outputs_q)
+        # Decoding
         patches, low_dim = io_processors.InputsMultiplexer.inverse(
             outputs_val, shapes=[patches_shape, ()]
         )

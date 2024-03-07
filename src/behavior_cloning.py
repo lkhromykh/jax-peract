@@ -2,7 +2,6 @@ import jax
 import jax.numpy as jnp
 import optax
 import chex
-from flax import traverse_util
 
 from src.config import Config
 from src.logger import get_logger
@@ -64,15 +63,6 @@ def train(cfg: Config, nets: PerAct) -> types.StepFn:
         grad, metrics = jax.tree_util.tree_map(
             lambda x: jnp.mean(x, axis=0), out)
         state = state.update(grad=grad)
-        # metrics
-        layers_grad = traverse_util.flatten_dict(grad)
-        layers_grad = {'grads_' + '_'.join(key): jnp.ravel(val)
-                       for key, val in layers_grad.items()}
-        layers_val = traverse_util.flatten_dict(params)
-        layers_val = {'_'.join(key): jnp.ravel(val)
-                      for key, val in layers_val.items()}
-        metrics.update(layers_grad)
-        metrics.update(layers_val)
         metrics.update(grad_norm=optax.global_norm(grad))
         return state, metrics
 

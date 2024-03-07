@@ -66,7 +66,7 @@ def color_transforms(item: types.Trajectory,
                      max_brightness: float = 0.1,
                      contrast: float = 0.1,
                      saturation: float = 0.1,
-                     hue: float = 0.
+                     hue: float = 0.02
                      ) -> types.Trajectory:
     obs, act = item.observations, item.actions
     colors, occupancy = tf.split(obs.voxels, [3, 1], -1)
