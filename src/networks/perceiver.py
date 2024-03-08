@@ -71,23 +71,23 @@ class MultiHeadAttention(_Module):
                  inputs_q: Array,
                  inputs_kv: Array,
                  ) -> Array:
-        def mh_dense(x, dim, name):
-            dim, res = np.divmod(dim, self.num_heads)
-            assert res == 0, f'Not divisible by the number of heads: {dim}.'
-            return self.dense(x, features=(self.num_heads, dim), use_bias=False, name=name)
-
         qk_channels = self.qk_channels or inputs_q.shape[-1]
         v_channels = self.v_channels or qk_channels
         output_channels = self.output_channels or v_channels
 
-        query = mh_dense(inputs_q, qk_channels, 'query')
-        key_value = mh_dense(inputs_kv, qk_channels + v_channels, 'key_value')
+        query = self._mh_dense(inputs_q, qk_channels, 'query')
+        key_value = self._mh_dense(inputs_kv, qk_channels + v_channels, 'key_value')
         key, value = jnp.split(key_value, [qk_channels // self.num_heads], -1)
         value = scaled_dot_product(query, key, value)
         return self.dense(value,
                           features=output_channels,
                           axis=(-2, -1),
                           name='proj')
+
+    def _mh_dense(self, x: Array, dim: int, name: str) -> Array:
+        dim, res = np.divmod(dim, self.num_heads)
+        assert res == 0, f'Not divisible by the number of heads: {dim}.'
+        return self.dense(x, features=(self.num_heads, dim), use_bias=False, name=name)
 
 
 class CrossAttention(_Module):

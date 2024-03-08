@@ -7,12 +7,13 @@ import jax
 import chex
 import psutil
 import GPUtil
+from rltools.loggers import TFSummaryLogger
 chex.disable_asserts()
 
 from src.config import Config
 from src.builder import Builder
 from src.logger import get_logger
-from rltools.loggers import TFSummaryLogger
+from src.utils import prefetch_to_device
 
 
 def _debug():
@@ -28,7 +29,8 @@ def _debug():
 def train(cfg: Config):
     builder = Builder(cfg)
     enc = builder.make_encoders()
-    train_ds = builder.make_tfdataset('train').as_numpy_iterator()
+    train_ds = builder.make_tfdataset('train')
+    train_ds = prefetch_to_device(train_ds.as_numpy_iterator())
     val_ds = builder.make_tfdataset('val')
     nets, params = builder.make_networks_and_params(enc)
     train_step = builder.make_step_fn(nets, 'train')
@@ -41,8 +43,7 @@ def train(cfg: Config):
     t = state.step.item()
     while t < cfg.training_steps:
         _batch_start = time.time()
-        batch = jax.device_put(next(train_ds))
-        state, metrics = train_step(state, batch)
+        state, metrics = train_step(state, next(train_ds))
         t = state.step.item()
         if t % cfg.log_every == 0:
             state, metrics = jax.block_until_ready((state, metrics))

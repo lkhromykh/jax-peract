@@ -9,14 +9,15 @@ Layers: TypeAlias = tuple[int, ...]
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Config:
     # IO processors
-    scene_bins: int = 32
+    scene_bins: int = 64
     rot_bins: int = 72
-    conv_stem_features: Layers = (64,)
-    conv_stem_kernels: Layers = (1,)
-    conv_stem_strides: Layers = (1,)
+    conv_stem_features: Layers = ()
+    conv_stem_kernels: Layers = ()
+    conv_stem_strides: Layers = ()
     conv_stem_use_skip_connections: bool = True
     voxels_patch_size: int = 4
     text_context_length: int = 77  # max. 77
+    tokens_dim: int = 64
     act_decoder_mlp_dim: int = 256
     act_decoder_conv_kernel: int = 3
     # Perceiver
@@ -31,7 +32,6 @@ class Config:
     use_layer_norm: bool = True
     prior_initial_scale: float = 0.02
     ff_num_bands: int = 32
-    use_trainable_pos_encoding: bool = False
     # Training
     max_grad_norm: float = 10.
     warmup_steps: int = -1
@@ -46,13 +46,13 @@ class Config:
     max_trans_aug: float = 0.125
     val_split: float = 0.1
     # Environment
-    scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
+    scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     time_limit: int = 4
     num_demos_per_task: int = 100
     # Experiment
     seed: int = 1
-    datasets_dir: str = 'datasets/put_in_box'
-    logdir: str = 'logdir/put_in_box_patches_prefetch'
+    datasets_dir: str = 'datasets/rlbench_easy'
+    logdir: str = 'logdir/rlbench_easy_noconv'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
@@ -90,7 +90,6 @@ peract_config = Config(
     cross_attend_widening_factor=4.,
     self_attend_widening_factor=4.,
     ff_num_bands=32,  # pos_enc size 3 * (2 * 32 + 1) approx. 192 as in the paper.
-    use_trainable_pos_encoding=True,
     text_context_length=77,
     act_decoder_mlp_dim=256,
     act_decoder_conv_kernel=3,

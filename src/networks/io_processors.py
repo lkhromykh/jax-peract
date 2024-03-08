@@ -42,15 +42,19 @@ class VoxelsProcessor(nn.Module):
             x = block(x)
             skip_connections.append(x)
 
-        assert x.shape[0] % self.patch_size == 0, x.shape
-        window_strides = 3 * (self.patch_size,)
-        patches = jax.lax.conv_general_dilated_patches(
-            x[jnp.newaxis],
-            filter_shape=window_strides,
-            window_strides=window_strides,
-            padding='VALID',
-            dimension_numbers=('NXYZC', 'XYZIO', 'NXYZC')
-        ).squeeze(0)
+        if self.patch_size > 1:
+            assert x.shape[0] % self.patch_size == 0, f'{x.shape} / {self.patch_size}'
+            window_strides = 3 * (self.patch_size,)
+            patches = jax.lax.conv_general_dilated_patches(
+                x[jnp.newaxis],
+                filter_shape=window_strides,
+                window_strides=window_strides,
+                padding='VALID',
+                dimension_numbers=('NXYZC', 'XYZIO', 'NXYZC'),
+                precision=jax.lax.Precision.DEFAULT
+            ).squeeze(0)
+        else:
+            patches = x
         return patches, skip_connections
 
     def decode(self, patches: Array, skip_connections: list[Array]) -> Array:
@@ -58,8 +62,12 @@ class VoxelsProcessor(nn.Module):
         chex.assert_type(patches, jnp.bfloat16)
         chex.assert_rank(patches, 4)
 
-        shape = 3 * (self.patch_size * patches.shape[0],) + (patches.shape[-1],)
-        x = jax.image.resize(patches, shape, method='bilinear', precision=jax.lax.Precision.DEFAULT)
+        if self.patch_size > 1:
+            shape = 3 * (self.patch_size * patches.shape[0],) + (patches.shape[-1],)
+            x = jax.image.resize(patches, shape, method='bilinear', precision=jax.lax.Precision.DEFAULT)
+        else:
+            x = patches
+
         blocks_ys = zip(self.deconvs, skip_connections)
         for block, y in reversed(list(blocks_ys)):
             if self.use_skip_connections:
@@ -75,9 +83,9 @@ class VoxelsProcessor(nn.Module):
                             strides=3 * (s,),
                             dtype=self.dtype,
                             kernel_init=self.kernel_init,
-                            use_bias=True,
+                            use_bias=False,
                             padding='VALID')
-            blocks.append(nn.Sequential([conv, activation]))
+            blocks.append(nn.Sequential([conv, nn.LayerNorm(dtype=self.dtype), activation]))
         return blocks
 
 
