@@ -34,7 +34,7 @@ class Config:
     ff_num_bands: int = 16
     # Training
     max_grad_norm: float = 10.
-    warmup_steps: int = 5000
+    warmup_steps: int = -1
     peak_learning_rate: float = 5e-4
     training_steps: int = 200_000
     batch_size: int = 32
@@ -42,7 +42,7 @@ class Config:
     log_every: int = 500
     save_every: int = 5000
     jit: bool = True
-    compute_dtype: str = 'bf16'
+    compute_dtype: str = 'f32'
     max_trans_aug: float = 0.125
     val_split: float = 0.1
     # Environment

@@ -93,7 +93,7 @@ class InputsMultiplexer(nn.Module):
     """Concatenate/split modalities."""
 
     init_scale: float
-    pad_to: int = 4
+    pad_to: int = 8
 
     @nn.compact
     def __call__(self, *inputs: Array) -> Array:

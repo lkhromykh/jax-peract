@@ -47,7 +47,7 @@ class PerAct(nn.Module):
             mlp_dim=c.act_decoder_mlp_dim,
             conv_kernel=c.act_decoder_conv_kernel,
             dtype=jnp.float32,
-            kernel_init=nn.initializers.normal(1e-3)
+            kernel_init=nn.initializers.normal(1e-2)
         )
 
     @nn.compact
@@ -60,7 +60,7 @@ class PerAct(nn.Module):
         voxels = voxels / dtype(128) - 1
         patches, skip_connections = self.voxels_proc.encode(voxels)
         patches_shape = patches.shape[:-1]
-        # Input query
+
         def tokens_preproc(x, name):
             x = x.reshape(-1, x.shape[-1])
             fc = nn.Dense(c.tokens_dim, use_bias=False, dtype=dtype, name=f'{name}_tokens_dense')
@@ -77,19 +77,10 @@ class PerAct(nn.Module):
         inputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
             patches, low_dim, task
         )
-        # Output query
-        low_dim = self.param(
-            'low_dim_output_query',
-            nn.initializers.normal(c.prior_initial_scale, dtype),
-            (1, pos3d_enc.shape[-1])
-        )
         outputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
-            pos3d_enc, low_dim
+            patches, low_dim
         )
         outputs_val = self.perceiver(inputs_q, outputs_q)
-        representation_fn = nn.LayerNorm(dtype=dtype)
-        outputs_val = representation_fn(outputs_val)
-        # Decoding
         patches, low_dim = io_processors.InputsMultiplexer.inverse(
             outputs_val, shapes=[patches_shape, ()]
         )

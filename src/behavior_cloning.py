@@ -2,7 +2,6 @@ import jax
 import jax.numpy as jnp
 import optax
 import chex
-from flax import traverse_util
 
 from src.config import Config
 from src.logger import get_logger
@@ -10,33 +9,6 @@ from src.networks.peract import PerAct
 from src.utils.distributions import Blockwise
 from src.train_state import TrainState, Params
 from src import types_ as types
-
-
-def _get_policy_metrics(policy: Blockwise, expert_action: types.Action) -> types.Metrics:
-
-    def per_dist_metrics(dist_, labels, topk=(1, 5), postfix=''):
-        metrics_ = {}
-        argsorted_logits = jnp.argsort(dist_.logits)
-        for k in topk:
-            pred_labels = argsorted_logits[-k:]
-            correct = jnp.isin(pred_labels, labels).any().astype(jnp.float32)
-            metrics_[f'top_{k}_acc_{postfix}'] = correct
-        metrics_[f'entropy_{postfix}'] = dist_.entropy()
-        return metrics_
-
-    pos_dist, *low_dim_dists = policy.distributions
-    metrics = per_dist_metrics(
-        pos_dist.distribution,
-        pos_dist.bijector.inverse(expert_action[:3]),
-        topk=(1, 7),
-        postfix='pos'
-    )
-    components_names = ('yaw', 'pitch', 'roll', 'grasp', 'termsig')
-    for name, dist, label in zip(components_names, low_dim_dists, expert_action[3:]):
-        topk_ = (1, 3) if name in components_names[:3] else (1,)
-        metrics |= per_dist_metrics(dist, label, topk=topk_, postfix=name)
-    metrics.update(max_pos_logit=pos_dist.distribution.logits.max())
-    return metrics
 
 
 def train(cfg: Config, nets: PerAct) -> types.StepFn:
@@ -48,10 +20,8 @@ def train(cfg: Config, nets: PerAct) -> types.StepFn:
                 ) -> tuple[float | jnp.ndarray, types.Metrics]:
         chex.assert_rank(action, 1)
         policy = nets.apply(params, observation)
-        cross_ent = -policy.log_prob(action)
-        metrics = dict(loss=cross_ent)
-        metrics.update(_get_policy_metrics(policy, action))
-        return cross_ent, metrics
+        metrics = _get_policy_metrics(policy, action)
+        return metrics['cross_entropy'], metrics
 
     @chex.assert_max_traces(1)
     def step(state: TrainState,
@@ -65,15 +35,6 @@ def train(cfg: Config, nets: PerAct) -> types.StepFn:
         grad, metrics = jax.tree_util.tree_map(
             lambda x: jnp.mean(x, axis=0), out)
         state = state.update(grad=grad)
-        # metrics
-        layers_grad = traverse_util.flatten_dict(grad)
-        layers_grad = {'grads_' + '_'.join(key): jnp.ravel(val)
-                       for key, val in layers_grad.items()}
-        layers_val = traverse_util.flatten_dict(params)
-        layers_val = {'_'.join(key): jnp.ravel(val)
-                      for key, val in layers_val.items()}
-        metrics.update(layers_grad)
-        metrics.update(layers_val)
         metrics.update(grad_norm=optax.global_norm(grad))
         return state, metrics
 
@@ -101,3 +62,31 @@ def validate(cfg: Config, nets: PerAct) -> types.StepFn:
         return tuple(map(jax.lax.stop_gradient, (state, metrics)))
 
     return step
+
+
+def _get_policy_metrics(policy: Blockwise, expert_action: types.Action) -> types.Metrics:
+    pos_dist, *low_dim_dists = policy.distributions
+    metrics = dict(cross_entropy=-policy.log_prob(expert_action),
+                   pos_logits=pos_dist.distribution.logits)
+
+    def per_dist_metrics(dist_, labels, topk, postfix):
+        metrics_ = {}
+        argsorted_logits = jnp.argsort(dist_.logits)
+        for k in topk:
+            pred_labels = argsorted_logits[-k:]
+            correct = jnp.isin(pred_labels, labels).any().astype(jnp.float32)
+            metrics_[f'top_{k}_acc_{postfix}'] = correct
+        metrics_[f'entropy_{postfix}'] = dist_.entropy()
+        return metrics_
+
+    metrics.update(per_dist_metrics(
+        pos_dist.distribution,
+        pos_dist.bijector.inverse(expert_action[:3]),
+        topk=(1, 7),
+        postfix='pos'
+    ))
+    components_names = ('yaw', 'pitch', 'roll', 'grasp', 'termsig')
+    for name, dist, label in zip(components_names, low_dim_dists, expert_action[3:]):
+        topk_ = (1, 3) if name in components_names[:3] else (1,)
+        metrics |= per_dist_metrics(dist, label, topk=topk_, postfix=name)
+    return metrics

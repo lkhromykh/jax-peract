@@ -41,5 +41,5 @@ def evaluate(cfg: Config):
 
 if __name__ == '__main__':
     exp_path = pathlib.Path(sys.argv[1])
-    cfg_ = Config.load(exp_path / Builder.CONFIG)
+    cfg_ = Config.load(exp_path / Builder.CONFIG, compute_dtype='f32')
     evaluate(cfg_)
