@@ -87,7 +87,7 @@ class PerAct(nn.Module):
             pos3d_enc, low_dim
         )
         outputs_val = self.perceiver(inputs_q, outputs_q)
-        representation_fn = nn.LayerNorm(dtype=self.dtype)
+        representation_fn = nn.LayerNorm(dtype=dtype)
         outputs_val = representation_fn(outputs_val)
         # Decoding
         patches, low_dim = io_processors.InputsMultiplexer.inverse(
