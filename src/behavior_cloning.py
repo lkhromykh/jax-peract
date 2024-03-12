@@ -2,6 +2,7 @@ import jax
 import jax.numpy as jnp
 import optax
 import chex
+from flax import traverse_util
 
 from src.config import Config
 from src.logger import get_logger
@@ -34,6 +35,7 @@ def _get_policy_metrics(policy: Blockwise, expert_action: types.Action) -> types
     for name, dist, label in zip(components_names, low_dim_dists, expert_action[3:]):
         topk_ = (1, 3) if name in components_names[:3] else (1,)
         metrics |= per_dist_metrics(dist, label, topk=topk_, postfix=name)
+    metrics.update(max_pos_logit=pos_dist.distribution.logits.max())
     return metrics
 
 
@@ -63,6 +65,15 @@ def train(cfg: Config, nets: PerAct) -> types.StepFn:
         grad, metrics = jax.tree_util.tree_map(
             lambda x: jnp.mean(x, axis=0), out)
         state = state.update(grad=grad)
+        # metrics
+        layers_grad = traverse_util.flatten_dict(grad)
+        layers_grad = {'grads_' + '_'.join(key): jnp.ravel(val)
+                       for key, val in layers_grad.items()}
+        layers_val = traverse_util.flatten_dict(params)
+        layers_val = {'_'.join(key): jnp.ravel(val)
+                      for key, val in layers_val.items()}
+        metrics.update(layers_grad)
+        metrics.update(layers_val)
         metrics.update(grad_norm=optax.global_norm(grad))
         return state, metrics
 
@@ -87,6 +98,6 @@ def validate(cfg: Config, nets: PerAct) -> types.StepFn:
         eval_ = jax.vmap(eval_fn, in_axes=(None, 0, 0))
         metrics = eval_(state.params, batch.observations, batch.actions)
         metrics = jax.tree_util.tree_map(lambda x: jnp.mean(x, axis=0), metrics)
-        return state, metrics
+        return tuple(map(jax.lax.stop_gradient, (state, metrics)))
 
     return step

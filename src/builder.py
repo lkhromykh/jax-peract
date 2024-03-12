@@ -66,15 +66,15 @@ class Builder:
                  ) -> PerActEnvWrapper | GoalConditionedEnv:
         """Create and wrap an environment."""
         c = self.cfg
-        env = RLBenchEnv(
-            scene_bounds=c.scene_bounds,
-            time_limit=c.time_limit,
-        )
-        # env = UREnv(
-        #     address=('192.168.1.136', 5555),
+        # env = RLBenchEnv(
         #     scene_bounds=c.scene_bounds,
-        #     time_limit=c.time_limit
+        #     time_limit=c.time_limit,
         # )
+        env = UREnv(
+            address=('192.168.1.136', 5555),
+            scene_bounds=c.scene_bounds,
+            time_limit=c.time_limit
+        )
         if encoders is None:
             return env
         return PerActEnvWrapper(
@@ -180,7 +180,7 @@ class Builder:
                               drop_remainder=True) \
                        .map(utils.augmentations.color_transforms,
                             num_parallel_calls=tf.data.AUTOTUNE) \
-                       .prefetch(4)
+                       .prefetch(tf.data.AUTOTUNE)
             case _:
                 raise ValueError(split)
         return ds

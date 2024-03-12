@@ -33,7 +33,7 @@ class VoxelsProcessor(nn.Module):
 
     def encode(self, voxel_grid: Array) -> tuple[Array, list[Array]]:
         """Preprocess and extract patches."""
-        chex.assert_type(voxel_grid, jnp.bfloat16)
+        chex.assert_type(voxel_grid, float)
         chex.assert_rank(voxel_grid, 4)  # (X, Y, Z, C)
 
         x = voxel_grid
@@ -59,12 +59,12 @@ class VoxelsProcessor(nn.Module):
 
     def decode(self, patches: Array, skip_connections: list[Array]) -> Array:
         """Restore voxel grid from patches and postprocess."""
-        chex.assert_type(patches, jnp.bfloat16)
+        chex.assert_type(patches, float)
         chex.assert_rank(patches, 4)
 
         if self.patch_size > 1:
             shape = 3 * (self.patch_size * patches.shape[0],) + (patches.shape[-1],)
-            x = jax.image.resize(patches, shape, method='bilinear', precision=jax.lax.Precision.DEFAULT)
+            x = jax.image.resize(patches, shape, method='trilinear', precision=jax.lax.Precision.DEFAULT)
         else:
             x = patches
 
@@ -93,7 +93,7 @@ class InputsMultiplexer(nn.Module):
     """Concatenate/split modalities."""
 
     init_scale: float
-    pad_to: int = 4
+    pad_to: int = 8
 
     @nn.compact
     def __call__(self, *inputs: Array) -> Array:

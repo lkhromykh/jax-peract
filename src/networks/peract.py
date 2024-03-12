@@ -46,8 +46,8 @@ class PerAct(nn.Module):
             action_spec=self.action_spec,
             mlp_dim=c.act_decoder_mlp_dim,
             conv_kernel=c.act_decoder_conv_kernel,
-            dtype=dtype,
-            kernel_init=nn.initializers.normal(1e-2)
+            dtype=jnp.float32,
+            kernel_init=nn.initializers.zeros_init()
         )
 
     @nn.compact
@@ -57,8 +57,8 @@ class PerAct(nn.Module):
         c = self.config
         dtype = _dtype_fromstr(c.compute_dtype)
         voxels, low_dim, task = map(lambda x: x.astype(dtype), obs)
-        voxels = voxels / 128. - 1
-        patches, skip_connections = self.voxels_proc.encode(voxels.astype(dtype))
+        voxels = voxels / dtype(128) - 1
+        patches, skip_connections = self.voxels_proc.encode(voxels)
         patches_shape = patches.shape[:-1]
         # Input query
         def tokens_preproc(x, name):
@@ -87,6 +87,13 @@ class PerAct(nn.Module):
             pos3d_enc, low_dim
         )
         outputs_val = self.perceiver(inputs_q, outputs_q)
+        representation_fn = nn.Sequential([
+            nn.LayerNorm(dtype=dtype),
+            nn.Dense(c.tokens_dim, dtype=dtype),
+            nn.LayerNorm(dtype=dtype),
+            nn.tanh
+        ])
+        outputs_val = representation_fn(outputs_val)
         # Decoding
         patches, low_dim = io_processors.InputsMultiplexer.inverse(
             outputs_val, shapes=[patches_shape, ()]
