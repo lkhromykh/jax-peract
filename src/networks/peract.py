@@ -47,7 +47,7 @@ class PerAct(nn.Module):
             mlp_dim=c.act_decoder_mlp_dim,
             conv_kernel=c.act_decoder_conv_kernel,
             dtype=jnp.float32,
-            kernel_init=nn.initializers.zeros_init()
+            kernel_init=nn.initializers.normal(1e-3)
         )
 
     @nn.compact
@@ -87,12 +87,7 @@ class PerAct(nn.Module):
             pos3d_enc, low_dim
         )
         outputs_val = self.perceiver(inputs_q, outputs_q)
-        representation_fn = nn.Sequential([
-            nn.LayerNorm(dtype=dtype),
-            nn.Dense(c.tokens_dim, dtype=dtype),
-            nn.LayerNorm(dtype=dtype),
-            nn.tanh
-        ])
+        representation_fn = nn.LayerNorm(dtype=self.dtype)
         outputs_val = representation_fn(outputs_val)
         # Decoding
         patches, low_dim = io_processors.InputsMultiplexer.inverse(

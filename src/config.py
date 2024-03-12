@@ -9,7 +9,7 @@ Layers: TypeAlias = tuple[int, ...]
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Config:
     # IO processors
-    scene_bins: int = 64
+    scene_bins: int = 32
     rot_bins: int = 72
     conv_stem_features: Layers = ()
     conv_stem_kernels: Layers = ()
@@ -21,24 +21,24 @@ class Config:
     act_decoder_mlp_dim: int = 256
     act_decoder_conv_kernel: int = 3
     # Perceiver
-    latent_dim: int = 256
+    latent_dim: int = 512
     latent_channels: int = 512
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
     num_self_attend_heads: int = 8
-    cross_attend_widening_factor: float = 1.
-    self_attend_widening_factor: float = 1.
+    cross_attend_widening_factor: float = 2.
+    self_attend_widening_factor: float = 2.
     use_layer_norm: bool = True
     prior_initial_scale: float = 0.02
     ff_num_bands: int = 32
     # Training
     max_grad_norm: float = 10.
-    warmup_steps: int = -1
+    warmup_steps: int = 5000
     peak_learning_rate: float = 5e-4
     training_steps: int = 200_000
-    batch_size: int = 16
-    weight_decay: float = 1e-6
+    batch_size: int = 32
+    weight_decay: float = 1e-4
     log_every: int = 500
     save_every: int = 5000
     jit: bool = True
@@ -51,8 +51,8 @@ class Config:
     num_demos_per_task: int = 100
     # Experiment
     seed: int = 1
-    datasets_dir: str = 'datasets/parsed_teleop'
-    logdir: str = 'logdir/teleop6'
+    datasets_dir: str = 'datasets/put_in_box'
+    logdir: str = 'logdir/put_in_box_noconv'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
