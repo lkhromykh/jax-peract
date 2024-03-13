@@ -151,15 +151,14 @@ class Builder:
                 case _: raise ValueError(split)
             _ds = _ds.flat_map(tf.data.Dataset.from_tensor_slices)
             if split == 'train':
-                _ds = _ds.cache().shuffle(1000)  # assuming one episode has ~100 steps.
+                _ds = _ds.cache().repeat().shuffle(1000)  # assuming one episode has ~100 steps.
             return _ds.prefetch(tf.data.AUTOTUNE)
 
-        datasets = [load_dataset(path) for path in processed_ds_path.iterdir()]
+        datasets = [load_dataset(path) for path in sorted(processed_ds_path.iterdir())]
+        ds = tf.data.Dataset.from_tensor_slices(datasets).interleave(lambda x: x)
         match split:
             case 'val':
-                ds = tf.data.Dataset.from_tensor_slices(datasets) \
-                       .interleave(lambda x: x, num_parallel_calls=tf.data.AUTOTUNE) \
-                       .batch(3 * c.batch_size,
+                ds = ds.batch(3 * c.batch_size,
                               num_parallel_calls=tf.data.AUTOTUNE,
                               drop_remainder=False
                               ) \
@@ -167,11 +166,7 @@ class Builder:
                        .prefetch(tf.data.AUTOTUNE)
             case 'train':
                 max_shift = int(c.max_trans_aug * c.scene_bins)
-                ds = tf.data.Dataset.sample_from_datasets(datasets,  # ~ 1 / |Tasks|
-                                                          stop_on_empty_dataset=False,
-                                                          rerandomize_each_iteration=True) \
-                       .repeat() \
-                       .map(lambda item: utils.augmentations.scene_rotation(item, action_encoder),
+                ds = ds.map(lambda item: utils.augmentations.scene_rotation(item, action_encoder),
                             num_parallel_calls=tf.data.AUTOTUNE) \
                        .map(lambda item: utils.augmentations.scene_shift(item, max_shift),
                             num_parallel_calls=tf.data.AUTOTUNE) \
@@ -180,7 +175,7 @@ class Builder:
                               drop_remainder=True) \
                        .map(utils.augmentations.color_transforms,
                             num_parallel_calls=tf.data.AUTOTUNE) \
-                       .prefetch(tf.data.AUTOTUNE)
+                       .prefetch(4)
             case _:
                 raise ValueError(split)
         return ds

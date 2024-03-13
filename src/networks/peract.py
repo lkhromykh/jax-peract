@@ -81,6 +81,7 @@ class PerAct(nn.Module):
             patches, low_dim
         )
         outputs_val = self.perceiver(inputs_q, outputs_q)
+        outputs_val = nn.LayerNorm(dtype=dtype, name='representation_ln')(outputs_val)
         patches, low_dim = io_processors.InputsMultiplexer.inverse(
             outputs_val, shapes=[patches_shape, ()]
         )

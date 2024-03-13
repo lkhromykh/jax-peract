@@ -22,7 +22,7 @@ class Config:
     act_decoder_conv_kernel: int = 3
     # Perceiver
     latent_dim: int = 512
-    latent_channels: int = 512
+    latent_channels: int = 256
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
@@ -44,15 +44,15 @@ class Config:
     jit: bool = True
     compute_dtype: str = 'f32'
     max_trans_aug: float = 0.125
-    val_split: float = 0.1
+    val_split: float = 0.2
     # Environment
-    scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
+    scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     time_limit: int = 4
     num_demos_per_task: int = 100
     # Experiment
     seed: int = 1
-    datasets_dir: str = 'datasets/put_in_box'
-    logdir: str = 'logdir/put_in_box_noconvs1'
+    datasets_dir: str = 'datasets/rlbench_easy'
+    logdir: str = 'logdir/rlbench_easy_noconvs1'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

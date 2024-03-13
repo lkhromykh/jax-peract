@@ -76,7 +76,7 @@ def _get_policy_metrics(policy: Blockwise, expert_action: types.Action) -> types
             pred_labels = argsorted_logits[-k:]
             correct = jnp.isin(pred_labels, labels).any().astype(jnp.float32)
             metrics_[f'top_{k}_acc_{postfix}'] = correct
-        metrics_[f'entropy_{postfix}'] = dist_.entropy()
+        metrics_[f'cross_entropy_{postfix}'] = -dist_.log_prob(labels)
         return metrics_
 
     metrics.update(per_dist_metrics(
