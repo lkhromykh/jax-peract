@@ -38,7 +38,7 @@ class UREnv(gcenv.GoalConditionedEnv):
         raise RuntimeError('get_demo is not provided.')
 
     @staticmethod
-    def extract_observation(obs: dict[str, Any]) -> gcenv.Observation:
+    def extract_observation(obs: dict[str, np.ndarray]) -> gcenv.Observation:
         pos, rotvec = np.split(obs['arm/ActualTCPPose'], [3])
         euler = R.from_rotvec(rotvec).as_euler('ZYX')
         tcp_pose = np.r_[pos, euler]
