@@ -140,7 +140,7 @@ class Builder:
         tf.random.set_seed(c.seed)
         np.random.seed(c.seed)
         action_encoder = self.make_encoders().action_encoder
-        processed_ds_path = self.exp_path(Builder.DATASETS_DIR).resolve()
+        tasks = sorted(self.exp_path(Builder.DATASETS_DIR).iterdir())
 
         def load_dataset(path):
             _ds = tf.data.Dataset.load(str(path))
@@ -151,10 +151,10 @@ class Builder:
                 case _: raise ValueError(split)
             _ds = _ds.flat_map(tf.data.Dataset.from_tensor_slices)
             if split == 'train':
-                _ds = _ds.cache().repeat().shuffle(1000)  # assuming one episode has ~100 steps.
+                _ds = _ds.repeat().shuffle(5000 // len(tasks))  # RAM budget.
             return _ds.prefetch(tf.data.AUTOTUNE)
 
-        datasets = [load_dataset(path) for path in sorted(processed_ds_path.iterdir())]
+        datasets = [load_dataset(task) for task in tasks]
         ds = tf.data.Dataset.from_tensor_slices(datasets).interleave(lambda x: x)
         match split:
             case 'val':

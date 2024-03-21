@@ -60,16 +60,24 @@ class DemosDataset:
         def nested_stack(ts): return tree.map_structure(lambda *xs: np.stack(xs), *ts)
 
         def as_trajectory_generator():
+            ep_len, kf_num = [], []
             for idx, (path, demo) in enumerate(zip(self, self.as_demo_generator())):
                 try:
                     pairs, kfs = extract_fn(demo)
+                    ep_len.append(len(demo))
+                    kf_num.append(len(kfs))
                     get_logger().info('%d. Task %s; Keyframes time steps: %s', idx, demo[0].goal, kfs)
                 except AssertionError as exc:
-                    get_logger().warning('Ill-formed demo %s: %s', path, exc)
+                    get_logger().warning('Skipping ill-formed demo %s: %s', path, exc)
                     continue
                 else:
                     observations, actions = map(nested_stack, zip(*pairs))
                     yield types.Trajectory(observations=observations, actions=actions)
+            get_logger().info(
+                f'Dataset {self.dataset_dir} stats (min/avg/max):\n'
+                f'\tEpisode length: {min(ep_len), np.mean(ep_len).round(2), max(ep_len)}\n'
+                f'\tNum keyframes: {min(kf_num), np.mean(kf_num).round(2), max(kf_num)}'
+            )
 
         def to_tf_specs(x):
             return tf.TensorSpec(shape=(None,) + x.shape[1:], dtype=tf.as_dtype(x.dtype))
@@ -90,6 +98,3 @@ class DemosDataset:
             demo = tree.map_structure(to_f16, demo)
         serialize(demo, self.dataset_dir / f'{self._len:05d}')
         self._len += 1
-
-    def extend(self, demos: Iterable[gcenv.Demo]) -> None:
-        [self.append(demo) for demo in demos]

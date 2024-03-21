@@ -57,7 +57,7 @@ def train(cfg: Config):
             train_logger.write(metrics)
         if t % cfg.save_every == 0:
             batch_metrics = []
-            for batch in val_ds.as_numpy_iterator():
+            for batch in prefetch_to_device(val_ds.as_numpy_iterator()):
                 batch = jax.device_put(batch)
                 _, metrics = val_step(state, batch)
                 batch_metrics.append(metrics)

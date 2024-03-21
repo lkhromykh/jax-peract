@@ -29,7 +29,7 @@ def parse_task(to_dir: pathlib.Path, from_dir: pathlib.Path) -> None:
             demo = list(map(UREnv.extract_observation, demo))
             demo[-2] = demo[-2].replace(is_terminal=False)
             ds.append(demo)
-    get_logger().info('%s old size %d, new size %d', task_dir, cont_idx, len(ds))
+    get_logger().info('%s old/new size %d -> %d', task_dir, cont_idx, len(ds))
 
 
 if __name__ == '__main__':
