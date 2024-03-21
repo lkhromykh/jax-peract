@@ -152,7 +152,7 @@ class ActionDecoder(nn.Module):
             kernel_init=self.kernel_init,
             name='vgrid_logits'
         )
-        vgrid_logits = conv(voxels).flatten().astype(jnp.float32)
+        vgrid_logits = conv(voxels).astype(jnp.float32)
         low_dim = nn.Dense(self.mlp_dim, dtype=self.dtype, name='low_dim_hidden')(low_dim)
         low_dim = activation(low_dim)
         low_dim_logits = nn.Dense(
@@ -162,7 +162,7 @@ class ActionDecoder(nn.Module):
             name='low_dim_logits'
         )(low_dim)
         grid_dist = tfd.TransformedDistribution(
-            distribution=tfd.Categorical(vgrid_logits),
+            distribution=tfd.Categorical(vgrid_logits.flatten()),
             bijector=distributions.Idx2Grid(grid_size),
             name='voxel_grid_logits'
         )
