@@ -1,5 +1,5 @@
 import pathlib
-from collections.abc import Iterable, Iterator, Generator
+from collections.abc import Iterator, Generator
 
 import tree
 import numpy as np
@@ -12,7 +12,6 @@ from src.utils import serialize, deserialize
 from src.dataset.keyframes_extraction import KeyframesExtractor, extractor_factory
 
 
-# TODO: specify rw exceptions.
 class DemosDataset:
     """
     Manage demos.

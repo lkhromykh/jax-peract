@@ -1,5 +1,3 @@
-from typing import Any
-
 import dm_env
 import numpy as np
 from scipy.spatial.transform import Rotation as R

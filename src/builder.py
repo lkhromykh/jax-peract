@@ -66,15 +66,15 @@ class Builder:
                  ) -> PerActEnvWrapper | GoalConditionedEnv:
         """Create and wrap an environment."""
         c = self.cfg
-        env = RLBenchEnv(
+        #env = RLBenchEnv(
+        #    scene_bounds=c.scene_bounds,
+        #    time_limit=c.time_limit,
+        #)
+        env = UREnv(
+            address=('192.168.1.136', 5555),
             scene_bounds=c.scene_bounds,
-            time_limit=c.time_limit,
+            time_limit=c.time_limit
         )
-       # env = UREnv(
-       #     address=('192.168.1.136', 5555),
-       #     scene_bounds=c.scene_bounds,
-       #     time_limit=c.time_limit
-       # )
         if encoders is None:
             return env
         return PerActEnvWrapper(
@@ -158,7 +158,7 @@ class Builder:
         ds = tf.data.Dataset.from_tensor_slices(datasets).interleave(lambda x: x)
         match split:
             case 'val':
-                ds = ds.batch(2 * c.batch_size,
+                ds = ds.batch(3 * c.batch_size,
                               num_parallel_calls=tf.data.AUTOTUNE,
                               drop_remainder=False
                               ) \

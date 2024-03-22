@@ -38,18 +38,19 @@ def scene_rotation(item: types.Trajectory,
     def np_rot(voxels, act):
         k = np.random.randint(0, 4)
         if k == 0:
-            return voxels, act
-        new_voxels = np.rot90(voxels, k, axes=(0, 1))
-        rot = R.from_rotvec([0, 0, np.pi * k / 2])
-        act = act_transform.decode(act)
-        center = act_transform.get_scene_center()
-        pos, tcp_orient, other = np.split(act, [3, 6])
-        rmat = rot.as_matrix()
-        new_pos = rmat @ (pos - center) + center
-        new_orient = rot * R.from_euler('ZYX', tcp_orient)
-        new_orient = new_orient.as_euler('ZYX')
-        new_act = np.concatenate([new_pos, new_orient, other])
-        new_act = act_transform.encode(new_act)
+            new_voxels, new_act = voxels, act
+        else:
+            new_voxels = np.rot90(voxels, k, axes=(0, 1))
+            rot = R.from_rotvec([0, 0, np.pi * k / 2])
+            act = act_transform.decode(act)
+            center = act_transform.get_scene_center()
+            pos, tcp_orient, other = np.split(act, [3, 6])
+            rmat = rot.as_matrix()
+            new_pos = rmat @ (pos - center) + center
+            new_orient = rot * R.from_euler('ZYX', tcp_orient)
+            new_orient = new_orient.as_euler('ZYX')
+            new_act = np.concatenate([new_pos, new_orient, other])
+            new_act = act_transform.encode(new_act)
         return new_voxels, new_act
 
     voxels_, act_ = tf.numpy_function(

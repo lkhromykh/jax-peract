@@ -22,37 +22,37 @@ class Config:
     act_decoder_conv_kernel: int = 3
     # Perceiver
     latent_dim: int = 512
-    latent_channels: int = 256
+    latent_channels: int = 512
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
-    num_self_attend_heads: int = 4
+    num_self_attend_heads: int = 8
     cross_attend_widening_factor: float = 1.
     self_attend_widening_factor: float = 1.
     use_layer_norm: bool = True
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 4
+    ff_num_bands: int = 8
     # Training
     max_grad_norm: float = 10.
     warmup_steps: int = -1
     peak_learning_rate: float = 5e-4
     training_steps: int = 200_000
     batch_size: int = 16
-    weight_decay: float = 1e-2
+    weight_decay: float = 1e-4
     log_every: int = 500
     save_every: int = 5000
     jit: bool = True
     compute_dtype: str = 'f32'
     max_trans_aug: float = 0.125
-    val_split: float = 0.2
+    val_split: float = 0.
     # Environment
-    scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
+    scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
     time_limit: int = 8
     num_demos_per_task: int = 100
     # Experiment
     seed: int = 1
     datasets_dir: str = 'datasets/sanity_check'
-    logdir: str = 'logdir/teleopv2.3'
+    logdir: str = 'logdir/teleopv2.6'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
