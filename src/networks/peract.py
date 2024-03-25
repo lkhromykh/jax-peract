@@ -61,6 +61,11 @@ class PerAct(nn.Module):
         patches, skip_connections = self.voxels_proc.encode(voxels)
         patches_shape = patches.shape[:-1]
 
+        pos1d_enc = utils.fourier_features(task.shape[:1], c.ff_num_bands).astype(dtype)
+        pos3d_enc = utils.fourier_features(patches_shape, c.ff_num_bands).astype(dtype)
+        patches = jnp.concatenate([patches, pos3d_enc], -1)
+        task = jnp.concatenate([task, pos1d_enc], -1)
+
         def tokens_preproc(x, name):
             x = x.reshape(-1, x.shape[-1])
             fc = nn.Dense(c.tokens_dim, use_bias=False, dtype=dtype, name=f'{name}_tokens_dense')
@@ -69,11 +74,6 @@ class PerAct(nn.Module):
         patches = tokens_preproc(patches, 'voxels')
         low_dim = tokens_preproc(low_dim, 'low_dim')
         task = tokens_preproc(task, 'task')
-        pos1d_enc = utils.fourier_features(task.shape[:1], c.ff_num_bands).astype(dtype)
-        pos3d_enc = utils.fourier_features(patches_shape, c.ff_num_bands).astype(dtype)
-        pos3d_enc = pos3d_enc.reshape(-1, pos3d_enc.shape[-1])
-        patches = jnp.concatenate([patches, pos3d_enc], -1)
-        task = jnp.concatenate([task, pos1d_enc], -1)
         inputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
             patches, low_dim, task
         )

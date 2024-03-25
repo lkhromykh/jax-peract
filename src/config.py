@@ -9,7 +9,7 @@ Layers: TypeAlias = tuple[int, ...]
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Config:
     # IO processors
-    scene_bins: int = 32
+    scene_bins: int = 64
     rot_bins: int = 72
     conv_stem_features: Layers = ()
     conv_stem_kernels: Layers = ()
@@ -31,7 +31,7 @@ class Config:
     self_attend_widening_factor: float = 1.
     use_layer_norm: bool = True
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 8
+    ff_num_bands: int = 16
     # Training
     max_grad_norm: float = 10.
     warmup_steps: int = -1
@@ -44,15 +44,15 @@ class Config:
     jit: bool = True
     compute_dtype: str = 'f32'
     max_trans_aug: float = 0.125
-    val_split: float = 0.
+    val_split: float = 0.2
     # Environment
-    scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
+    scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     time_limit: int = 8
     num_demos_per_task: int = 100
     # Experiment
     seed: int = 1
-    datasets_dir: str = 'datasets/sanity_check'
-    logdir: str = 'logdir/teleopv2.6'
+    datasets_dir: str = 'datasets/rlbench_easy'
+    logdir: str = 'logdir/rlbench_easy_preposenc'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

@@ -86,7 +86,7 @@ class MultiHeadAttention(_Module):
 
     def _mh_dense(self, x: Array, dim: int, name: str) -> Array:
         dim, res = np.divmod(dim, self.num_heads)
-        assert res == 0, f'Not divisible by the number of heads: {dim}.'
+        assert res == 0, f'Not divisible by the number of heads: {dim} / {self.num_heads}.'
         return self.dense(x, features=(self.num_heads, dim), use_bias=False, name=name)
 
 

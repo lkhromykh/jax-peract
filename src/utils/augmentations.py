@@ -33,7 +33,7 @@ def scene_rotation(item: types.Trajectory,
                    act_transform: DiscreteActionTransform,
                    ) -> types.Trajectory:
     observation, action = _unpack_trajectory(item)
-    vgrid_shape, act_shape = observation.voxels.shape, action.shape
+    scene_center = act_transform.get_scene_center()
 
     def np_rot(voxels, act):
         k = np.random.randint(0, 4)
@@ -43,10 +43,9 @@ def scene_rotation(item: types.Trajectory,
             new_voxels = np.rot90(voxels, k, axes=(0, 1))
             rot = R.from_rotvec([0, 0, np.pi * k / 2])
             act = act_transform.decode(act)
-            center = act_transform.get_scene_center()
             pos, tcp_orient, other = np.split(act, [3, 6])
             rmat = rot.as_matrix()
-            new_pos = rmat @ (pos - center) + center
+            new_pos = rmat @ (pos - scene_center) + scene_center
             new_orient = rot * R.from_euler('ZYX', tcp_orient)
             new_orient = new_orient.as_euler('ZYX')
             new_act = np.concatenate([new_pos, new_orient, other])
@@ -59,6 +58,7 @@ def scene_rotation(item: types.Trajectory,
         Tout=[tf.uint8, tf.int32],
         stateful=False
     )
+    vgrid_shape, act_shape = observation.voxels.shape, action.shape
     voxels_ = tf.ensure_shape(voxels_, vgrid_shape)
     act_ = tf.ensure_shape(act_, act_shape)
     traj = types.Trajectory(observations=observation._replace(voxels=voxels_), actions=act_)

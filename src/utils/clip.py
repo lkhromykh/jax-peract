@@ -1,9 +1,7 @@
 from typing import TypeAlias
 
 import jax
-import jax.numpy as jnp
 import numpy as np
-from ml_dtypes import bfloat16
 from dm_env import specs
 
 import transformers
@@ -22,9 +20,9 @@ class CLIP:
                  pretrained_model_name_or_path: str = 'openai/clip-vit-base-patch32'  # 'openai/clip-vit-large-patch14'
                  ) -> None:
         self._tokenizer = CLIPTokenizer.from_pretrained(pretrained_model_name_or_path)
-        self._model = FlaxCLIPTextModel.from_pretrained(pretrained_model_name_or_path, dtype=jnp.bfloat16)
+        self._model = FlaxCLIPTextModel.from_pretrained(pretrained_model_name_or_path)
         self.max_length = min(max_length, self._model.config.max_position_embeddings)
-        self._cache = (0, None)
+        self._cache = (None, None)
 
     def tokenize(self, text_: str) -> Tokens:
         return self._tokenizer(
@@ -49,11 +47,11 @@ class CLIP:
             return prev_emb
         tokens = self.tokenize(input_)
         tokens = jax.device_put(dict(tokens))
-        emb = jax.jit(self._model)(**tokens).last_hidden_state.astype(jnp.bfloat16)
-        emb = jax.device_get(emb).squeeze()
+        emb = jax.jit(self._model)(**tokens)
+        emb = emb.last_hidden_state.squeeze()
         self._cache = (cur_hash, emb)
         return emb
 
     def observation_spec(self) -> specs.Array:
         hidden_size = self._model.config.hidden_size
-        return specs.Array((self.max_length, hidden_size), dtype=bfloat16, name='text_emb')
+        return specs.Array((self.max_length, hidden_size), dtype=np.float32, name='text_emb')

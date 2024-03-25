@@ -63,7 +63,7 @@ def extractor_factory(
             pairs.append((observation_transform(obs), keyframe))
             next_carry = carry
             carry, is_keyframe = scan_fn(carry, obs)
-        kf_time_steps = kf_time_steps[::-1]
-        return pairs[::-1], kf_time_steps
+        pairs.reverse(), kf_time_steps.reverse()
+        return pairs, kf_time_steps
 
     return extract_keyframes

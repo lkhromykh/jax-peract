@@ -42,7 +42,7 @@ class DemosDataset:
 
     def as_demo_generator(self) -> Generator[gcenv.Observation, None, None]:
         """Plain demo generator."""
-        for path in iter(self):
+        for path in self:
             try:
                 demo = deserialize(path)
             except Exception as exc:

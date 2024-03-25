@@ -15,10 +15,7 @@ def parse_task(to_dir: pathlib.Path, from_dir: pathlib.Path) -> None:
     task_dir = to_dir / from_dir.name
     task_dir.mkdir(exist_ok=True, parents=True)
     ds = DemosDataset(task_dir)
-    cont_idx = len(ds)
     for idx, demo_path in enumerate(sorted(from_dir.iterdir())):
-        if idx < cont_idx:
-            continue
         try:
             with open(demo_path, 'rb') as f:
                 demo = pickle.load(f)
@@ -29,7 +26,7 @@ def parse_task(to_dir: pathlib.Path, from_dir: pathlib.Path) -> None:
             demo = list(map(UREnv.extract_observation, demo))
             demo[-2] = demo[-2].replace(is_terminal=False)
             ds.append(demo)
-    get_logger().info('%s old/new size %d -> %d', task_dir, cont_idx, len(ds))
+    get_logger().info('%s dataset new size', task_dir, len(ds))
 
 
 if __name__ == '__main__':
