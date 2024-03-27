@@ -26,7 +26,7 @@ def parse_task(to_dir: pathlib.Path, from_dir: pathlib.Path) -> None:
             demo = list(map(UREnv.extract_observation, demo))
             demo[-2] = demo[-2].replace(is_terminal=False)
             ds.append(demo)
-    get_logger().info('%s dataset new size', task_dir, len(ds))
+    get_logger().info('%s dataset new size: %d', task_dir, len(ds))
 
 
 if __name__ == '__main__':

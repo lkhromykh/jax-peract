@@ -65,7 +65,7 @@ class DemosDataset:
                     pairs, kfs = extract_fn(demo)
                     ep_len.append(len(demo))
                     kf_num.append(len(kfs))
-                    get_logger().info('%d. Task %s; Keyframes time steps: %s', idx, demo[0].goal, kfs)
+                    get_logger().info('%d. %s; Keyframes time steps: %s', idx, demo[0].goal, kfs)
                 except AssertionError as exc:
                     get_logger().warning('Skipping ill-formed demo %s: %s', path, exc)
                     continue

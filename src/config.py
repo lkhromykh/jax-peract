@@ -46,13 +46,13 @@ class Config:
     max_trans_aug: float = 0.125
     val_split: float = 0.2
     # Environment
-    scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
+    scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
     time_limit: int = 8
     num_demos_per_task: int = 100
     # Experiment
     seed: int = 1
-    datasets_dir: str = 'datasets/rlbench_easy'
-    logdir: str = 'logdir/rlbench_easy_preposenc'
+    datasets_dir: str = 'datasets/parsed_teleop'
+    logdir: str = 'logdir/teleopv2.11'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
