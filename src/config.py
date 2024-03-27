@@ -11,13 +11,13 @@ class Config:
     # IO processors
     scene_bins: int = 64
     rot_bins: int = 72
-    conv_stem_features: Layers = ()
-    conv_stem_kernels: Layers = ()
-    conv_stem_strides: Layers = ()
+    conv_stem_features: Layers = (64,)
+    conv_stem_kernels: Layers = (1,)
+    conv_stem_strides: Layers = (1,)
     conv_stem_use_skip_connections: bool = True
     voxels_patch_size: int = 4
     text_context_length: int = 77  # max. 77
-    tokens_dim: int = 64
+    tokens_dim: int = 128
     act_decoder_mlp_dim: int = 256
     act_decoder_conv_kernel: int = 3
     # Perceiver
@@ -46,13 +46,13 @@ class Config:
     max_trans_aug: float = 0.125
     val_split: float = 0.2
     # Environment
-    scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
+    scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     time_limit: int = 8
-    num_demos_per_task: int = 100
+    num_demos_per_task: int = 130
     # Experiment
     seed: int = 1
-    datasets_dir: str = 'datasets/parsed_teleop'
-    logdir: str = 'logdir/teleopv2.11'
+    datasets_dir: str = 'datasets/rlbench_medium'
+    logdir: str = 'logdir/rlbench_medium'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

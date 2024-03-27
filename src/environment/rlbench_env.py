@@ -26,17 +26,17 @@ EASY_TASKS = (
 )
 MEDIUM_TASKS = (
     'CloseJar', 'LightBulbIn', 'InsertOntoSquarePeg',
-    'PutMoneyInSafe', 'StackWine', 'PutGroceriesInCupboard',
+    'PutMoneyInSafe', 'StackWine', 'TakeItemOutOfDrawer',
 )
 HARD_TASKS = (
-    'PutItemInDrawer', 'TakeItemOutOfDrawer', 'StackCups'
+    'StackCups', 'PutGroceriesInCupboard',
 )
 
 
 class RLBenchEnv(gcenv.GoalConditionedEnv):
 
     CAMERAS = _CAMERAS
-    TASKS = EASY_TASKS
+    TASKS = EASY_TASKS + MEDIUM_TASKS
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
