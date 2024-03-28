@@ -19,8 +19,8 @@ def parse_task(to_dir: pathlib.Path, from_dir: pathlib.Path) -> None:
         try:
             with open(demo_path, 'rb') as f:
                 demo = pickle.load(f)
-        except EOFError:
-            get_logger().info('Cant read %s', demo_path)
+        except (EOFError, pickle.UnpicklingError) as exc:
+            get_logger().info('Cant read %s: %s', demo_path, exc)
             continue
         else:
             demo = list(map(UREnv.extract_observation, demo))

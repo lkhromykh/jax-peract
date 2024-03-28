@@ -59,6 +59,7 @@ class DemosDataset:
         def nested_stack(ts): return tree.map_structure(lambda *xs: np.stack(xs), *ts)
 
         def as_trajectory_generator():
+            invalid_eps = 0
             ep_len, kf_num = [], []
             for idx, (path, demo) in enumerate(zip(self, self.as_demo_generator())):
                 try:
@@ -68,12 +69,13 @@ class DemosDataset:
                     get_logger().info('%d. %s; Keyframes time steps: %s', idx, demo[0].goal, kfs)
                 except AssertionError as exc:
                     get_logger().warning('Skipping ill-formed demo %s: %s', path, exc)
+                    invalid_eps += 1
                     continue
                 else:
                     observations, actions = map(nested_stack, zip(*pairs))
                     yield types.Trajectory(observations=observations, actions=actions)
             get_logger().info(
-                f'Dataset {self.dataset_dir} stats (min/avg/max):\n'
+                f'Dataset {self.dataset_dir}, {idx + 1 - invalid_eps} episodes, stats (min/avg/max):\n'
                 f'\tEpisode length: {min(ep_len), np.mean(ep_len).round(2), max(ep_len)}\n'
                 f'\tNum keyframes: {min(kf_num), np.mean(kf_num).round(2), max(kf_num)}'
             )

@@ -158,7 +158,7 @@ class Builder:
         ds = tf.data.Dataset.from_tensor_slices(datasets).interleave(lambda x: x)
         match split:
             case 'val':
-                ds = ds.batch(3 * c.batch_size,
+                ds = ds.batch(2 * c.batch_size,
                               num_parallel_calls=tf.data.AUTOTUNE,
                               drop_remainder=False
                               ) \
