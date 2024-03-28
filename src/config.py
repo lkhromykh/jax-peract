@@ -9,7 +9,7 @@ Layers: TypeAlias = tuple[int, ...]
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Config:
     # IO processors
-    scene_bins: int = 32
+    scene_bins: int = 64
     rot_bins: int = 72
     conv_stem_features: Layers = ()
     conv_stem_kernels: Layers = ()
@@ -17,12 +17,12 @@ class Config:
     conv_stem_use_skip_connections: bool = True
     voxels_patch_size: int = 4
     text_context_length: int = 77  # max. 77
-    tokens_dim: int = 64
+    tokens_dim: int = 128
     act_decoder_mlp_dim: int = 256
     act_decoder_conv_kernel: int = 3
     # Perceiver
     latent_dim: int = 512
-    latent_channels: int = 512
+    latent_channels: int = 1024
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
@@ -31,7 +31,7 @@ class Config:
     self_attend_widening_factor: float = 1.
     use_layer_norm: bool = True
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 4
+    ff_num_bands: int = 32
     # Training
     max_grad_norm: float = 10.
     warmup_steps: int = -1
@@ -44,15 +44,15 @@ class Config:
     jit: bool = True
     compute_dtype: str = 'f32'
     max_trans_aug: float = 0.125
-    val_split: float = 0.0
+    val_split: float = 0.1
     # Environment
-    scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
+    scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     time_limit: int = 8
     num_demos_per_task: int = 60
     # Experiment
     seed: int = 1
-    datasets_dir: str = 'datasets/parsed_teleop'
-    logdir: str = 'logdir/teleopv2.14'
+    datasets_dir: str = 'datasets/rlbench_medium'
+    logdir: str = 'logdir/rlbench_medium'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

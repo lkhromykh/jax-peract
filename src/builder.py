@@ -66,15 +66,15 @@ class Builder:
                  ) -> PerActEnvWrapper | GoalConditionedEnv:
         """Create and wrap an environment."""
         c = self.cfg
-        # env = RLBenchEnv(
-        #    scene_bounds=c.scene_bounds,
-        #    time_limit=c.time_limit,
-        # )
-        env = UREnv(
-            address=('192.168.1.136', 5555),
-            scene_bounds=c.scene_bounds,
-            time_limit=c.time_limit
+        env = RLBenchEnv(
+           scene_bounds=c.scene_bounds,
+           time_limit=c.time_limit,
         )
+        # env = UREnv(
+        #     address=('192.168.1.136', 5555),
+        #     scene_bounds=c.scene_bounds,
+        #     time_limit=c.time_limit
+        # )
         if encoders is None:
             return env
         return PerActEnvWrapper(
@@ -90,7 +90,8 @@ class Builder:
         obs = tree_map(lambda x: x.generate_value(), encoders.observation_spec())
         rng1, rng2 = jax.random.split(jax.random.PRNGKey(self.cfg.seed + 1))
         params = nets.init(rng1, obs)
-        get_logger().info(nn.tabulate(nets, rng2, console_kwargs={'force_terminal': False})(obs))
+        console_kwargs = dict(force_terminal=False, width=120)
+        get_logger().info(nn.tabulate(nets, rng2, console_kwargs=console_kwargs)(obs))
         return nets, params
 
     def make_optim(self, params: Params) -> optax.GradientTransformation:
