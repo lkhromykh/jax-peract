@@ -66,15 +66,15 @@ class Builder:
                  ) -> PerActEnvWrapper | GoalConditionedEnv:
         """Create and wrap an environment."""
         c = self.cfg
-        env = RLBenchEnv(
-           scene_bounds=c.scene_bounds,
-           time_limit=c.time_limit,
-        )
-        # env = UREnv(
-        #     address=('192.168.1.136', 5555),
-        #     scene_bounds=c.scene_bounds,
-        #     time_limit=c.time_limit
+        # env = RLBenchEnv(
+        #    scene_bounds=c.scene_bounds,
+        #    time_limit=c.time_limit,
         # )
+        env = UREnv(
+            address=('192.168.1.136', 5555),
+            scene_bounds=c.scene_bounds,
+            time_limit=c.time_limit
+        )
         if encoders is None:
             return env
         return PerActEnvWrapper(
@@ -90,8 +90,8 @@ class Builder:
         obs = tree_map(lambda x: x.generate_value(), encoders.observation_spec())
         rng1, rng2 = jax.random.split(jax.random.PRNGKey(self.cfg.seed + 1))
         params = nets.init(rng1, obs)
-        console_kwargs = dict(force_terminal=False, width=120)
-        get_logger().info(nn.tabulate(nets, rng2, console_kwargs=console_kwargs)(obs))
+        tabulate_fn = nn.tabulate(nets, rng2, console_kwargs={'force_terminal': False})
+        get_logger().info(tabulate_fn(obs))
         return nets, params
 
     def make_optim(self, params: Params) -> optax.GradientTransformation:
@@ -152,7 +152,7 @@ class Builder:
                 case _: raise ValueError(split)
             _ds = _ds.flat_map(tf.data.Dataset.from_tensor_slices)
             if split == 'train':
-                _ds = _ds.repeat().shuffle(4000 // len(tasks))  # RAM budget.
+                _ds = _ds.repeat().shuffle(3000 // len(tasks))  # RAM budget.
             return _ds.prefetch(tf.data.AUTOTUNE)
 
         datasets = [load_dataset(task) for task in tasks]
@@ -163,7 +163,6 @@ class Builder:
                               num_parallel_calls=tf.data.AUTOTUNE,
                               drop_remainder=False
                               ) \
-                       .cache() \
                        .prefetch(tf.data.AUTOTUNE)
             case 'train':
                 max_shift = int(c.max_trans_aug * c.scene_bins)
