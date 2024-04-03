@@ -9,13 +9,13 @@ Layers: TypeAlias = tuple[int, ...]
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Config:
     # IO processors
-    scene_bins: int = 64
+    scene_bins: int = 32
     rot_bins: int = 72
     conv_stem_features: Layers = ()
     conv_stem_kernels: Layers = ()
     conv_stem_strides: Layers = ()
     conv_stem_use_skip_connections: bool = True
-    voxels_patch_size: int = 4
+    voxels_patch_size: int = 2
     text_context_length: int = 77  # max. 77
     tokens_dim: int = 256
     act_decoder_mlp_dim: int = 256
@@ -31,14 +31,14 @@ class Config:
     self_attend_widening_factor: float = 1.
     use_layer_norm: bool = True
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 32
+    ff_num_bands: int = 8
     # Training
     max_grad_norm: float = 10.
     warmup_steps: int = -1
     peak_learning_rate: float = 5e-4
     training_steps: int = 200_000
     batch_size: int = 16
-    weight_decay: float = 1e-6
+    weight_decay: float = 1e-2
     log_every: int = 500
     save_every: int = 5000
     jit: bool = True

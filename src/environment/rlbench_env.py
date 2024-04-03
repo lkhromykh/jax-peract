@@ -21,15 +21,15 @@ _OBS_CONFIG.set_all(True)
 
 _CAMERAS = ('front', 'left_shoulder', 'right_shoulder', 'overhead', 'wrist')
 EASY_TASKS = (
-    'SlideBlockToTarget', 'TurnTap',
+    'SlideBlockToTarget', 'TurnTap', 'StackBlocks'
     'OpenDrawer', 'PushButton', 'ReachAndDrag',
 )
 MEDIUM_TASKS = (
     'CloseJar', 'LightBulbIn', 'InsertOntoSquarePeg',
-    'PutMoneyInSafe', 'StackWine', 'TakeItemOutOfDrawer',
+    'PutMoneyInSafe', 'StackWine',
 )
 HARD_TASKS = (
-    'StackCups', 'PutGroceriesInCupboard',
+    'StackCups', 'PutGroceriesInCupboard', 'TakeItemOutOfDrawer',
 )
 
 

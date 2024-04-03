@@ -1,11 +1,11 @@
 import pathlib
-from typing import Any
+from typing import Any,  TypeAlias
 
 import numpy as np
 from jax import tree_util
 
-PyTree = Any
-Path = str | pathlib.Path
+PyTree: TypeAlias = Any
+Path: TypeAlias = str | pathlib.Path
 
 
 def serialize(obj: PyTree, path: Path) -> None:

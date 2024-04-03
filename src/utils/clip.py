@@ -1,6 +1,7 @@
 from typing import TypeAlias
 
 import jax
+import jax.numpy as jnp
 import numpy as np
 from dm_env import specs
 
@@ -20,7 +21,7 @@ class CLIP:
                  pretrained_model_name_or_path: str = 'openai/clip-vit-base-patch32'  # 'openai/clip-vit-large-patch14'
                  ) -> None:
         self._tokenizer = CLIPTokenizer.from_pretrained(pretrained_model_name_or_path)
-        self._model = FlaxCLIPTextModel.from_pretrained(pretrained_model_name_or_path)
+        self._model = FlaxCLIPTextModel.from_pretrained(pretrained_model_name_or_path, dtype=jnp.bfloat16)
         self.max_length = min(max_length, self._model.config.max_position_embeddings)
         self._cache = (None, None)
 
@@ -48,7 +49,7 @@ class CLIP:
         tokens = self.tokenize(input_)
         tokens = jax.device_put(dict(tokens))
         emb = jax.jit(self._model)(**tokens)
-        emb = emb.last_hidden_state.squeeze()
+        emb = emb.last_hidden_state.astype(jnp.float32).squeeze()
         self._cache = (cur_hash, emb)
         return emb
 

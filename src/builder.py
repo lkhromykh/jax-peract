@@ -161,8 +161,7 @@ class Builder:
             case 'val':
                 ds = ds.batch(2 * c.batch_size,
                               num_parallel_calls=tf.data.AUTOTUNE,
-                              drop_remainder=False
-                              ) \
+                              drop_remainder=False) \
                        .prefetch(tf.data.AUTOTUNE)
             case 'train':
                 max_shift = int(c.max_trans_aug * c.scene_bins)
