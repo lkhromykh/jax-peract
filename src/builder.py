@@ -37,7 +37,7 @@ class Builder:
         if (path := self.exp_path(Builder.CONFIG)).exists():
             saved_cfg = Config.load(path)
             if saved_cfg != cfg:
-                get_logger().warning('Warning! Config differs from the saved one.')
+                get_logger().warning('Warning! Config differs from the saved one: %s', cfg.diff(saved_cfg))
         else:
             cfg.save(path)
         logger_add_file_handler(self.exp_path(Builder.LOGS))
@@ -124,7 +124,7 @@ class Builder:
 
     def make_state(self, params: Params) -> TrainState:
         if (path := self.exp_path(Builder.STATE)).exists():
-            get_logger().info('Loading existing state.')
+            get_logger().info('Loading an existing state.')
             state = self.load(path)
             return state
         optim = self.make_optim(params)
@@ -152,7 +152,7 @@ class Builder:
                 case _: raise ValueError(split)
             _ds = _ds.flat_map(tf.data.Dataset.from_tensor_slices)
             if split == 'train':
-                _ds = _ds.repeat().shuffle(3000 // len(tasks))  # RAM budget.
+                _ds = _ds.repeat().shuffle(4000 // len(tasks))  # RAM budget.
             return _ds.prefetch(tf.data.AUTOTUNE)
 
         datasets = [load_dataset(task) for task in tasks]

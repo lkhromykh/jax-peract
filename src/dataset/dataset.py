@@ -40,6 +40,17 @@ class DemosDataset:
         """Path generator."""
         return iter(sorted(self.dataset_dir.rglob('*.npz')))
 
+    def __len__(self):
+        return self._len
+
+    def append(self, demo: gcenv.Demo) -> None:
+        demo = tree.map_structure(np.asarray, demo)
+        if self.cast_to_f16:
+            def to_f16(x): return x.astype(np.float16) if x.dtype.kind == 'f' else x
+            demo = tree.map_structure(to_f16, demo)
+        serialize(demo, self.dataset_dir / f'{self._len:05d}')
+        self._len += 1
+
     def as_demo_generator(self) -> Generator[gcenv.Observation, None, None]:
         """Plain demo generator."""
         for path in self:
@@ -88,14 +99,3 @@ class DemosDataset:
             generator=as_trajectory_generator,
             output_signature=output_signature
         )
-
-    def __len__(self):
-        return self._len
-
-    def append(self, demo: gcenv.Demo) -> None:
-        demo = tree.map_structure(np.asarray, demo)
-        if self.cast_to_f16:
-            def to_f16(x): return x.astype(np.float16) if x.dtype.kind == 'f' else x
-            demo = tree.map_structure(to_f16, demo)
-        serialize(demo, self.dataset_dir / f'{self._len:05d}')
-        self._len += 1

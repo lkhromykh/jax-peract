@@ -49,7 +49,9 @@ def validate(cfg: Config, nets: PerAct) -> types.StepFn:
                 ) -> types.Metrics:
         chex.assert_rank(action, 1)
         policy = nets.apply(params, observation)
-        return _get_policy_metrics(policy, action)
+        metrics = _get_policy_metrics(policy, action)
+        del metrics['pos_logits']
+        return metrics
 
     @chex.assert_max_traces(2)  # drop_remainder=False
     def step(state: TrainState,
@@ -58,7 +60,6 @@ def validate(cfg: Config, nets: PerAct) -> types.StepFn:
         get_logger().info('Tracing validation step.')
         eval_ = jax.vmap(eval_fn, in_axes=(None, 0, 0))
         metrics = eval_(state.params, batch.observations, batch.actions)
-        del metrics['pos_logits']
         metrics = jax.tree_util.tree_map(lambda x: jnp.mean(x, axis=0), metrics)
         return tuple(map(jax.lax.stop_gradient, (state, metrics)))
 

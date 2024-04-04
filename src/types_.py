@@ -8,7 +8,7 @@ Array: TypeAlias = jax.Array
 DType: TypeAlias = Any
 Action: TypeAlias = jax.Array
 ActionSpec: TypeAlias = tuple[specs.DiscreteArray, ...]
-EnvSpecs = tuple['State[specs.Array]', ActionSpec]
+EnvSpecs: TypeAlias = tuple['State[specs.Array]', ActionSpec]
 
 
 class State(NamedTuple):
@@ -26,4 +26,4 @@ class Trajectory(NamedTuple):
 SceneBounds: TypeAlias = tuple[float, float, float, float, float, float]
 Layers = collections.abc.Sequence[int]
 Metrics = collections.abc.MutableMapping[str, float]
-StepFn = Callable[['TrainState', Trajectory], tuple['TrainState', Metrics]]
+StepFn: TypeAlias = Callable[['TrainState', Trajectory], tuple['TrainState', Metrics]]
