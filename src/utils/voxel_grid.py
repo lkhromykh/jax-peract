@@ -6,8 +6,36 @@ from dm_env import specs
 
 from src.environment import gcenv
 
+Array = np.ndarray
 
-# TODO: move loops to C++
+try:
+    from .voxelize import create_dense_voxelgrid_from_points as voxelize_
+    def create_dense_voxel_grid_from_points(
+            points: Array,
+            colors: Array,
+            num_voxels: int
+            ) -> Array:
+        vgrid = voxelize_(points, colors, num_voxels)
+        return vgrid.reshape(3 * (num_voxels,) + (4,))
+except ImportError as exc:
+    print("Can't import voxelize")
+    def create_dense_voxel_grid_from_points(points, colors, num_voxels):
+        colors = colors.astype(np.float64) / 255.
+        pcd = o3d.geometry.PointCloud()
+        pcd.points, pcd.colors = map(o3d.utility.Vector3dVector, (points, colors))
+        min_bound, max_bound = np.zeros(3), np.ones(3) - 1e-4
+        bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+        pcd = pcd.crop(bbox)
+        grid = o3d.geometry.VoxelGrid.create_from_point_cloud_within_bounds(
+                pcd, 1. / num_voxels, min_bound, max_bound)
+        scene = np.zeros(3 * (num_voxels,) + (4,), dtype=np.uint8)
+        for voxel in grid.get_voxels():
+            idx = voxel.grid_index
+            rgb = np.round(255 * voxel.color)
+            scene[tuple(idx)] = np.r_[rgb, 255]
+        return scene
+
+
 class VoxelGrid:
 
     def __init__(self,
@@ -15,15 +43,9 @@ class VoxelGrid:
                  nbins: int,
                  ) -> None:
         self.scene_bounds = lb, ub = np.split(np.asarray(scene_bounds), 2)
-        self.shape = lb.size * (nbins,) + (4,)
-        self.voxel_size = 1. / nbins
-        self._bbox = o3d.geometry.AxisAlignedBoundingBox(
-            np.zeros_like(lb), np.ones_like(ub) - self.voxel_size)
+        self.nbins = nbins
 
-    def encode(self,
-               obs: gcenv.Observation,
-               return_type: Literal['np', 'o3d'] = 'np'
-               ) -> gcenv.Array | o3d.geometry.VoxelGrid:
+    def encode(self, obs: gcenv.Observation) -> Array:
         lb, ub = self.scene_bounds
         points, colors = [], []
         for pcd, rgb in zip(obs.point_clouds, obs.images):
@@ -31,35 +53,22 @@ class VoxelGrid:
             colors.append(rgb.reshape(-1, 3))
         points, colors = map(np.concatenate, (points, colors))
         points = (points - lb) / (ub - lb)
-        colors = colors.astype(np.float32) / 255.
-        pcd = o3d.geometry.PointCloud()
-        pcd.points, pcd.colors = map(o3d.utility.Vector3dVector, (points, colors))
-        pcd = pcd.crop(self._bbox)
-        grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, self.voxel_size)
-        match return_type:
-            case 'o3d':
-                return grid
-            case 'np':
-                scene = np.zeros(self.shape, dtype=np.uint8)
-                for voxel in grid.get_voxels():
-                    idx = voxel.grid_index
-                    rgb = np.round(255 * voxel.color)
-                    scene[tuple(idx)] = np.r_[rgb, 255]
-                return scene
-        raise ValueError(return_type)
+        points = points.astype(np.float64)
+        return create_dense_voxel_grid_from_points(points, colors, self.nbins)
 
     def decode(self, voxels: gcenv.Array) -> o3d.geometry.VoxelGrid:
         grid = o3d.geometry.VoxelGrid()
-        grid.voxel_size = self.voxel_size
+        grid.voxel_size = 1. / self.nbins
         voxels = voxels.reshape(-1, 4)
+        shape = 3 * (self.nbins,)
         for idx, value in enumerate(voxels):
             voxel = o3d.geometry.Voxel()
             rgb, occupied = np.split(value, [3])
             if occupied:
-                voxel.grid_index = np.unravel_index(idx, self.shape[:-1])
+                voxel.grid_index = np.unravel_index(idx, shape)
                 voxel.color = rgb.astype(np.float32) / 255.
                 grid.add_voxel(voxel)
         return grid
 
     def observation_spec(self) -> specs.Array:
-        return specs.Array(self.shape, np.uint8, name='voxels')
+        return specs.Array(3 * (self.nbins,) + (4,), np.uint8, name='voxels')

@@ -51,8 +51,8 @@ class Config:
     num_demos_per_task: int = 60
     # Experiment
     seed: int = 1
-    datasets_dir: str = 'datasets/parsed_teleop'
-    logdir: str = 'logdir/teleopv2.18'
+    datasets_dir: str = 'datasets/parsed_box_drawer'
+    logdir: str = 'logdir/teleopv2.18_box_drawer'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

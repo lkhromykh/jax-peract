@@ -90,7 +90,7 @@ class Builder:
         obs = tree_map(lambda x: x.generate_value(), encoders.observation_spec())
         rng1, rng2 = jax.random.split(jax.random.PRNGKey(self.cfg.seed + 1))
         params = nets.init(rng1, obs)
-        tabulate_fn = nn.tabulate(nets, rng2, console_kwargs={'force_terminal': False})
+        tabulate_fn = nn.tabulate(nets, rng2, console_kwargs={'force_terminal': False, 'width': 140})
         get_logger().info(tabulate_fn(obs))
         return nets, params
 
