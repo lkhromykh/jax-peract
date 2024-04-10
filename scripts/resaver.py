@@ -11,22 +11,20 @@ from src.dataset.dataset import DemosDataset
 from src.logger import get_logger
 
 
-def parse_task(to_dir: pathlib.Path, from_dir: pathlib.Path) -> None:
-    task_dir = to_dir / from_dir.name
-    task_dir.mkdir(exist_ok=True, parents=True)
-    ds = DemosDataset(task_dir)
-    for idx, demo_path in enumerate(sorted(from_dir.iterdir())):
-        try:
-            with open(demo_path, 'rb') as f:
-                demo = pickle.load(f)
-        except (EOFError, pickle.UnpicklingError) as exc:
-            get_logger().info('Cant read %s: %s', demo_path, exc)
-            continue
-        else:
-            demo = list(map(UREnv.extract_observation, demo))
-            demo[-2] = demo[-2].replace(is_terminal=False)
-            ds.append(demo)
-    get_logger().info('%s dataset new size: %d', task_dir, len(ds))
+def parse_demo(dataset_dir: pathlib.Path, demo_path: pathlib.Path) -> None:
+    parsed_path = (dataset_dir / demo_path.parent.name / demo_path.stem).with_suffix('.npz')
+    if parsed_path.exists():
+        return None
+    parsed_path.parent.mkdir(exist_ok=True, parents=True)
+    try:
+        with demo_path.open(mode='rb') as f:
+            demo = pickle.load(f)
+    except (EOFError, pickle.UnpicklingError) as exc:
+        get_logger().info('Cant read %s: %s', demo_path, exc)
+    else:
+        demo = list(map(UREnv.extract_observation, demo))
+        demo[-2] = demo[-2].replace(is_terminal=False)
+        DemosDataset.save_demo(demo, parsed_path)
 
 
 if __name__ == '__main__':
@@ -34,7 +32,6 @@ if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
     from_path, to_path = map(lambda x: pathlib.Path(x).resolve(), sys.argv[1:3])
-    fn = partial(parse_task, to_path)
-    tasks = list(from_path.iterdir())
-    with mp.Pool(processes=len(tasks)) as pool:
-        pool.map(fn, tasks)
+    fn = partial(parse_demo, to_path)
+    with mp.Pool(processes=mp.cpu_count()) as pool:
+        pool.map(fn, from_path.rglob('*.pkl'))

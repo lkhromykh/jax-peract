@@ -13,14 +13,15 @@ from src.logger import get_logger
 from src.environment import RLBenchEnv
 
 
-def evaluate_one(cfg: Config, task: str):
+def evaluate_one(cfg: Config, task: str | None = None):
     builder = Builder(cfg)
     enc = builder.make_encoders()
     nets, _ = builder.make_networks_and_params(enc)
     params = builder.load(Builder.STATE).params
     env = builder.make_env(enc)
-    assert isinstance(env, RLBenchEnv)
-    env.TASKS = (task,)
+    if task is not None:
+        assert isinstance(env, RLBenchEnv)
+        env.TASKS = (task,)
     logger = get_logger()
 
     def act(obs):
@@ -33,6 +34,7 @@ def evaluate_one(cfg: Config, task: str):
         reward = 0
         while not ts.last():
             action = act(ts.observation)
+            logger.info('Action %s / %s', enc.action_encoder.decode(action), action)
             ts = env.step(action)
             reward += ts.reward
         logger.info('Reward: %f', reward)
@@ -62,4 +64,4 @@ def sync_evaluate(cfg: Config):
 if __name__ == '__main__':
     exp_path = pathlib.Path(sys.argv[1])
     cfg_ = Config.load(exp_path / Builder.CONFIG, compute_dtype='f32')
-    sync_evaluate(cfg_)
+    evaluate_one(cfg_)

@@ -11,18 +11,18 @@ class Config:
     # IO processors
     scene_bins: int = 32
     rot_bins: int = 72
-    conv_stem_features: Layers = ()
-    conv_stem_kernels: Layers = ()
-    conv_stem_strides: Layers = ()
+    conv_stem_features: Layers = (64,)
+    conv_stem_kernels: Layers = (2,)
+    conv_stem_strides: Layers = (2,)
     conv_stem_use_skip_connections: bool = True
-    voxels_patch_size: int = 2
+    voxels_patch_size: int = 1
     text_context_length: int = 77  # max. 77
     tokens_dim: int = 64
     act_decoder_mlp_dim: int = 256
     act_decoder_conv_kernel: int = 3
     # Perceiver
     latent_dim: int = 512
-    latent_channels: int = 256
+    latent_channels: int = 512
     num_blocks: int = 1
     num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
@@ -31,7 +31,7 @@ class Config:
     self_attend_widening_factor: float = 1.
     use_layer_norm: bool = True
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 16
+    ff_num_bands: int = 4
     # Training
     max_grad_norm: float = 10.
     warmup_steps: int = -1
@@ -51,8 +51,8 @@ class Config:
     num_demos_per_task: int = 60
     # Experiment
     seed: int = 1
-    datasets_dir: str = 'datasets/only_pick_parsed'
-    logdir: str = 'logdir/teleopv2.17'
+    datasets_dir: str = 'datasets/parsed_teleop'
+    logdir: str = 'logdir/teleopv2.18'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

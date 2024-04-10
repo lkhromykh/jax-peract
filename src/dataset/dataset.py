@@ -44,11 +44,8 @@ class DemosDataset:
         return self._len
 
     def append(self, demo: gcenv.Demo) -> None:
-        demo = tree.map_structure(np.asarray, demo)
-        if self.cast_to_f16:
-            def to_f16(x): return x.astype(np.float16) if x.dtype.kind == 'f' else x
-            demo = tree.map_structure(to_f16, demo)
-        serialize(demo, self.dataset_dir / f'{self._len:05d}')
+        path = self.dataset_dir / f'{self._len:05d}'
+        DemosDataset.save_demo(demo, path, self.cast_to_f16)
         self._len += 1
 
     def as_demo_generator(self) -> Generator[gcenv.Observation, None, None]:
@@ -99,3 +96,14 @@ class DemosDataset:
             generator=as_trajectory_generator,
             output_signature=output_signature
         )
+
+    @staticmethod
+    def save_demo(demo: gcenv.Demo,
+                  path: pathlib.Path | str,
+                  cast_to_f16: bool = True
+                  ) -> None:
+        demo = tree.map_structure(np.asarray, demo)
+        if cast_to_f16:
+            def to_f16(x): return x.astype(np.float16) if x.dtype.kind == 'f' else x
+            demo = tree.map_structure(to_f16, demo)
+        serialize(demo, path)
