@@ -165,7 +165,12 @@ class Builder:
                        .prefetch(tf.data.AUTOTUNE)
             case 'train':
                 max_shift = int(c.max_trans_aug * c.scene_bins)
-                ds = ds.map(lambda item: utils.augmentations.scene_rotation(item, action_encoder),
+                ds = ds.map(lambda item:
+                            utils.augmentations.scene_rotation(
+                                item,
+                                act_transform=action_encoder,
+                                rot_limits=c.rot_aug_limits
+                                ),
                             num_parallel_calls=tf.data.AUTOTUNE) \
                        .map(lambda item: utils.augmentations.scene_shift(item, max_shift),
                             num_parallel_calls=tf.data.AUTOTUNE) \

@@ -9,15 +9,15 @@ Layers: TypeAlias = tuple[int, ...]
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Config:
     # IO processors
-    scene_bins: int = 32
+    scene_bins: int = 64
     rot_bins: int = 72
     conv_stem_features: Layers = (64,)
-    conv_stem_kernels: Layers = (2,)
-    conv_stem_strides: Layers = (2,)
+    conv_stem_kernels: Layers = (4,)
+    conv_stem_strides: Layers = (4,)
     conv_stem_use_skip_connections: bool = True
     voxels_patch_size: int = 1
     text_context_length: int = 77  # max. 77
-    tokens_dim: int = 64
+    tokens_dim: int = 256
     act_decoder_mlp_dim: int = 256
     act_decoder_conv_kernel: int = 3
     # Perceiver
@@ -31,7 +31,7 @@ class Config:
     self_attend_widening_factor: float = 1.
     use_layer_norm: bool = True
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 4
+    ff_num_bands: int = 16
     # Training
     max_grad_norm: float = 10.
     warmup_steps: int = -1
@@ -43,7 +43,8 @@ class Config:
     save_every: int = 5000
     jit: bool = True
     compute_dtype: str = 'bf16'
-    max_trans_aug: float = 0.125
+    max_trans_aug: float = 0.125  # *scene_bins
+    rot_aug_limits: tuple[float, float] = (-0.25, 0.25)  # *np.pi
     val_split: float = 0.0
     # Environment
     scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
@@ -52,7 +53,7 @@ class Config:
     # Experiment
     seed: int = 1
     datasets_dir: str = 'datasets/parsed_box_drawer'
-    logdir: str = 'logdir/teleopv2.18_box_drawer'
+    logdir: str = 'logdir/teleopv2.19_box_drawer'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
@@ -110,6 +111,8 @@ peract_config = Config(
     peak_learning_rate=5e-4,
     compute_dtype='f32',
     scene_bounds=(-0.3, -0.5, 0.6, 0.7, 0.5, 1.6),
+    max_trans_aug=0.125,
+    rot_aug_limits=(-0.125, 0.125),
     time_limit=10,
     num_demos_per_task=130,
     val_split=0.2

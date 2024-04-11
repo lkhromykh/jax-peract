@@ -1,6 +1,7 @@
 """Diversify training samples via augmentations."""
 import numpy as np
 import tensorflow as tf
+import tensorflow_addons as tfa
 from scipy.spatial.transform import Rotation as R
 
 import src.types_ as types
@@ -29,39 +30,41 @@ def scene_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
                             actions=tf.concat([pos, low_dim], 0))
 
 
+# TODO: this should not depends on scene_bounds/scene_center.
+#  Nbins discretization is only that matters.
 def scene_rotation(item: types.Trajectory,
                    act_transform: DiscreteActionTransform,
+                   rot_limits: tuple[float, float] = (-0.25, 0.25)
                    ) -> types.Trajectory:
     observation, action = _unpack_trajectory(item)
     scene_center = act_transform.get_scene_center()
 
-    def np_rot(voxels, act):
-        k = np.random.randint(0, 4)
-        if k == 0:
-            new_voxels, new_act = voxels, act
-        else:
-            new_voxels = np.rot90(voxels, k, axes=(0, 1))
-            rot = R.from_rotvec([0, 0, np.pi * k / 2])
-            act = act_transform.decode(act)
-            pos, tcp_orient, other = np.split(act, [3, 6])
-            rmat = rot.as_matrix()
-            new_pos = rmat @ (pos - scene_center) + scene_center
-            new_orient = rot * R.from_euler('ZYX', tcp_orient)
-            new_orient = new_orient.as_euler('ZYX')
-            new_act = np.concatenate([new_pos, new_orient, other])
-            new_act = act_transform.encode(new_act)
-        return new_voxels, new_act
+    theta = np.pi * tf.random.uniform((), *rot_limits)
+    perm = (2, 1, 0, 3)  # XYZC -> ZXYC
+    voxels = tf.transpose(observation.voxels, perm=perm)
+    voxels = tfa.image.rotate(voxels, theta)
+    new_voxels = tf.transpose(voxels, perm=perm)
 
-    voxels_, act_ = tf.numpy_function(
-        func=np_rot,
-        inp=[observation.voxels, action],
-        Tout=[tf.uint8, tf.int32],
+    def np_act_rot(act, theta_):
+        rot = R.from_rotvec([0, 0, -theta_])
+        act = act_transform.decode(act)
+        pos, tcp_orient, other = np.split(act, [3, 6])
+        rmat = rot.as_matrix()
+        new_pos = rmat @ (pos - scene_center) + scene_center
+        new_orient = rot * R.from_euler('ZYX', tcp_orient)
+        new_orient = new_orient.as_euler('ZYX')
+        new_act = np.concatenate([new_pos, new_orient, other])
+        return act_transform.encode(new_act)
+
+    new_action = tf.numpy_function(
+        func=np_act_rot,
+        inp=[action, theta],
+        Tout=tf.int32,
         stateful=False
     )
-    vgrid_shape, act_shape = observation.voxels.shape, action.shape
-    voxels_ = tf.ensure_shape(voxels_, vgrid_shape)
-    act_ = tf.ensure_shape(act_, act_shape)
-    traj = types.Trajectory(observations=observation._replace(voxels=voxels_), actions=act_)
+    new_action = tf.ensure_shape(new_action, action.shape)
+    traj = types.Trajectory(observations=observation._replace(voxels=new_voxels),
+                            actions=new_action)
     return tf.nest.map_structure(tf.convert_to_tensor, traj)
 
 
