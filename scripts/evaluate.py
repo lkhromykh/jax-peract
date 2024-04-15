@@ -7,10 +7,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 import jax
 
-from src.config import Config
-from src.builder import Builder
-from src.logger import get_logger
-from src.environment import RLBenchEnv
+from peract.config import Config
+from peract.builder import Builder
+from peract.logger import get_logger
+from peract.environment import RLBenchEnv
 
 
 def evaluate_one(cfg: Config, task: str | None = None):

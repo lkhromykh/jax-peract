@@ -10,10 +10,10 @@ import GPUtil
 from rltools.loggers import TFSummaryLogger
 chex.disable_asserts()
 
-from src.config import Config
-from src.builder import Builder
-from src.logger import get_logger
-from src.utils import prefetch_to_device
+from peract.config import Config
+from peract.builder import Builder
+from peract.logger import get_logger
+from peract.utils import prefetch_to_device
 
 
 def _debug():

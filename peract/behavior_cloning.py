@@ -3,12 +3,12 @@ import jax.numpy as jnp
 import optax
 import chex
 
-from src.config import Config
-from src.logger import get_logger
-from src.networks.peract import PerAct
-from src.utils.distributions import Blockwise
-from src.train_state import TrainState, Params
-from src import types_ as types
+from peract.config import Config
+from peract.logger import get_logger
+from peract.networks.peract import PerAct
+from peract.utils.distributions import Blockwise
+from peract.train_state import TrainState, Params
+from peract import types_ as types
 
 
 def train(cfg: Config, nets: PerAct) -> types.StepFn:

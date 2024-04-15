@@ -3,7 +3,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 from ur_env.remote import RemoteEnvClient
 
-from src.environment import gcenv
+from peract.environment import gcenv
 
 
 class UREnv(gcenv.GoalConditionedEnv):

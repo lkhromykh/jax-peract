@@ -8,8 +8,8 @@ import chex
 import tensorflow_probability.substrates.jax as tfp
 tfd = tfp.distributions
 
-import src.types_ as types
-from src.utils import distributions
+import peract.types_ as types
+from peract.utils import distributions
 
 Array = jax.Array
 activation = nn.gelu

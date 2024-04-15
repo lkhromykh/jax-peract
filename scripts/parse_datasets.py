@@ -5,11 +5,11 @@ import multiprocessing as mp
 from functools import partial
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
-from src.config import Config
-from src.builder import Builder
-from src.logger import get_logger
-from src.dataset.dataset import DemosDataset
-from src.dataset.keyframes_extraction import extractor_factory
+from peract.config import Config
+from peract.builder import Builder
+from peract.logger import get_logger
+from peract.dataset.dataset import DemosDataset
+from peract.dataset.keyframes_extraction import extractor_factory
 
 
 def parse_dataset(builder: Builder, raw_ds_path: pathlib.Path):

@@ -14,10 +14,10 @@ class Config:
     conv_stem_features: Layers = (64,)
     conv_stem_kernels: Layers = (4,)
     conv_stem_strides: Layers = (4,)
-    conv_stem_use_skip_connections: bool = True
+    conv_stem_use_skip_connections: bool = False
     voxels_patch_size: int = 1
     text_context_length: int = 77  # max. 77
-    tokens_dim: int = 256
+    tokens_dim: int = 64
     act_decoder_mlp_dim: int = 256
     act_decoder_conv_kernel: int = 3
     # Perceiver
@@ -34,7 +34,7 @@ class Config:
     ff_num_bands: int = 16
     # Training
     max_grad_norm: float = 10.
-    warmup_steps: int = -1
+    warmup_steps: int = 1000
     peak_learning_rate: float = 5e-4
     training_steps: int = 300_000
     batch_size: int = 16
@@ -45,15 +45,15 @@ class Config:
     compute_dtype: str = 'bf16'
     max_trans_aug: float = 0.125  # *scene_bins
     rot_aug_limits: tuple[float, float] = (-0.25, 0.25)  # *np.pi
-    val_split: float = 0.0
+    val_split: float = 0.25
     # Environment
-    scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
+    scene_bounds: tuple[float, ...] = (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
     time_limit: int = 10
-    num_demos_per_task: int = 60
+    num_demos_per_task: int = 130
     # Experiment
     seed: int = 1
-    datasets_dir: str = 'datasets/parsed_box_drawer'
-    logdir: str = 'logdir/teleopv2.19_box_drawer'
+    datasets_dir: str = 'datasets/rlbench_medium'
+    logdir: str = 'logdir/rlbench_medium1.2'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

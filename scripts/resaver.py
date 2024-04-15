@@ -6,9 +6,9 @@ import multiprocessing as mp
 from functools import partial
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
-from src.environment.ur5_env import UREnv
-from src.dataset.dataset import DemosDataset
-from src.logger import get_logger
+from peract.environment.ur5_env import UREnv
+from peract.dataset.dataset import DemosDataset
+from peract.logger import get_logger
 
 
 def parse_demo(dataset_dir: pathlib.Path, demo_path: pathlib.Path) -> None:

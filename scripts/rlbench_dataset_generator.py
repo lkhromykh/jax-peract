@@ -5,10 +5,10 @@ from typing import Any
 import multiprocessing as mp
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
-from src.config import Config
-from src.logger import get_logger
-from src.dataset.dataset import DemosDataset
-from src.environment.rlbench_env import RLBenchEnv
+from peract.config import Config
+from peract.logger import get_logger
+from peract.dataset.dataset import DemosDataset
+from peract.environment.rlbench_env import RLBenchEnv
 
 
 def collect_rlbench_task_demos(
@@ -39,6 +39,8 @@ def collect_rlbench_task_demos(
 
 
 if __name__ == '__main__':
+    import os
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
     cfg = Config()
 
     def collect(task):

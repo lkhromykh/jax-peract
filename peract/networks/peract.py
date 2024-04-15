@@ -4,11 +4,11 @@ import chex
 import tensorflow_probability.substrates.jax as tfp
 tfd = tfp.distributions
 
-from src import utils
-import src.types_ as types
-from src.config import Config
-from src.networks import io_processors
-from src.networks.perceiver import PerceiverIO
+from peract import utils
+import peract.types_ as types
+from peract.config import Config
+from peract.networks import io_processors
+from peract.networks.perceiver import PerceiverIO
 
 
 class PerAct(nn.Module):

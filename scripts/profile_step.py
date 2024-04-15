@@ -7,8 +7,8 @@ import flax
 flax.linen.enable_named_call()
 from rltools.loggers import TFSummaryLogger
 
-from src.config import Config
-from src.builder import Builder
+from peract.config import Config
+from peract.builder import Builder
 
 
 def profile(cfg: Config):

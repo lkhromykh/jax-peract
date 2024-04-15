@@ -4,8 +4,8 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 from scipy.spatial.transform import Rotation as R
 
-import src.types_ as types
-from src.utils.action_transform import DiscreteActionTransform
+import peract.types_ as types
+from peract.utils.action_transform import DiscreteActionTransform
 
 
 def scene_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:

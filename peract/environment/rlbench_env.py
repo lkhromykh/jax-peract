@@ -12,8 +12,8 @@ from rlbench.observation_config import ObservationConfig
 from rlbench.backend.exceptions import InvalidActionError
 from pyrep.errors import IKError, ConfigurationPathError
 
-from src.environment import gcenv
-from src.logger import get_logger
+from peract.environment import gcenv
+from peract.logger import get_logger
 
 Array = np.ndarray
 _OBS_CONFIG = ObservationConfig()
@@ -21,7 +21,7 @@ _OBS_CONFIG.set_all(True)
 
 _CAMERAS = ('front', 'left_shoulder', 'right_shoulder', 'overhead', 'wrist')
 EASY_TASKS = (
-    'SlideBlockToTarget', 'TurnTap', 'StackBlocks'
+    'SlideBlockToTarget', 'TurnTap',
     'OpenDrawer', 'PushButton', 'ReachAndDrag',
 )
 MEDIUM_TASKS = (

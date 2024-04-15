@@ -3,9 +3,9 @@ from typing import NamedTuple
 import numpy as np
 import dm_env.specs
 
-from src import utils
-from src.environment import gcenv
-import src.types_ as types
+from peract import utils
+from peract.environment import gcenv
+import peract.types_ as types
 
 
 class PerActEncoders(NamedTuple):

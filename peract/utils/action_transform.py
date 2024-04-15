@@ -1,8 +1,8 @@
 import numpy as np
 from dm_env import specs
 
-from src.environment import gcenv
-import src.types_ as types
+from peract.environment import gcenv
+import peract.types_ as types
 
 Discrete = np.ndarray
 _eps = 1e-5

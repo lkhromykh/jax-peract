@@ -2,7 +2,7 @@ from typing import Any, Callable, NamedTuple, TypeAlias
 
 import numpy as np
 
-from src.environment import gcenv
+from peract.environment import gcenv
 
 
 class Carry(NamedTuple):

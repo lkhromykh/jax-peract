@@ -11,10 +11,10 @@ import matplotlib.animation as animation
 from scipy.spatial.transform import Rotation as R
 plt.rcParams['animation.embed_limit'] = 2 ** 20
 
-from src.environment import gcenv
-from src.utils.voxel_grid import VoxelGrid
-from src.dataset.dataset import DemosDataset
-from src.dataset.keyframes_extraction import extractor_factory
+from peract.environment import gcenv
+from peract.utils.voxel_grid import VoxelGrid
+from peract.dataset.dataset import DemosDataset
+from peract.dataset.keyframes_extraction import extractor_factory
 
 
 def viz_demo(demo: gcenv.Demo) -> animation.FuncAnimation:

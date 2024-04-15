@@ -5,11 +5,11 @@ import tree
 import numpy as np
 import tensorflow as tf
 
-import src.types_ as types
-from src.logger import get_logger
-from src.environment import gcenv
-from src.utils import serialize, deserialize
-from src.dataset.keyframes_extraction import KeyframesExtractor, extractor_factory
+import peract.types_ as types
+from peract.logger import get_logger
+from peract.environment import gcenv
+from peract.utils import serialize, deserialize
+from peract.dataset.keyframes_extraction import KeyframesExtractor, extractor_factory
 
 
 class DemosDataset:
@@ -72,14 +72,14 @@ class DemosDataset:
             for idx, (path, demo) in enumerate(zip(self, self.as_demo_generator())):
                 try:
                     pairs, kfs = extract_fn(demo)
-                    ep_len.append(len(demo))
-                    kf_num.append(len(kfs))
-                    get_logger().info('%d. %s; Keyframes time steps: %s', idx, demo[0].goal, kfs)
                 except AssertionError as exc:
                     get_logger().warning('Skipping ill-formed demo %s: %s', path, exc)
                     invalid_eps += 1
                     continue
                 else:
+                    get_logger().info('%d. %s; Keyframes ts: %s', idx, demo[0].goal, kfs)
+                    ep_len.append(len(demo))
+                    kf_num.append(len(kfs))
                     observations, actions = map(nested_stack, zip(*pairs))
                     yield types.Trajectory(observations=observations, actions=actions)
             get_logger().info(
