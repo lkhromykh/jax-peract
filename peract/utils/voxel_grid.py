@@ -36,6 +36,8 @@ else:
             scene_bounds: tuple[Array, Array],
             num_voxels: int
     ) -> Array:
+        points = points.astype(np.float64)
+        points, colors = map(np.ascontiguousarray, (points, colors))
         vgrid = cppvoxelize(points, colors, scene_bounds, num_voxels)
         return vgrid.reshape(3 * (num_voxels,) + (4,))
 
@@ -50,13 +52,11 @@ class VoxelGrid:
         self.nbins = nbins
 
     def encode(self, obs: gcenv.Observation) -> Array:
-        lb, ub = self.scene_bounds
         points, colors = [], []
         for pcd, rgb in zip(obs.point_clouds, obs.images):
             points.append(pcd.reshape(-1, 3))
             colors.append(rgb.reshape(-1, 3))
         points, colors = map(np.concatenate, (points, colors))
-        points = points.astype(np.float64)
         return create_dense_voxel_grid_from_points(points, colors, self.scene_bounds, self.nbins)
 
     def decode(self, voxels: gcenv.Array) -> o3d.geometry.VoxelGrid:

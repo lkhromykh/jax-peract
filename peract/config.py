@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Any, TypeAlias
+from typing import TypeAlias
 
 from ruamel.yaml import YAML
 
@@ -17,7 +17,7 @@ class Config:
     conv_stem_use_skip_connections: bool = False
     voxels_patch_size: int = 1
     text_context_length: int = 77  # max. 77
-    tokens_dim: int = 64
+    tokens_dim: int = 128
     act_decoder_mlp_dim: int = 256
     act_decoder_conv_kernel: int = 3
     # Perceiver
@@ -31,7 +31,7 @@ class Config:
     self_attend_widening_factor: float = 1.
     use_layer_norm: bool = True
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 16
+    ff_num_bands: int = 4
     # Training
     max_grad_norm: float = 10.
     warmup_steps: int = 1000
@@ -73,14 +73,14 @@ class Config:
         def maybe_tuple(x): return tuple(x) if isinstance(x, list) else x
         return cls(**{k: maybe_tuple(v) for k, v in config_dict.items()})
 
-    def diff(self, other: 'Config') -> dict[str, tuple[Any, Any]]:
+    def diff(self, other: 'Config') -> dict[str, str]:
         """Find distinguishing fields."""
         fields = dataclasses.asdict(self)
         other = dataclasses.asdict(other)
         diff = {}
         for (k, vs), vo in zip(fields.items(), other.values()):
             if vs != vo:
-                diff[k] = (vo, vs)
+                diff[k] = f'{vo} -> {vs}'
         return diff
 
 
