@@ -7,7 +7,7 @@ template<typename T>
 using Points = Eigen::Matrix<T, Eigen::Dynamic, 3, Eigen::RowMajor>;
 using DenseVoxelGrid = Eigen::Matrix<uint8_t, Eigen::Dynamic, 4, Eigen::RowMajor>;
 
-int _ravel_multi_index(const Eigen::Ref<Eigen::Vector3i>& multi_index, int size)
+int _ravel_multi_index(const Eigen::Ref<const Eigen::Vector3i>& multi_index, int size)
 {
     int flat_idx = 0;
     for (auto& idx: multi_index)

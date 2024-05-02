@@ -37,8 +37,8 @@ class UREnv(gcenv.GoalConditionedEnv):
 
     @staticmethod
     def extract_observation(obs: dict[str, np.ndarray]) -> gcenv.Observation:
-        pos, quat = np.split(obs['tcp_pose'], [3])
-        euler = R.from_quat(quat).as_euler('ZYX')
+        pos, rotvec = np.split(obs['tcp_pose'], [3])
+        euler = R.from_rotvec(rotvec).as_euler('ZYX')
         def rot_kinect(x): return np.fliplr(np.swapaxes(x, 0, 1)),
         return gcenv.Observation(
             images=rot_kinect(obs['image']),
