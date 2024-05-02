@@ -37,19 +37,18 @@ class UREnv(gcenv.GoalConditionedEnv):
 
     @staticmethod
     def extract_observation(obs: dict[str, np.ndarray]) -> gcenv.Observation:
-        pos, rotvec = np.split(obs['arm/ActualTCPPose'], [3])
-        euler = R.from_rotvec(rotvec).as_euler('ZYX')
-        tcp_pose = np.r_[pos, euler]
+        pos, quat = np.split(obs['tcp_pose'], [3])
+        euler = R.from_quat(quat).as_euler('ZYX')
         def rot_kinect(x): return np.fliplr(np.swapaxes(x, 0, 1)),
         return gcenv.Observation(
-            images=rot_kinect(obs['kinect/image']),
-            depth_maps=rot_kinect(obs['kinect/depth']),
-            point_clouds=rot_kinect(obs['kinect/point_cloud']),
-            joint_positions=obs['arm/ActualQ'],
-            joint_velocities=obs['arm/ActualQd'],
-            tcp_pose=tcp_pose,
-            gripper_pos=obs['gripper/pos'],
-            gripper_is_obj_detected=obs['gripper/object_detected'],
+            images=rot_kinect(obs['image']),
+            depth_maps=rot_kinect(obs['depth']),
+            point_clouds=rot_kinect(obs['point_cloud']),
+            joint_positions=np.asarray(obs['joint_position']),
+            joint_velocities=np.asarray(obs['joint_velocity']),
+            tcp_pose=np.r_[pos, euler],
+            gripper_pos=obs['gripper_pos'],
+            gripper_is_obj_detected=obs['gripper_is_obj_detected'],
             is_terminal=obs['is_terminal'],
             goal=obs['description']
         )
