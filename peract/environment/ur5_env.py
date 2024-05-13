@@ -25,8 +25,8 @@ class UREnv(gcenv.GoalConditionedEnv):
 
     def step(self, action) -> dm_env.TimeStep:
         pos, euler, other = np.split(action, [3, 6])
-        rotvec = Rotation.from_euler('ZYX', euler).as_rotvec()
-        action = np.r_[pos, rotvec, other].astype(np.float32)
+        quat = Rotation.from_euler('ZYX', euler).as_quat(canonical=True)
+        action = np.r_[pos, quat, other].astype(np.float32)
         ts = self._env.step(action)
         self._step += 1
         self._prev_obs = self.extract_observation(ts.observation)
@@ -45,8 +45,8 @@ class UREnv(gcenv.GoalConditionedEnv):
             images=rot_kinect(obs['image']),
             depth_maps=rot_kinect(obs['depth']),
             point_clouds=rot_kinect(obs['point_cloud']),
-            joint_positions=np.asarray(obs['joint_position']),
-            joint_velocities=np.asarray(obs['joint_velocity']),
+            joint_position=np.asarray(obs['joint_position']),
+            joint_velocity=np.asarray(obs['joint_velocity']),
             tcp_pose=tcp_pose,
             gripper_pos=obs['gripper_pos'],
             gripper_is_obj_detected=obs['gripper_is_obj_detected'],

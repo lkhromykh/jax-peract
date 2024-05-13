@@ -85,7 +85,8 @@ class VoxelsProcessor(nn.Module):
                             kernel_init=self.kernel_init,
                             use_bias=False,
                             padding='VALID')
-            blocks.append(nn.Sequential([conv, nn.LayerNorm(dtype=self.dtype), activation]))
+            block = nn.Sequential([conv, nn.LayerNorm(dtype=self.dtype), activation])
+            blocks.append(block)
         return blocks
 
 

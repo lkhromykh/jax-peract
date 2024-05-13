@@ -3,11 +3,10 @@
 #include "Eigen/Dense"
 #include "open3d/Open3D.h"
 
-template<typename T>
-using Points = Eigen::Matrix<T, Eigen::Dynamic, 3, Eigen::RowMajor>;
+template<typename T> using Points = Eigen::Matrix<T, Eigen::Dynamic, 3, Eigen::RowMajor>;
 using DenseVoxelGrid = Eigen::Matrix<uint8_t, Eigen::Dynamic, 4, Eigen::RowMajor>;
 
-int _ravel_multi_index(const Eigen::Ref<const Eigen::Vector3i>& multi_index, int size)
+int ravel_multi_index(const Eigen::Ref<const Eigen::Vector3i>& multi_index, int size)
 {
     int flat_idx = 0;
     for (auto& idx: multi_index)
@@ -44,12 +43,12 @@ create_dense_voxel_grid_from_points(
             *pcd, 1. / num_voxels, min_bound, max_bound);
 
     auto dense_vgrid = DenseVoxelGrid(num_voxels * num_voxels * num_voxels, 4);
+    auto occupied = Eigen::Vector<uint8_t, 4>();
     dense_vgrid.setZero();
     for (auto &voxel: vgrid->GetVoxels())
     {
-        auto occupied = Eigen::Vector<uint8_t, 4>();
         occupied << (255 * voxel.color_).cast<uint8_t>(), 255;
-        dense_vgrid.row(_ravel_multi_index(voxel.grid_index_, num_voxels)) = std::move(occupied);
+        dense_vgrid.row(ravel_multi_index(voxel.grid_index_, num_voxels)) = std::move(occupied);
     }
     return dense_vgrid;
 }

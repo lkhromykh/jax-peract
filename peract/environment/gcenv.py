@@ -19,10 +19,10 @@ class Observation(NamedTuple):
     GRIPPER_OPEN_THRESHOLD = 0.05
 
     images: tuple[Array]  # [(H_i, W_i, 3)], uint8
-    depth_maps: tuple[Array]  # [(H_i, W_i)], float
+    depth_maps: tuple[Array]  # [(H_i, W_i)], uint16
     point_clouds: tuple[Array]  # [(H_i, W_i, 3)], float
-    joint_positions: Array
-    joint_velocities: Array
+    joint_position: Array
+    joint_velocity: Array
     tcp_pose: Array  # [x, y, z, yaw, pitch, roll]
     gripper_pos: float  # [open=0, close=1]
     gripper_is_obj_detected: bool
@@ -34,8 +34,8 @@ class Observation(NamedTuple):
         return self.gripper_pos < Observation.GRIPPER_OPEN_THRESHOLD
 
     @property
-    def joint_velocities_are_low(self) -> bool:
-        return np.allclose(self.joint_velocities, 0, atol=Observation.JOINTS_VEL_LOW_THRESHOLD)
+    def joint_velocity_is_low(self) -> bool:
+        return np.allclose(self.joint_velocity, 0, atol=Observation.JOINTS_VEL_LOW_THRESHOLD)
 
     def infer_action(self) -> Action:
         """Extract action from an observation."""
@@ -71,7 +71,7 @@ class GoalConditionedEnv(dm_env.Environment):
     def action_spec(self) -> dm_env.specs.BoundedArray:
         xyz_min, xyz_max = np.split(np.asarray(self.scene_bounds), 2)
         rot_lim = np.array([np.pi, np.pi / 2, np.pi])
-        termsig_min, termsig_max = grasp_min, grasp_max = 0, 1
+        grasp_min, grasp_max = termsig_min, termsig_max = 0, 1
         low = np.r_[xyz_min, -rot_lim, grasp_min, termsig_min]
         high = np.r_[xyz_max, rot_lim, grasp_max, termsig_max]
         return dm_env.specs.BoundedArray(
@@ -94,7 +94,7 @@ class GoalConditionedEnv(dm_env.Environment):
     def set_goal(self, text_description: str) -> None:
         """Update episode goal."""
         dt = np.dtype('U77')  # CLIP limit.
-        description = np.array(text_description, dtype=dt)
+        description = np.asarray(text_description, dtype=dt)
         self._episode_goal = description
 
     def get_goal(self) -> Goal:
@@ -110,6 +110,7 @@ class GoalConditionedEnv(dm_env.Environment):
         if terminate:
             obs = obs.replace(is_terminal=True)
             return dm_env.termination(reward, obs)
-        if self._step >= self.time_limit:
+        elif self._step >= self.time_limit:
             return dm_env.truncation(reward, obs)
-        return dm_env.transition(reward, obs)
+        else:
+            return dm_env.transition(reward, obs)
