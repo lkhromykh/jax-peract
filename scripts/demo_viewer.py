@@ -46,7 +46,7 @@ def viz_demo(name: str, demo: gcenv.Demo) -> animation.FuncAnimation:
     fig.suptitle(f"{obs0.goal}\nDemo length: {len(pairs)}, keyframes_indices: {kf_idxs}")
     obs_art = obs_ax.imshow(as_img(obs0))
     kf_art = kf_ax.imshow(as_img(kf0))
-    jvel_ax.plot([max(abs(obs.joint_velocities)) for obs in demo])
+    jvel_ax.plot([max(abs(obs.joint_velocity)) for obs in demo])
     jvel_ax.axhline(obs0.JOINTS_VEL_LOW_THRESHOLD, c='r', label='low_velocity_threshold')
     jvel_obs_line = jvel_ax.axvline(0, c='k')
     jvel_kf_line = jvel_ax.axvline(kf_idxs[0], c='g')
