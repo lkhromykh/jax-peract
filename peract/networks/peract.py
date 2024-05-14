@@ -66,20 +66,16 @@ class PerAct(nn.Module):
         patches = jnp.concatenate([patches, pos3d_enc], -1)
         task = jnp.concatenate([task, pos1d_enc], -1)
 
-        def tokens_preproc(x, name):
-            x = x.reshape(-1, x.shape[-1])
-            fc = nn.Dense(c.tokens_dim, use_bias=False, dtype=dtype, name=f'{name}_tokens_dense')
-            ln = nn.LayerNorm(dtype=dtype, name=f'{name}_tokens_ln')
-            return ln(fc(x))
-        patches = tokens_preproc(patches, 'voxels')
-        low_dim = tokens_preproc(low_dim, 'low_dim')
-        task = tokens_preproc(task, 'task')
-        inputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
-            patches, low_dim, task
-        )
-        outputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
-            patches, low_dim
-        )
+        def io_proc(*args):
+            args = map(lambda x: x.reshape(-1, x.shape[-1]), args)
+            return io_processors.InputsMultiplexer(
+                init_scale=c.prior_initial_scale,
+                dtype=dtype,
+                embedding_dim=c.tokens_dim,
+                pad_to=8
+            )(*args)
+        inputs_q = io_proc(patches, low_dim, task)
+        outputs_q = io_proc(patches, low_dim)
         outputs_val = self.perceiver(inputs_q, outputs_q)
         outputs_val = nn.LayerNorm(dtype=dtype, name='representation_ln')(outputs_val)
         patches, low_dim = io_processors.InputsMultiplexer.inverse(
