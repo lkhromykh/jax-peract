@@ -75,6 +75,7 @@ class VoxelsProcessor(nn.Module):
             x = block(x)
         return x
 
+    @nn.nowrap
     def _make_stem(self, conv_cls: Type[nn.Conv] | Type[nn.ConvTranspose]) -> list[nn.Module]:
         blocks = []
         for f, k, s in zip(self.features, self.kernels, self.strides):
@@ -94,23 +95,19 @@ class InputsMultiplexer(nn.Module):
     """Concatenate/split modalities."""
 
     init_scale: float
-    dtype: types.DType
-    embedding_dim: int | None = None
     pad_to: int = 8
 
     @nn.compact
     def __call__(self, *inputs: Array) -> Array:
         chex.assert_rank(inputs, 2)  # [(seq_len, channels)]
         chex.assert_trees_all_equal_dtypes(*inputs)
-        breakpoint()
-        max_dim = self.embedding_dim or max(map(lambda x: x.shape[1], inputs))
+        max_dim = max(map(lambda x: x.shape[1], inputs))
         max_dim += 2 * self.pad_to - max_dim % self.pad_to
         output = []
         for idx, val in enumerate(inputs):
-            val = self._maybe_embed(val)
             seq_len, channels = val.shape
             enc = self.param(f'modality_encoding{idx}',
-                             nn.initializers.normal(self.init_scale, self.dtype),
+                             nn.initializers.normal(self.init_scale, val.dtype),
                              (1, max_dim - channels)
                              )
             enc = jnp.repeat(enc, seq_len, 0)
@@ -134,13 +131,6 @@ class InputsMultiplexer(nn.Module):
             index += size
         assert index == seq_len, "Requested shapes don't match input size."
         return outputs
-
-    def _maybe_embed(self, x: Array) -> Array:
-        if self.embedding_dim is None:
-            return x
-        fc = nn.Dense(self.embedding_dim, use_bias=False, dtype=self.dtype)
-        ln = nn.LayerNorm(dtype=self.dtype)
-        return ln(fc(x))
 
 
 class ActionDecoder(nn.Module):

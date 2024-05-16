@@ -71,9 +71,8 @@ class GoalConditionedEnv(dm_env.Environment):
     def action_spec(self) -> dm_env.specs.BoundedArray:
         xyz_min, xyz_max = np.split(np.asarray(self.scene_bounds), 2)
         rot_lim = np.array([np.pi, np.pi / 2, np.pi])
-        grasp_min, grasp_max = termsig_min, termsig_max = 0, 1
-        low = np.r_[xyz_min, -rot_lim, grasp_min, termsig_min]
-        high = np.r_[xyz_max, rot_lim, grasp_max, termsig_max]
+        low = np.r_[xyz_min, -rot_lim, 0, 0]
+        high = np.r_[xyz_max, rot_lim, 1, 1]
         return dm_env.specs.BoundedArray(
             minimum=low,
             maximum=high,
