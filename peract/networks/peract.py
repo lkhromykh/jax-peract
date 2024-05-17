@@ -67,16 +67,14 @@ class PerAct(nn.Module):
         pos3d_enc = utils.fourier_features(patches_shape, c.ff_num_bands).astype(dtype)
         patches = jnp.concatenate([patches, pos3d_enc], -1)
         task = jnp.concatenate([task, pos1d_enc], -1)
-        patches = patches.reshape(-1, patches.shape[-1])
-        low_dim = low_dim.reshape(-1, 1)
-        task = task.reshape(-1, task.shape[-1])
 
-        def tokens_preproc(x):
-            fc = nn.Dense(c.tokens_dim, use_bias=False, dtype=dtype)
-            ln = nn.LayerNorm(dtype=dtype)
+        def tokens_preproc(x, name):
+            x = x.reshape(-1, x.shape[-1])
+            fc = nn.Dense(c.tokens_dim, use_bias=False, dtype=dtype, name=f'{name}_tokens_dense')
+            ln = nn.LayerNorm(dtype=dtype, name=f'{name}_tokens_ln')
             return ln(fc(x))
 
-        patches, low_dim, task = map(tokens_preproc, (patches, low_dim, task))
+        patches, low_dim, task = map(tokens_preproc, (patches, low_dim, task), ('voxels', 'low_dim', 'task'))
         inputs_q = self.inputs_multiplexer(patches, task, low_dim)
         out_low_dim_q = self.param(
             'out_low_dim_q',

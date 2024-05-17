@@ -22,9 +22,9 @@ class Config:
     act_decoder_conv_kernel: int = 3
     # Perceiver
     latent_dim: int = 512
-    latent_channels: int = 256
+    latent_channels: int = 512
     num_blocks: int = 1
-    num_self_attend_per_block: int = 6
+    num_self_attend_per_block: int = 4
     num_cross_attend_heads: int = 1
     num_self_attend_heads: int = 8
     cross_attend_widening_factor: float = 1.
@@ -53,7 +53,7 @@ class Config:
     # Experiment
     seed: int = 1
     datasets_dir: str = 'datasets/ros_teleop_parsed'
-    logdir: str = 'logdir/ros_teleop1.4'
+    logdir: str = 'logdir/ros_teleop1.5'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
