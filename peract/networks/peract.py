@@ -76,12 +76,7 @@ class PerAct(nn.Module):
 
         patches, low_dim, task = map(tokens_preproc, (patches, low_dim, task), ('voxels', 'low_dim', 'task'))
         inputs_q = self.inputs_multiplexer(patches, task, low_dim)
-        out_low_dim_q = self.param(
-            'out_low_dim_q',
-            nn.initializers.normal(c.prior_initial_scale, dtype),
-            (1, c.tokens_dim)
-        )
-        outputs_q = self.outputs_multiplexer(patches, out_low_dim_q)
+        outputs_q = self.outputs_multiplexer(patches, low_dim)
         outputs_val = self.perceiver(inputs_q, outputs_q)
         outputs_val = nn.LayerNorm(dtype=dtype, name='representation_ln')(outputs_val)
         patches, low_dim = io_processors.InputsMultiplexer.inverse(

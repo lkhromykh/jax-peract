@@ -9,11 +9,11 @@ Layers: TypeAlias = tuple[int, ...]
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Config:
     # IO processors
-    scene_bins: int = 32
+    scene_bins: int = 64
     rot_bins: int = 72
     conv_stem_features: Layers = (64,)
-    conv_stem_kernels: Layers = (2,)
-    conv_stem_strides: Layers = (2,)
+    conv_stem_kernels: Layers = (4,)
+    conv_stem_strides: Layers = (4,)
     conv_stem_use_skip_connections: bool = False
     voxels_patch_size: int = 1
     text_context_length: int = 77  # max. 77
@@ -31,14 +31,14 @@ class Config:
     self_attend_widening_factor: float = 1.
     use_layer_norm: bool = True
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 8
+    ff_num_bands: int = 16
     # Training
     max_grad_norm: float = 10.
     warmup_steps: int = 1000
     peak_learning_rate: float = 5e-4
     training_steps: int = 300_000
     batch_size: int = 16
-    weight_decay: float = 1e-2
+    weight_decay: float = 1e-3
     log_every: int = 500
     save_every: int = 5000
     jit: bool = True
@@ -53,7 +53,7 @@ class Config:
     # Experiment
     seed: int = 1
     datasets_dir: str = 'datasets/ros_teleop_parsed'
-    logdir: str = 'logdir/ros_teleop1.5'
+    logdir: str = 'logdir/ros_teleop1.6'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
