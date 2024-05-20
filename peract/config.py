@@ -11,14 +11,14 @@ class Config:
     # IO processors
     scene_bins: int = 64
     rot_bins: int = 72
-    conv_stem_features: Layers = (64,)
-    conv_stem_kernels: Layers = (4,)
-    conv_stem_strides: Layers = (4,)
+    conv_stem_features: Layers = ()
+    conv_stem_kernels: Layers = ()
+    conv_stem_strides: Layers = ()
     conv_stem_use_skip_connections: bool = False
-    voxels_patch_size: int = 1
+    voxels_patch_size: int = 4
     text_context_length: int = 77  # max. 77
     tokens_dim: int = 64
-    act_decoder_mlp_dim: int = 256
+    act_decoder_mlp_dim: int = 128
     act_decoder_conv_kernel: int = 3
     # Perceiver
     latent_dim: int = 512
