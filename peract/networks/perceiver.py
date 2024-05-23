@@ -158,7 +158,7 @@ class PerceiverIO(nn.Module):
         decode_query = CrossAttention(
             num_heads=self.num_cross_attend_heads,
             widening_factor=self.cross_attend_widening_factor,
-            use_query_residual=False,
+            use_query_residual=True,
             dtype=self.dtype,
             kernel_init=self.kernel_init,
             use_layer_norm=self.use_layer_norm

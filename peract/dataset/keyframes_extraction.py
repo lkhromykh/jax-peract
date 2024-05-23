@@ -19,7 +19,7 @@ KeyframesExtractorOutput: TypeAlias = tuple[list[tuple[FromObservation, FromKeyf
 KeyframesExtractor: TypeAlias = Callable[[gcenv.Demo], KeyframesExtractorOutput]
 
 
-def default_scan(carry_tp1: Carry, obs_t: gcenv.Observation, skip_every: int = 4) -> tuple[Carry, bool]:
+def default_scan(carry_tp1: Carry, obs_t: gcenv.Observation, skip_every: int = 6) -> tuple[Carry, bool]:
     """
     An ARM-like (2105.14829) keyframe heuristic.
     Skip_every param may vary depending on demo FPS.

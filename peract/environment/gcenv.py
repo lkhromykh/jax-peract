@@ -15,7 +15,7 @@ Goal: TypeAlias = str | np.ndarray
 class Observation(NamedTuple):
     """Complete action-centric environment state representation."""
 
-    JOINTS_VEL_LOW_THRESHOLD = 0.0
+    JOINTS_VEL_LOW_THRESHOLD = 0.1
     GRIPPER_OPEN_THRESHOLD = 0.05
 
     images: tuple[Array]  # [(H_i, W_i, 3)], uint8

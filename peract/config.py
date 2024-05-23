@@ -9,7 +9,7 @@ Layers: TypeAlias = tuple[int, ...]
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Config:
     # IO processors
-    scene_bins: int = 64
+    scene_bins: int = 32
     rot_bins: int = 72
     conv_stem_features: Layers = ()
     conv_stem_kernels: Layers = ()
@@ -17,21 +17,21 @@ class Config:
     conv_stem_use_skip_connections: bool = False
     voxels_patch_size: int = 4
     text_context_length: int = 77  # max. 77
-    tokens_dim: int = 64
-    act_decoder_mlp_dim: int = 128
-    act_decoder_conv_kernel: int = 3
+    tokens_dim: int = 128
+    act_decoder_mlp_dim: int = 256
+    act_decoder_conv_kernel: int = 4
     # Perceiver
     latent_dim: int = 512
     latent_channels: int = 512
     num_blocks: int = 1
-    num_self_attend_per_block: int = 4
+    num_self_attend_per_block: int = 6
     num_cross_attend_heads: int = 1
     num_self_attend_heads: int = 8
     cross_attend_widening_factor: float = 1.
     self_attend_widening_factor: float = 1.
     use_layer_norm: bool = True
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 16
+    ff_num_bands: int = 32
     # Training
     max_grad_norm: float = 10.
     warmup_steps: int = 1000
@@ -53,7 +53,7 @@ class Config:
     # Experiment
     seed: int = 1
     datasets_dir: str = 'datasets/ros_teleop_parsed'
-    logdir: str = 'logdir/ros_teleop1.6'
+    logdir: str = 'logdir/ros_teleop1.7_small'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
