@@ -32,8 +32,11 @@ def inspect_model(cfg: Config):
         actions = map(pos_dist.bijector.forward, idxs)
         return modal_action, (jnp.stack(list(actions)), probs)
 
-    def _viz_action(action_, is_expert: bool):
-        color = np.array([0, 0, 1.]) if is_expert else np.array([1., 0, 0])
+    def _viz_action(action_, is_expert: bool = False):
+        _, grip, term = np.split(action_, [6, 7])
+        color = np.array([0, 0, 1.]) if grip < 0.5 else np.array([0., 1., 0.])
+        if term > 0.5:
+            color = np.array([1., 0, 0])
         voxel = o3d.geometry.Voxel(
             grid_index=action_[:3],
             color=color
@@ -52,16 +55,16 @@ def inspect_model(cfg: Config):
         expert_action = sample.actions
         out = jax.jit(propose_actions)(obs)
         modal_action, (top_k_actions, probs) = jax.device_get(out)
+        modal_voxel, modal_tcp = _viz_action(modal_action)
+        exp_voxel, exp_tcp = _viz_action(expert_action, is_expert=True)
         voxels = vgrid.decode(obs.voxels)
         for act, prob in zip(top_k_actions, probs):
-            red = (1 + 2 * prob) / 3
+            color = (1 + 2 * prob) / 3 * modal_voxel.color
             voxel = o3d.geometry.Voxel(
                 grid_index=act,
-                color=np.array([red, 0, 0])
+                color=color
             )
             voxels.add_voxel(voxel)
-        modal_voxel, modal_tcp = _viz_action(modal_action, is_expert=False)
-        exp_voxel, exp_tcp = _viz_action(expert_action, is_expert=True)
         voxels.add_voxel(modal_voxel), voxels.add_voxel(exp_voxel)
         o3d.visualization.draw_geometries([voxels, modal_tcp, exp_tcp])
 
@@ -75,5 +78,5 @@ def inspect_model(cfg: Config):
 if __name__ == '__main__':
     path = pathlib.Path(sys.argv[1]).resolve()
     cfg = Config.load(path / Builder.CONFIG, compute_dtype='f32')
-    print('Reminder: blue is expert action with a bigger coord_frame')
+    print('Reminder: blue is move, green is grasp, red is termination.')
     inspect_model(cfg)

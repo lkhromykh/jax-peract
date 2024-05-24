@@ -9,7 +9,7 @@ Layers: TypeAlias = tuple[int, ...]
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Config:
     # IO processors
-    scene_bins: int = 32
+    scene_bins: int = 64
     rot_bins: int = 72
     conv_stem_features: Layers = ()
     conv_stem_kernels: Layers = ()
@@ -45,7 +45,7 @@ class Config:
     compute_dtype: str = 'bf16'
     max_trans_aug: float = 0.125  # *scene_bins
     rot_aug_limits: tuple[float, float] = (-0.25, 0.25)  # *np.pi
-    val_split: float = 0.1
+    val_split: float = 0.2
     # Environment
     scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
     time_limit: int = 5
@@ -53,7 +53,7 @@ class Config:
     # Experiment
     seed: int = 1
     datasets_dir: str = 'datasets/ros_teleop_parsed'
-    logdir: str = 'logdir/ros_teleop1.7_small'
+    logdir: str = 'logdir/ros_teleop1.7'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""
