@@ -31,21 +31,21 @@ class Config:
     self_attend_widening_factor: float = 1.
     use_layer_norm: bool = True
     prior_initial_scale: float = 0.02
-    ff_num_bands: int = 32
+    ff_num_bands: int = 16
     # Training
     max_grad_norm: float = 10.
     warmup_steps: int = 1000
     peak_learning_rate: float = 5e-4
     training_steps: int = 300_000
     batch_size: int = 16
-    weight_decay: float = 1e-3
+    weight_decay: float = 1e-2
     log_every: int = 500
     save_every: int = 5000
     jit: bool = True
     compute_dtype: str = 'bf16'
     max_trans_aug: float = 0.125  # *scene_bins
     rot_aug_limits: tuple[float, float] = (-0.25, 0.25)  # *np.pi
-    val_split: float = 0.2
+    val_split: float = 0.1
     # Environment
     scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
     time_limit: int = 5
@@ -53,7 +53,7 @@ class Config:
     # Experiment
     seed: int = 1
     datasets_dir: str = 'datasets/ros_teleop_parsed'
-    logdir: str = 'logdir/ros_teleop1.7'
+    logdir: str = 'logdir/ros_teleop1.8'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

@@ -69,9 +69,9 @@ def scene_rotation(item: types.Trajectory,
 
 
 def color_transforms(item: types.Trajectory,
-                     max_brightness: float = 0.2,
-                     contrast: float = 0.2,
-                     saturation: float = 0.2,
+                     max_brightness: float = 0.05,
+                     contrast: float = 0.05,
+                     saturation: float = 0.05,
                      ) -> types.Trajectory:
     obs, act = item.observations, item.actions
     colors, occupancy = tf.split(obs.voxels, [3, 1], -1)

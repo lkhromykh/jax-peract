@@ -32,11 +32,6 @@ class _Module(nn.Module):
         return x
 
 
-def geglu(x: Array) -> Array:
-    x, gates = jnp.split(x, 2, -1)
-    return x * nn.gelu(gates)
-
-
 class MLP(_Module):
 
     widening_factor: float
@@ -44,8 +39,8 @@ class MLP(_Module):
     @nn.compact
     def __call__(self, x: Array) -> Array:
         dim = x.shape[-1]
-        x = self.dense(x, features=2 * int(self.widening_factor * dim))
-        x = geglu(x)
+        x = self.dense(x, features=int(self.widening_factor * dim))
+        x = nn.gelu(x)
         return self.dense(x, features=dim)
 
 
@@ -84,6 +79,7 @@ class MultiHeadAttention(_Module):
                           axis=(-2, -1),
                           name='proj')
 
+    @nn.nowrap
     def _mh_dense(self, x: Array, dim: int, name: str) -> Array:
         dim, res = np.divmod(dim, self.num_heads)
         assert res == 0, f'Not divisible by the number of heads: {dim} / {self.num_heads}.'
