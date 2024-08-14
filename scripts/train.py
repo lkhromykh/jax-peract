@@ -15,11 +15,15 @@ from peract.builder import Builder
 from peract.logger import get_logger
 from peract.utils import prefetch_to_device
 
+#TODO: setuo triton gemm xla_gpu_triton_gemm_any
+#TODO: 6D continuous action representation
+
 
 def _debug():
     import flax
     import logging
     get_logger().setLevel(logging.DEBUG)
+    jax.config.update('jax_transfer_guard', 'disallow')
     jax.config.update('jax_disable_jit', True)
     # jax.config.update('jax_platform_name', 'cpu')
     chex.enable_asserts()
