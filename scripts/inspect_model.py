@@ -5,16 +5,20 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 import numpy as np
 import open3d as o3d
-from scipy.spatial.transform import Rotation as R
 import jax
 import jax.numpy as jnp
 
 from peract.config import Config
 from peract.builder import Builder
+from peract.utils.rotation import Rotation as R
 
 
 # TODO: vizualize attention, next action
 def inspect_model(cfg: Config):
+    """
+    Expert TCP frame is bigger.
+    Blue is move, green is grasp, red is terminal.
+    """
     builder = Builder(cfg)
     enc = builder.make_encoders()
     vgrid = enc.scene_encoder
@@ -33,7 +37,7 @@ def inspect_model(cfg: Config):
         return modal_action, (jnp.stack(list(actions)), probs)
 
     def _viz_action(action_, is_expert: bool = False):
-        _, grip, term = np.split(action_, [6, 7])
+        _, grip, term = np.split(action_, [9, 10])
         color = np.array([0, 0, 1.]) if grip < 0.5 else np.array([0., 1., 0.])
         if term > 0.5:
             color = np.array([1., 0, 0])
@@ -42,12 +46,12 @@ def inspect_model(cfg: Config):
             color=color
         )
         action_ = enc.action_encoder.decode(action_)
-        tcp_pos, tcp_rot, _ = np.split(action_, [3, 6])
+        tcp_pos, tcp_rot, _ = np.split(action_, [3, 9])
         lb, ub = vgrid.scene_bounds
         tcp_pos = (tcp_pos - lb) / (ub - lb)
         size = 0.2 if is_expert else 0.1
         frame_tcp = o3d.geometry.TriangleMesh.create_coordinate_frame(size=size, origin=tcp_pos)
-        frame_tcp = frame_tcp.rotate(R.from_euler('ZYX', tcp_rot).as_matrix())
+        frame_tcp = frame_tcp.rotate(R.from_continuous6d(tcp_rot).as_matrix())
         return voxel, frame_tcp
 
     def viz_one(sample):
@@ -78,5 +82,4 @@ def inspect_model(cfg: Config):
 if __name__ == '__main__':
     path = pathlib.Path(sys.argv[1]).resolve()
     cfg = Config.load(path / Builder.CONFIG, compute_dtype='f32')
-    print('Reminder: blue is move, green is grasp, red is termination.')
     inspect_model(cfg)

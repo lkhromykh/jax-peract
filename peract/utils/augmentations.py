@@ -2,10 +2,10 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
-from scipy.spatial.transform import Rotation as R
 
 import peract.types_ as types
 from peract.utils.action_transform import DiscreteActionTransform
+from peract.utils.rotation import Rotation as R
 
 
 def scene_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
@@ -48,11 +48,11 @@ def scene_rotation(item: types.Trajectory,
     def np_act_rot(act, theta_):
         rot = R.from_rotvec([0, 0, -theta_])
         act = act_transform.decode(act)
-        pos, tcp_orient, other = np.split(act, [3, 6])
+        pos, tcp_orient, other = np.split(act, [3, 9])
         rmat = rot.as_matrix()
         new_pos = rmat @ (pos - scene_center) + scene_center
-        new_orient = rot * R.from_euler('ZYX', tcp_orient)
-        new_orient = new_orient.as_euler('ZYX')
+        new_orient = rot * R.from_continuous6d(tcp_orient)
+        new_orient = new_orient.as_continuous6d()
         new_act = np.concatenate([new_pos, new_orient, other])
         return act_transform.encode(new_act)
 
@@ -69,9 +69,9 @@ def scene_rotation(item: types.Trajectory,
 
 
 def color_transforms(item: types.Trajectory,
-                     max_brightness: float = 0.05,
-                     contrast: float = 0.05,
-                     saturation: float = 0.05,
+                     max_brightness: float = 0.08,
+                     contrast: float = 0.08,
+                     saturation: float = 0.08,
                      ) -> types.Trajectory:
     obs, act = item.observations, item.actions
     colors, occupancy = tf.split(obs.voxels, [3, 1], -1)

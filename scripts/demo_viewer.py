@@ -9,13 +9,13 @@ import numpy as np
 import open3d as o3d
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from scipy.spatial.transform import Rotation as R
 plt.rcParams['animation.embed_limit'] = 2 ** 20
 
 from peract.environment import gcenv
 from peract.utils.voxel_grid import VoxelGrid
 from peract.dataset.dataset import DemosDataset
 from peract.dataset.keyframes_extraction import extractor_factory
+from peract.utils.rotation import Rotation as R
 
 
 def viz_demo(name: str, demo: gcenv.Demo) -> animation.FuncAnimation:
@@ -87,10 +87,10 @@ def viz_obs(obs: gcenv.Observation,
     voxels = vgrid.encode(obs)
     voxels = vgrid.decode(voxels)
     lb, ub = np.split(scene_bounds, 2)
-    tcp_pos, tcp_rot = np.split(obs.tcp_pose, 2)
+    tcp_pos, tcp_rot = np.split(obs.tcp_pose, [3])
     tcp_pos = (tcp_pos - lb) / (ub - lb)
     frame_tcp = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=tcp_pos)
-    frame_tcp = frame_tcp.rotate(R.from_euler('ZYX', tcp_rot).as_matrix())
+    frame_tcp = frame_tcp.rotate(R.from_continuous6d(tcp_rot).as_matrix())
     frame = o3d.geometry.TriangleMesh.create_coordinate_frame()
     o3d.visualization.draw_geometries([voxels, frame, frame_tcp])
 

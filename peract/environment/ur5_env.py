@@ -1,9 +1,9 @@
 import dm_env
 import numpy as np
-from scipy.spatial.transform import Rotation
 from ur_env.remote import RemoteEnvClient
 
 from peract.environment import gcenv
+from peract.utils.rotation import Rotation
 
 
 class UREnv(gcenv.GoalConditionedEnv):
@@ -24,8 +24,8 @@ class UREnv(gcenv.GoalConditionedEnv):
         return dm_env.restart(self._prev_obs)
 
     def step(self, action) -> dm_env.TimeStep:
-        pos, euler, other = np.split(action, [3, 6])
-        quat = Rotation.from_euler('ZYX', euler).as_quat(canonical=True)
+        pos, rotation6d, other = np.split(action, [3, 9])
+        quat = Rotation.from_continuous6d(rotation6d).as_quat(canonical=True)
         action = np.r_[pos, quat, other].astype(np.float32)
         ts = self._env.step(action)
         self._step += 1
@@ -38,8 +38,8 @@ class UREnv(gcenv.GoalConditionedEnv):
     @staticmethod
     def extract_observation(obs: dict[str, np.ndarray]) -> gcenv.Observation:
         pos, quat = np.split(obs['tcp_pose'], [3])
-        euler = Rotation.from_quat(quat).as_euler('ZYX')
-        tcp_pose = np.r_[pos, euler]
+        rot = Rotation.from_quat(quat).as_continuous6d()
+        tcp_pose = np.r_[pos, rot]
         def rot_kinect(x): return np.fliplr(np.swapaxes(x, 0, 1)),
         return gcenv.Observation(
             images=rot_kinect(obs['image']),

@@ -9,22 +9,22 @@ Layers: TypeAlias = tuple[int, ...]
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Config:
     # IO processors
-    scene_bins: int = 64
-    rot_bins: int = 72
-    conv_stem_features: Layers = ()
-    conv_stem_kernels: Layers = ()
-    conv_stem_strides: Layers = ()
+    scene_bins: int = 32
+    rot_bins: int = 13
+    conv_stem_features: Layers = (64,)
+    conv_stem_kernels: Layers = (2,)
+    conv_stem_strides: Layers = (2,)
     conv_stem_use_skip_connections: bool = False
-    voxels_patch_size: int = 4
+    voxels_patch_size: int = 1
     text_context_length: int = 77  # max. 77
-    tokens_dim: int = 128
+    tokens_dim: int = 64
     act_decoder_mlp_dim: int = 256
-    act_decoder_conv_kernel: int = 4
+    act_decoder_conv_kernel: int = 3
     # Perceiver
     latent_dim: int = 512
     latent_channels: int = 512
     num_blocks: int = 1
-    num_self_attend_per_block: int = 6
+    num_self_attend_per_block: int = 4
     num_cross_attend_heads: int = 1
     num_self_attend_heads: int = 8
     cross_attend_widening_factor: float = 1.
@@ -45,15 +45,15 @@ class Config:
     compute_dtype: str = 'bf16'
     max_trans_aug: float = 0.125  # *scene_bins
     rot_aug_limits: tuple[float, float] = (-0.25, 0.25)  # *np.pi
-    val_split: float = 0.1
+    val_split: float = 0.05
     # Environment
     scene_bounds: tuple[float, ...] = (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
     time_limit: int = 5
     num_demos_per_task: int = 100
     # Experiment
     seed: int = 1
-    datasets_dir: str = 'datasets/ros_teleop_parsed'
-    logdir: str = 'logdir/ros_teleop1.8'
+    datasets_dir: str = 'datasets/ros_teleop_parsed_rot_repr'
+    logdir: str = 'logdir/ros_teleop2.0'
 
     def save(self, file_path: str) -> None:
         """Save as YAML in a specified path."""

@@ -23,7 +23,7 @@ class Observation(NamedTuple):
     point_clouds: tuple[Array]  # [(H_i, W_i, 3)], float
     joint_position: Array
     joint_velocity: Array
-    tcp_pose: Array  # [x, y, z, yaw, pitch, roll]
+    tcp_pose: Array  # [xyz, rotation6d]
     gripper_pos: float  # [open=0, close=1]
     gripper_is_obj_detected: bool
     is_terminal: bool
@@ -70,7 +70,7 @@ class GoalConditionedEnv(dm_env.Environment):
     @final
     def action_spec(self) -> dm_env.specs.BoundedArray:
         xyz_min, xyz_max = np.split(np.asarray(self.scene_bounds), 2)
-        rot_lim = np.array([np.pi, np.pi / 2, np.pi])
+        rot_lim = np.ones(6)
         low = np.r_[xyz_min, -rot_lim, 0, 0]
         high = np.r_[xyz_max, rot_lim, 1, 1]
         return dm_env.specs.BoundedArray(
@@ -78,7 +78,7 @@ class GoalConditionedEnv(dm_env.Environment):
             maximum=high,
             shape=low.shape,
             dtype=np.float32,
-            name='[x, y, z, yaw, pitch, roll, grasp, termsig]'
+            name='[xyz, rotation6d, grasp, termsig]'
         )
 
     def observation_spec(self) -> ObservationSpec:

@@ -194,7 +194,7 @@ class Builder:
             case _: raise ValueError(step)
         fn = fn(self.cfg, nets)
         if self.cfg.jit:
-            fn = jax.jit(fn, donate_argnums=(0,))
+            fn = jax.jit(fn)
         return fn
 
     def exp_path(self, path: str | pathlib.Path = pathlib.Path()) -> pathlib.Path:
