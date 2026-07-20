@@ -16,7 +16,7 @@ scipy==1.12.0
 tensorflow==2.13.0
 tensorflow-addons==0.23.0
 tensorflow_probability==0.21.0
-transformers[flax]==4.37.2
+transformers[flax]
 git+https://github.com/stepjam/PyRep.git
 git+https://github.com/stepjam/RLBench.git
 rltools[loggers] @ git+https://github.com/lkhromykh/rltools.git
