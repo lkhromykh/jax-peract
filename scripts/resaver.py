@@ -23,7 +23,6 @@ def parse_demo(dataset_dir: pathlib.Path, demo_path: pathlib.Path) -> None:
         get_logger().info('Cant read %s: %s', demo_path, exc)
     else:
         demo = list(map(UREnv.extract_observation, demo))
-        demo[-2] = demo[-2].replace(is_terminal=False)
         DemosDataset.save_demo(demo, parsed_path)
 
 

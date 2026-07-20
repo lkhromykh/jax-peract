@@ -20,17 +20,17 @@ class DiscreteActionTransform:
                  scene_bins: int,
                  rot_bins: int,
                  ) -> None:
-        rot_lim = np.array([np.pi, np.pi / 2, np.pi])
+        rot_lim = np.ones(6)
         lb = np.r_[scene_bounds[:3], -rot_lim, 0, 0]
-        ub = np.r_[scene_bounds[3:], rot_lim, 1, 1]
-        nbins = 3 * [scene_bins] + 3 * [rot_bins] + [2, 2]
+        ub = np.r_[scene_bounds[3:],  rot_lim, 1, 1]
+        nbins = 3 * [scene_bins] + 6 * [rot_bins] + [2, 2]
         self._act_specs = tuple(specs.DiscreteArray(n) for n in nbins)
         self._action_bounds = (lb, ub)
         self._range = ub - lb
         self._nbins = np.int32(nbins)
 
     def encode(self, action: gcenv.Action) -> Discrete:
-        assert action.shape == (8,)
+        assert action.shape == (11,)
         lb, ub = self._action_bounds
         action = (action - lb) / self._range
         action = np.clip(action, a_min=_eps, a_max=1. - _eps)

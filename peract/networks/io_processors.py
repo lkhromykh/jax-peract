@@ -75,6 +75,7 @@ class VoxelsProcessor(nn.Module):
             x = block(x)
         return x
 
+    @nn.nowrap
     def _make_stem(self, conv_cls: Type[nn.Conv] | Type[nn.ConvTranspose]) -> list[nn.Module]:
         blocks = []
         for f, k, s in zip(self.features, self.kernels, self.strides):
@@ -85,7 +86,8 @@ class VoxelsProcessor(nn.Module):
                             kernel_init=self.kernel_init,
                             use_bias=False,
                             padding='VALID')
-            blocks.append(nn.Sequential([conv, nn.LayerNorm(dtype=self.dtype), activation]))
+            block = nn.Sequential([conv, nn.LayerNorm(dtype=self.dtype), activation])
+            blocks.append(block)
         return blocks
 
 
@@ -98,6 +100,7 @@ class InputsMultiplexer(nn.Module):
     @nn.compact
     def __call__(self, *inputs: Array) -> Array:
         chex.assert_rank(inputs, 2)  # [(seq_len, channels)]
+        chex.assert_trees_all_equal_dtypes(*inputs)
         max_dim = max(map(lambda x: x.shape[1], inputs))
         max_dim += 2 * self.pad_to - max_dim % self.pad_to
         output = []

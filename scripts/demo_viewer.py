@@ -2,23 +2,25 @@ import os
 import sys
 import random
 import pathlib
+import itertools
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 import numpy as np
 import open3d as o3d
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from scipy.spatial.transform import Rotation as R
 plt.rcParams['animation.embed_limit'] = 2 ** 20
 
 from peract.environment import gcenv
 from peract.utils.voxel_grid import VoxelGrid
 from peract.dataset.dataset import DemosDataset
 from peract.dataset.keyframes_extraction import extractor_factory
+from peract.utils.rotation import Rotation as R
 
 
-def viz_demo(demo: gcenv.Demo) -> animation.FuncAnimation:
+def viz_demo(name: str, demo: gcenv.Demo) -> animation.FuncAnimation:
     fig, axes = plt.subplots(2, 2, figsize=(20, 20), squeeze=True, tight_layout=True)
+    fig.suptitle(name)
     obs_ax, kf_ax, jvel_ax, gpos_ax = axes.flatten()
     pairs, kf_idxs = extractor_factory()(demo)
 
@@ -44,7 +46,7 @@ def viz_demo(demo: gcenv.Demo) -> animation.FuncAnimation:
     fig.suptitle(f"{obs0.goal}\nDemo length: {len(pairs)}, keyframes_indices: {kf_idxs}")
     obs_art = obs_ax.imshow(as_img(obs0))
     kf_art = kf_ax.imshow(as_img(kf0))
-    jvel_ax.plot([max(abs(obs.joint_velocities)) for obs in demo])
+    jvel_ax.plot([max(abs(obs.joint_velocity)) for obs in demo])
     jvel_ax.axhline(obs0.JOINTS_VEL_LOW_THRESHOLD, c='r', label='low_velocity_threshold')
     jvel_obs_line = jvel_ax.axvline(0, c='k')
     jvel_kf_line = jvel_ax.axvline(kf_idxs[0], c='g')
@@ -82,14 +84,30 @@ def viz_obs(obs: gcenv.Observation,
             ) -> None:
     scene_bounds = np.asarray(scene_bounds)
     vgrid = VoxelGrid(scene_bounds=scene_bounds, nbins=scene_bins)
-    voxels = vgrid.encode(obs, return_type='o3d')
+    voxels = vgrid.encode(obs)
+    voxels = vgrid.decode(voxels)
     lb, ub = np.split(scene_bounds, 2)
-    tcp_pos, tcp_rot, _ = np.split(obs.infer_action(), [3, 6])
+    tcp_pos, tcp_rot = np.split(obs.tcp_pose, [3])
     tcp_pos = (tcp_pos - lb) / (ub - lb)
     frame_tcp = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=tcp_pos)
-    frame_tcp = frame_tcp.rotate(R.from_euler('ZYX', tcp_rot).as_matrix())
+    frame_tcp = frame_tcp.rotate(R.from_continuous6d(tcp_rot).as_matrix())
     frame = o3d.geometry.TriangleMesh.create_coordinate_frame()
     o3d.visualization.draw_geometries([voxels, frame, frame_tcp])
+
+
+def plotly_show(obs, scene_bounds):
+    import plotly.graph_objects as go
+    pcd = obs.point_clouds[0].reshape(-1, 3)[::2]
+    lb, ub = np.split(np.asarray(scene_bounds), 2)
+    # pcd = np.stack([r for r in pcd if np.all(np.logical_and((r < ub), (r > lb)), -1)])
+
+    fig = go.Figure(data=[go.Scatter3d(x=pcd[:, 0], y=pcd[:, 1], z=pcd[:, 2], mode='markers', marker=dict(
+        size=1,
+        # color=z,  # set color to an array/list of desired values
+        colorscale='Viridis',  # choose a colorscale
+        opacity=0.8
+    ))])
+    fig.show()
 
 
 if __name__ == '__main__':
@@ -97,13 +115,12 @@ if __name__ == '__main__':
     path = pathlib.Path(sys.argv[1]).resolve()
     ds = DemosDataset(path)
     gen = zip(ds, ds.as_demo_generator())
-    # for _ in range(60):
-    #     _ = next(gen)
+    # gen = itertools.islice(gen, 30, len(ds))
     try:
         while True:
             try:
                 path, demo = next(gen)
-                anim = viz_demo(demo)
+                # anim = viz_demo(path, demo)
             except StopIteration:
                 break
             except AssertionError:
@@ -112,11 +129,11 @@ if __name__ == '__main__':
                 print('Cant load demo ', path)
                 raise exc
             else:
-                plt.show()
-                plt.close()
+                # plt.show()
+                # plt.close()
                 obs = random.choice(demo)
                 # rlbench (-0.3, -0.5, 0.6, 0.7, 0.5, 1.6)
                 # ur5 (-0.7, -0.25, -0.1, -0.2, 0.25, 0.4)
-                # viz_obs(obs, scene_bounds=(-0.3, -0.5, 0.6, 0.7, 0.5, 1.6), scene_bins=32)
+                viz_obs(obs, scene_bounds=(-0.7, -0.25, -0.1, -0.2, 0.25, 0.4), scene_bins=64)
     except KeyboardInterrupt:
         pass

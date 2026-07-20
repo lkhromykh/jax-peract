@@ -28,6 +28,8 @@ class PerAct(nn.Module):
             kernel_init=nn.initializers.lecun_normal(),
             use_skip_connections=c.conv_stem_use_skip_connections,
         )
+        self.inputs_multiplexer = io_processors.InputsMultiplexer(c.prior_initial_scale)
+        self.outputs_multiplexer = io_processors.InputsMultiplexer(c.prior_initial_scale)
         self.perceiver = PerceiverIO(
             latent_dim=c.latent_dim,
             latent_channels=c.latent_channels,
@@ -71,17 +73,17 @@ class PerAct(nn.Module):
             fc = nn.Dense(c.tokens_dim, use_bias=False, dtype=dtype, name=f'{name}_tokens_dense')
             ln = nn.LayerNorm(dtype=dtype, name=f'{name}_tokens_ln')
             return ln(fc(x))
-        patches = tokens_preproc(patches, 'voxels')
-        low_dim = tokens_preproc(low_dim, 'low_dim')
-        task = tokens_preproc(task, 'task')
-        inputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
-            patches, low_dim, task
+
+        patches, low_dim, task = map(tokens_preproc, (patches, low_dim, task), ('voxels', 'low_dim', 'task'))
+        inputs_q = self.inputs_multiplexer(patches, task, low_dim)
+        out_patches_q = tokens_preproc(patches, 'out_voxels')
+        out_low_dim_q = self.param(
+            'out_low_dim_q',
+            nn.initializers.normal(c.prior_initial_scale, dtype),
+            (1, c.tokens_dim)
         )
-        outputs_q = io_processors.InputsMultiplexer(c.prior_initial_scale)(
-            patches, low_dim
-        )
+        outputs_q = self.outputs_multiplexer(out_patches_q, out_low_dim_q)
         outputs_val = self.perceiver(inputs_q, outputs_q)
-        outputs_val = nn.LayerNorm(dtype=dtype, name='representation_ln')(outputs_val)
         patches, low_dim = io_processors.InputsMultiplexer.inverse(
             outputs_val, shapes=[patches_shape, ()]
         )

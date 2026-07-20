@@ -2,10 +2,10 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
-from scipy.spatial.transform import Rotation as R
 
 import peract.types_ as types
 from peract.utils.action_transform import DiscreteActionTransform
+from peract.utils.rotation import Rotation as R
 
 
 def scene_shift(item: types.Trajectory, max_shift: int) -> types.Trajectory:
@@ -48,11 +48,11 @@ def scene_rotation(item: types.Trajectory,
     def np_act_rot(act, theta_):
         rot = R.from_rotvec([0, 0, -theta_])
         act = act_transform.decode(act)
-        pos, tcp_orient, other = np.split(act, [3, 6])
+        pos, tcp_orient, other = np.split(act, [3, 9])
         rmat = rot.as_matrix()
         new_pos = rmat @ (pos - scene_center) + scene_center
-        new_orient = rot * R.from_euler('ZYX', tcp_orient)
-        new_orient = new_orient.as_euler('ZYX')
+        new_orient = rot * R.from_continuous6d(tcp_orient)
+        new_orient = new_orient.as_continuous6d()
         new_act = np.concatenate([new_pos, new_orient, other])
         return act_transform.encode(new_act)
 
@@ -69,21 +69,15 @@ def scene_rotation(item: types.Trajectory,
 
 
 def color_transforms(item: types.Trajectory,
-                     max_brightness: float = 0.1,
-                     contrast: float = 0.1,
-                     saturation: float = 0.1,
-                     hue: float = 0.02
+                     max_brightness: float = 0.08,
+                     contrast: float = 0.08,
+                     saturation: float = 0.08,
                      ) -> types.Trajectory:
     obs, act = item.observations, item.actions
     colors, occupancy = tf.split(obs.voxels, [3, 1], -1)
-    if max_brightness > 0:
-        colors = tf.image.random_brightness(colors, max_brightness)
-    if contrast > 0:
-        colors = tf.image.random_contrast(colors, 1 - contrast, 1 + contrast)
-    if saturation > 0:
-        colors = tf.image.random_saturation(colors, 1 - saturation, 1 + saturation)
-    if hue > 0:
-        colors = tf.image.random_hue(colors, hue)
+    colors = tf.image.random_brightness(colors, max_brightness)
+    colors = tf.image.random_contrast(colors, 1 - contrast, 1 + contrast)
+    colors = tf.image.random_saturation(colors, 1 - saturation, 1 + saturation)
     colors *= tf.cast(occupancy == 255, tf.uint8)
 
     obs = obs._replace(voxels=tf.concat([colors, occupancy], -1))

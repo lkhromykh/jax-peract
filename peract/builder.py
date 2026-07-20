@@ -66,15 +66,15 @@ class Builder:
                  ) -> PerActEnvWrapper | GoalConditionedEnv:
         """Create and wrap an environment."""
         c = self.cfg
-        env = RLBenchEnv(
-           scene_bounds=c.scene_bounds,
-           time_limit=c.time_limit,
-        )
-        # env = UREnv(
-        #     address=('192.168.1.136', 5555),
-        #     scene_bounds=c.scene_bounds,
-        #     time_limit=c.time_limit
+        # env = RLBenchEnv(
+        #    scene_bounds=c.scene_bounds,
+        #    time_limit=c.time_limit,
         # )
+        env = UREnv(
+            address=('192.168.1.136', 5555),
+            scene_bounds=c.scene_bounds,
+            time_limit=c.time_limit
+        )
         if encoders is None:
             return env
         return PerActEnvWrapper(
@@ -152,7 +152,7 @@ class Builder:
                 case _: raise ValueError(split)
             _ds = _ds.flat_map(tf.data.Dataset.from_tensor_slices)
             if split == 'train':
-                _ds = _ds.repeat().shuffle(3000 // len(tasks))  # RAM budget.
+                _ds = _ds.repeat().shuffle(4000 // len(tasks))  # RAM budget.
             return _ds.prefetch(tf.data.AUTOTUNE)
 
         datasets = [load_dataset(task) for task in tasks]

@@ -84,6 +84,7 @@ class MultiHeadAttention(_Module):
                           axis=(-2, -1),
                           name='proj')
 
+    @nn.nowrap
     def _mh_dense(self, x: Array, dim: int, name: str) -> Array:
         dim, res = np.divmod(dim, self.num_heads)
         assert res == 0, f'Not divisible by the number of heads: {dim} / {self.num_heads}.'

@@ -87,7 +87,7 @@ def _get_policy_metrics(policy: Blockwise, expert_action: types.Action) -> types
         topk=(1, 7),
         postfix='pos'
     ))
-    components_names = ('yaw', 'pitch', 'roll', 'grasp', 'termsig')
+    components_names = ('r11', 'r21', 'r31', 'r12', 'r22', 'r32', 'grasp', 'termsig')
     for name, dist, label in zip(components_names, low_dim_dists, expert_action[3:]):
         topk_ = (1, 3) if name in components_names[:3] else (1,)
         metrics |= per_dist_metrics(dist, label, topk=topk_, postfix=name)

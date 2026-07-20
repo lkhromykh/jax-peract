@@ -1,6 +1,10 @@
 import os
 import sys
 import time
+os.environ['XLA_FLAGS'] = (
+    '--xla_gpu_enable_triton_softmax_fusion=true '
+    '--xla_gpu_triton_gemm_any=True '
+)
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 import jax
